@@ -777,11 +777,12 @@ export function SpotCard({
             </div>
           ) : (
             <div
-              className="mb-3 flex items-center justify-center rounded-xl bg-gray-100"
+              className="mb-3 flex flex-col items-center justify-center gap-2 rounded-xl bg-gray-100"
               style={{ width: '100px', height: '125px' }}
               aria-label="이미지 없음"
             >
               <ImageIcon size={30} weight="regular" className="text-gray-400" />
+              <span className="text-xs text-gray-400">No images</span>
             </div>
           )}
 
