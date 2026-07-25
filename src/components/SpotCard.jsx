@@ -865,11 +865,7 @@ export function SpotCard({
           className="fixed left-0 right-0 pointer-events-none flex justify-center"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
-<<<<<<< HEAD
-            zIndex: 1020,
-=======
             zIndex: 35,
->>>>>>> dev
             transform:
               closing || !isVisible ? 'translateY(160px)' : 'translateY(0)',
             transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
