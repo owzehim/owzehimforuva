@@ -153,7 +153,7 @@ export default function PublicPage() {
           WebkitUserSelect: 'none',
           WebkitTapHighlightColor: 'transparent',
           position: 'relative',
-          zIndex: 40,
+          zIndex: 1030,
         }}
       >
         {[
