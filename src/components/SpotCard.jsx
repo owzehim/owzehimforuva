@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapPin, Ticket, Star } from '@phosphor-icons/react'
+import { Image as ImageIcon, MapPin, Ticket, Star } from '@phosphor-icons/react'
 import { CATEGORY_ICONS } from '../lib/mapCategories'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
@@ -26,7 +26,12 @@ function isDarkMode() {
 
 // ?? Read-only star row ??????????????????????????????????????????
 
-function StarDisplay({ averageRating, showWhenZero = false, darkMode = false }) {
+function StarDisplay({
+  averageRating,
+  showWhenZero = false,
+  showAverage = true,
+  darkMode = false,
+}) {
   if (averageRating == null || Number.isNaN(averageRating)) return null
 
   const formatted = showWhenZero
@@ -67,18 +72,20 @@ function StarDisplay({ averageRating, showWhenZero = false, darkMode = false }) 
           <Star key={'e' + i} size={12} weight="fill" color={emptyColor} />
         ))}
       </div>
-      <span className="text-xs text-amber-500 font-medium">{formatted}</span>
+      {showAverage && (
+        <span className="text-xs text-amber-500 font-medium">{formatted}</span>
+      )}
     </div>
   )
 }
 
 // ?? Tag bar chart ???????????????????????????????????????????????
 
-function TagBarChart({ tagCounts, reviewCount }) {
+function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
   const sorted = getSortedTagsForDisplay(tagCounts)
-  if (sorted.length === 0) return null
+  const hasMemberReviews = reviewCount > 0 && sorted.length > 0
 
-  const maxCount = sorted[0].count
+  const maxCount = hasMemberReviews ? sorted[0].count : 0
 
   return (
     <div className="pb-4">
@@ -90,7 +97,16 @@ function TagBarChart({ tagCounts, reviewCount }) {
         </div>
 
         <div className="flex flex-col gap-2.5 pl-4">
-          {sorted.map((tag) => {
+          {!hasMemberReviews && (
+            <div className="flex items-center gap-2" aria-label="멤버 평가 0개">
+              <div className="flex-1 h-2 bg-gray-200 rounded-full" />
+              <span className="text-xs text-gray-400 font-medium w-4 text-right flex-shrink-0">
+                0
+              </span>
+            </div>
+          )}
+
+          {hasMemberReviews && sorted.map((tag) => {
             const IconComponent = TAG_ICON_COMPONENTS[tag.icon]
             const pct =
               maxCount > 0 ? Math.round((tag.count / maxCount) * 100) : 0
@@ -595,8 +611,8 @@ export function SpotCard({
   const ratingSummary = summary?.store_id === selected?.partnership_id
     ? summary
     : null
-
-  const hasReviews = ratingSummary && ratingSummary.review_count > 0
+  const reviewCount = ratingSummary?.review_count ?? 0
+  const averageRating = ratingSummary?.average_rating ?? 0
 
   // treat empty / whitespace / HTML-only as empty (no ※)
   const rawTerms = selected.discount_terms ?? ''
@@ -710,22 +726,16 @@ export function SpotCard({
               {selected.name}
             </p>
 
-            {/* Reserve the rating row while loading instead of flashing a false 0.0 state. */}
             {showRating && (
-              ratingSummary ? (
-                <div className="flex items-center gap-1 mt-1">
-                  <StarDisplay
-                    averageRating={ratingSummary.average_rating}
-                    showWhenZero
-                    darkMode={darkMode}
-                  />
-                  <span className="text-xs text-gray-400">
-                    ({ratingSummary.review_count})
-                  </span>
-                </div>
-              ) : (
-                <div className="mt-1 h-[18px]" aria-hidden="true" />
-              )
+              <div className="flex items-center gap-1 mt-1">
+                <StarDisplay
+                  averageRating={averageRating}
+                  showWhenZero
+                  showAverage={reviewCount > 0}
+                  darkMode={darkMode}
+                />
+                <span className="text-xs text-gray-400">({reviewCount})</span>
+              </div>
             )}
 
             {/* Description, discount, address */}
@@ -758,12 +768,20 @@ export function SpotCard({
           </div>
 
           {/* Images */}
-          {hasImages && (
+          {hasImages ? (
             <div className="mb-3">
               <ImageThumbnails
                 imgs={imgs}
                 onTap={(i) => setLightboxIndex(i)}
               />
+            </div>
+          ) : (
+            <div
+              className="mb-3 flex items-center justify-center rounded-xl bg-gray-100"
+              style={{ width: '100px', height: '125px' }}
+              aria-label="이미지 없음"
+            >
+              <ImageIcon size={30} weight="regular" className="text-gray-400" />
             </div>
           )}
 
@@ -806,10 +824,10 @@ export function SpotCard({
           )}
 
           {/* Member review bar chart */}
-          {hasReviews && !isTallCollapsed && (
+          {!isTallCollapsed && (
             <TagBarChart
-              tagCounts={ratingSummary.tag_counts}
-              reviewCount={ratingSummary.review_count}
+              tagCounts={ratingSummary?.tag_counts}
+              reviewCount={reviewCount}
             />
           )}
 
@@ -846,7 +864,11 @@ export function SpotCard({
           className="fixed left-0 right-0 pointer-events-none flex justify-center"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
+<<<<<<< HEAD
             zIndex: 1020,
+=======
+            zIndex: 35,
+>>>>>>> dev
             transform:
               closing || !isVisible ? 'translateY(160px)' : 'translateY(0)',
             transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
