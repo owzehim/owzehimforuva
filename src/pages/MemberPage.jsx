@@ -368,8 +368,9 @@ export default function MemberPage() {
               {tab.label}
             </button>
           )
-        })}
+         })}
       </div>
+      )}
     </div>
   )
 }
