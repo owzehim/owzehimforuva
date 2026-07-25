@@ -388,6 +388,7 @@ export function SpotCard({
   const startHeightRef = useRef(0)
   const lastYRef = useRef(0)
   const cardRef = useRef(null)
+  const previousSpotRef = useRef(null)
 
   const imgs = selected['image_urls'] || []
   const imagesKey = imgs.join('|')
@@ -459,13 +460,34 @@ export function SpotCard({
     if (selected) {
       const parentHeight = cardRef.current?.parentElement?.clientHeight
       if (parentHeight) setSheetMaxHeight(parentHeight)
+
+      const previousSpot = previousSpotRef.current
+      const isSameCardType =
+        previousSpot?.heightMode === spotCardHeightMode
+
+      previousSpotRef.current = {
+        id: selected.id,
+        heightMode: spotCardHeightMode,
+      }
+
+      // Keep a visible sheet in place when another marker opens the same card
+      // type. Re-running the entrance animation here caused a noticeable hitch.
+      if (previousSpot?.id !== selected.id && isSameCardType) {
+        setClosing(false)
+        return
+      }
+
+      // Updating the selected record for the current marker should not restart
+      // the card animation either.
+      if (previousSpot?.id === selected.id) return
+
       setIsVisible(false)
       setCardHeight(MIN_HEIGHT)
       setClosing(false)
       // Trigger animation on next frame
       requestAnimationFrame(() => setIsVisible(true))
     }
-  }, [selected, MIN_HEIGHT])
+  }, [selected?.id, MIN_HEIGHT, spotCardHeightMode])
 
   useEffect(() => {
     if (!selected || isDesktop) return undefined
@@ -823,8 +845,12 @@ export function SpotCard({
         <div
           className="fixed left-0 right-0 pointer-events-none flex justify-center"
           style={{
-            bottom: 'calc(env(safe-area-inset-bottom) + 116px)',
+            bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
             zIndex: 1020,
+            transform:
+              closing || !isVisible ? 'translateY(160px)' : 'translateY(0)',
+            transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
+            willChange: 'transform',
           }}
         >
             <a
