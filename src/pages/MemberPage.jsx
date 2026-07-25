@@ -339,7 +339,7 @@ export default function MemberPage() {
     userSelect: 'none',
     WebkitUserSelect: 'none',
     position: 'relative',
-    zIndex: 40,           // sits above the button (zIndex: 35) so button slides from behind
+    zIndex: 1030,         // masks the map button (zIndex: 1020) as it slides from behind
   }}
 >
         {[

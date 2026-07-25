@@ -724,7 +724,7 @@ export function SpotCard({
               {selected.name}
             </p>
 
-            {showRating && (
+            {spotCardHeightMode === 'full' && showRating && (
               <div className="flex items-center gap-1 mt-1">
                 <StarDisplay
                   averageRating={averageRating}
@@ -766,7 +766,7 @@ export function SpotCard({
           </div>
 
           {/* Images */}
-          {hasImages ? (
+          {spotCardHeightMode === 'full' && (hasImages ? (
             <div className="mb-3">
               <ImageThumbnails
                 imgs={imgs}
@@ -782,7 +782,7 @@ export function SpotCard({
               <ImageIcon size={30} weight="regular" className="text-gray-400" />
               <span className="text-xs text-gray-400">No images</span>
             </div>
-          )}
+          ))}
 
           {/* 한 줄 평가 */}
           {selected.one_line_review && (!isTallCollapsed || !hasImages) && (
@@ -823,7 +823,7 @@ export function SpotCard({
           )}
 
           {/* Member review bar chart */}
-          {!isTallCollapsed && (
+          {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <TagBarChart
               tagCounts={ratingSummary?.tag_counts}
               reviewCount={reviewCount}
@@ -863,7 +863,7 @@ export function SpotCard({
           className="fixed left-0 right-0 pointer-events-none flex justify-center"
           style={{
             bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
-            zIndex: 35,
+            zIndex: 1020,
             transform:
               closing || !isVisible ? 'translateY(160px)' : 'translateY(0)',
             transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
