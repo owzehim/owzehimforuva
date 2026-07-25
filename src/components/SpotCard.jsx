@@ -818,7 +818,7 @@ export function SpotCard({
         <div
           className="fixed left-0 right-0 pointer-events-none flex justify-center"
           style={{
-            bottom: 'calc(env(safe-area-inset-bottom) + 20px)',
+            bottom: 'calc(env(safe-area-inset-bottom) + 116px)',
             zIndex: 1020,
           }}
         >
