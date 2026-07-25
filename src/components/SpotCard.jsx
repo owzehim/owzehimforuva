@@ -818,6 +818,10 @@ export function SpotCard({
             style={{
               bottom: `${Math.max(12, MAX_HEIGHT - cardHeight + 12)}px`,
               zIndex: 20,
+              transition: isDragging
+                ? 'none'
+                : 'bottom 0.35s cubic-bezier(0.4,0,0.2,1)',
+              willChange: 'bottom',
             }}
           >
             <a
