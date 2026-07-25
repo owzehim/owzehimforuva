@@ -620,9 +620,15 @@ export function SpotCard({
     .replace(/\s/g, '')
   const discountTerms = cleanedTerms ? selected.discount_terms : null
 
+  const currentCardHeight = cardHeight || MIN_HEIGHT
+  const sheetRestingOffset = Math.max(0, MAX_HEIGHT - currentCardHeight)
+  const fixedButtonHiddenOffset = Math.max(
+    0,
+    MAX_HEIGHT * 1.1 - sheetRestingOffset,
+  )
   const sheetTranslateY = closing || !isVisible
     ? '110%'
-    : `${Math.max(0, MAX_HEIGHT - cardHeight)}px`
+    : `${sheetRestingOffset}px`
 
   const sheetStyle = {
     height: MAX_HEIGHT + 'px',
@@ -865,7 +871,9 @@ export function SpotCard({
             bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
             zIndex: 1020,
             transform:
-              closing || !isVisible ? 'translateY(160px)' : 'translateY(0)',
+              closing || !isVisible
+                ? `translateY(${fixedButtonHiddenOffset}px)`
+                : 'translateY(0)',
             transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
             willChange: 'transform',
           }}
