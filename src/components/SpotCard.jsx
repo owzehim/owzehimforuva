@@ -752,11 +752,16 @@ export function SpotCard({
                 우슐랭 평가
               </p>
               <div className="relative w-full">
-                <img
-                  src="/spotcard-speech-bubble.png"
-                  alt=""
+                <div
+                  aria-hidden="true"
                   className="block w-[97.5%] origin-left select-none"
-                  draggable={false}
+                  style={{
+                    aspectRatio: '3435 / 612',
+                    backgroundColor: '#f97316',
+                    mask: 'url(/spotcard-speech-bubble.png) center / contain no-repeat',
+                    WebkitMask:
+                      'url(/spotcard-speech-bubble.png) center / contain no-repeat',
+                  }}
                 />
 
                 <div
