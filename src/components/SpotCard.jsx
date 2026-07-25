@@ -811,19 +811,17 @@ export function SpotCard({
           <div className="pb-16" />
         </div>
 
-        {/* This is anchored to the visible part of the sheet, not its full height. */}
-        {showGoogleMapsButton && (
-          <div
-            className="absolute left-0 right-0 pointer-events-none flex justify-center"
-            style={{
-              bottom: `${Math.max(12, MAX_HEIGHT - cardHeight + 12)}px`,
-              zIndex: 20,
-              transition: isDragging
-                ? 'none'
-                : 'bottom 0.35s cubic-bezier(0.4,0,0.2,1)',
-              willChange: 'bottom',
-            }}
-          >
+      </div>
+
+      {/* Fixed outside the moving sheet so it remains in one place over the SpotCard. */}
+      {showGoogleMapsButton && (
+        <div
+          className="fixed left-0 right-0 pointer-events-none flex justify-center"
+          style={{
+            bottom: 'calc(env(safe-area-inset-bottom) + 20px)',
+            zIndex: 1020,
+          }}
+        >
             <a
               href={
                 'https://www.google.com/maps/search/?api=1&query=' +
@@ -839,9 +837,8 @@ export function SpotCard({
               <MapPin size={14} weight="fill" />
               Google Maps에서 열기
             </a>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </>
   )
 }
