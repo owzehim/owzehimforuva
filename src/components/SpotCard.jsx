@@ -4,6 +4,7 @@ import { CATEGORY_ICONS } from '../lib/mapCategories'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, getSortedTagsForDisplay, formatAverageRating } from '../domain/reviewDomain'
+import { REVIEW_TAGS } from '../domain/reviewTypes'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -84,7 +85,9 @@ function StarDisplay({
 function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
   const sorted = getSortedTagsForDisplay(tagCounts)
   const hasMemberReviews = reviewCount > 0 && sorted.length > 0
-
+  const displayTags = hasMemberReviews
+    ? sorted
+    : REVIEW_TAGS.map((tag) => ({ ...tag, count: 0 }))
   const maxCount = hasMemberReviews ? sorted[0].count : 0
 
   return (
@@ -97,16 +100,7 @@ function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
         </div>
 
         <div className="flex flex-col gap-2.5 pl-4">
-          {!hasMemberReviews && (
-            <div className="flex items-center gap-2" aria-label="멤버 평가 0개">
-              <div className="flex-1 h-2 bg-gray-200 rounded-full" />
-              <span className="text-xs text-gray-400 font-medium w-4 text-right flex-shrink-0">
-                0
-              </span>
-            </div>
-          )}
-
-          {hasMemberReviews && sorted.map((tag) => {
+          {displayTags.map((tag) => {
             const IconComponent = TAG_ICON_COMPONENTS[tag.icon]
             const pct =
               maxCount > 0 ? Math.round((tag.count / maxCount) * 100) : 0
@@ -127,12 +121,16 @@ function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
                   </span>
                 </div>
 
-                <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-orange-400 rounded-full transition-all duration-500"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
+                {hasMemberReviews ? (
+                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-orange-400 rounded-full transition-all duration-500"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full" />
+                )}
 
                 <span className="text-xs text-gray-400 font-medium w-4 text-right flex-shrink-0">
                   {tag.count}
