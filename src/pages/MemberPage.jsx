@@ -2028,6 +2028,8 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
                     width: '100%',
                     height: '100%',
                     flexShrink: 0,
+                    padding: '0 6px',
+                    boxSizing: 'border-box',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2040,8 +2042,8 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
                     loading={Math.abs(imgIndex - index) <= 1 ? 'eager' : 'lazy'}
                     alt={`사진 ${imgIndex + 1}`}
                     style={{
-                      maxWidth: '90vw',
-                      maxHeight: '90vh',
+                      maxWidth: '100%',
+                      maxHeight: '100%',
                       objectFit: 'contain',
                       borderRadius: 12,
                       boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
@@ -3413,6 +3415,8 @@ const effectiveDateColor = isDragging
                                 width: '100%',
                                 height: '100%',
                                 flexShrink: 0,
+                                padding: '0 6px',
+                                boxSizing: 'border-box',
                               }}
                             >
                               <img
@@ -3429,6 +3433,8 @@ const effectiveDateColor = isDragging
                                   height: '100%',
                                   objectFit: 'cover',
                                   display: 'block',
+                                  borderRadius: '12px',
+                                  boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                                   opacity: loadedEventPreviewImages[url] ? 1 : 0,
                                   transition: 'opacity 0.28s ease',
                                 }}

@@ -2317,6 +2317,26 @@ function RestaurantForm({
 </div>
 
 {/* 스탬프 카드 사용 여부 */}
+<div className="flex items-center justify-between">
+  <span className="text-sm text-gray-500">Google Maps 버튼 표시</span>
+  <button
+    type="button"
+    onClick={() =>
+      setForm((f) => ({
+        ...f,
+        show_google_maps_button: !f.show_google_maps_button,
+      }))
+    }
+    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+      form.show_google_maps_button
+        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        : 'bg-gray-50 text-gray-500 border-gray-200'
+    }`}
+  >
+    {form.show_google_maps_button ? '켜짐' : '꺼짐'}
+  </button>
+</div>
+
 <div>
   <label className="text-sm text-gray-500 block mb-1">
     SpotCard preview height
@@ -2511,6 +2531,7 @@ function RestaurantsTab() {
     price_range: '',
     is_sponsored: false,
     show_rating: true,
+    show_google_maps_button: true,
     stamp_card_enabled: false,
     spot_card_height: 'compact',
   })
@@ -2609,6 +2630,7 @@ function RestaurantsTab() {
       price_range: '',
       is_sponsored: false,
       show_rating: true,
+      show_google_maps_button: true,
       stamp_card_enabled: false,
       spot_card_height: 'compact',
     })
@@ -2687,6 +2709,7 @@ function RestaurantsTab() {
       price_range: form.price_range,
       is_sponsored: form.is_sponsored,
       show_rating: form.show_rating,
+      show_google_maps_button: form.show_google_maps_button,
       stamp_card_enabled: form.stamp_card_enabled,
       spot_card_height:
         form.spot_card_height === 'full' ? 'full' : 'compact',
@@ -2741,6 +2764,10 @@ function RestaurantsTab() {
       price_range: r.price_range || '',
       is_sponsored: r.is_sponsored || false,
       show_rating: typeof r.show_rating === 'boolean' ? r.show_rating : true,
+      show_google_maps_button:
+        typeof r.show_google_maps_button === 'boolean'
+          ? r.show_google_maps_button
+          : true,
       stamp_card_enabled: r.stamp_card_enabled || false,
       spot_card_height: r.spot_card_height === 'full' ? 'full' : 'compact',
     })
@@ -2771,6 +2798,7 @@ function RestaurantsTab() {
       price_range: '',
       is_sponsored: false,
       show_rating: true,
+      show_google_maps_button: true,
       stamp_card_enabled: false,
       spot_card_height: 'compact',
     })

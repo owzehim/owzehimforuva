@@ -268,6 +268,8 @@ function Lightbox({ imgs, startIndex, onClose }) {
                   width: '100%',
                   height: '100%',
                   flexShrink: 0,
+                  padding: '0 6px',
+                  boxSizing: 'border-box',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -280,8 +282,8 @@ function Lightbox({ imgs, startIndex, onClose }) {
                   fetchPriority={imgIndex === index ? 'high' : 'auto'}
                   loading={Math.abs(imgIndex - index) <= 1 ? 'eager' : 'lazy'}
                   style={{
-                    maxWidth: '90vw',
-                    maxHeight: '90vh',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
                     objectFit: 'contain',
                     borderRadius: 12,
                     boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
@@ -566,6 +568,8 @@ export function SpotCard({
 
   // default: show stars unless admin explicitly turned them off
   const showRating = selected.show_rating !== false
+  // Keep the action enabled for existing spots until an admin explicitly hides it.
+  const showGoogleMapsButton = selected.show_google_maps_button !== false
   const ratingSummary = summary?.store_id === selected?.partnership_id
     ? summary
     : null
@@ -807,20 +811,15 @@ export function SpotCard({
           <div className="pb-16" />
         </div>
 
-        {/* Bottom gradient + Google Maps button */}
-        <div
-          className="absolute bottom-0 left-0 right-0 pointer-events-none"
-          style={{
-            height: '72px',
-            background: isMax
-              ? 'transparent'
-              : `linear-gradient(to bottom, transparent, ${
-                  darkMode ? '#121212' : 'white'
-                })`,
-            zIndex: 10,
-          }}
-        >
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
+        {/* This is anchored to the visible part of the sheet, not its full height. */}
+        {showGoogleMapsButton && (
+          <div
+            className="absolute left-0 right-0 pointer-events-none flex justify-center"
+            style={{
+              bottom: `${Math.max(12, MAX_HEIGHT - cardHeight + 12)}px`,
+              zIndex: 20,
+            }}
+          >
             <a
               href={
                 'https://www.google.com/maps/search/?api=1&query=' +
@@ -837,7 +836,7 @@ export function SpotCard({
               Google Maps에서 열기
             </a>
           </div>
-        </div>
+        )}
       </div>
     </>
   )
