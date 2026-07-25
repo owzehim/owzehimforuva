@@ -332,8 +332,9 @@ export default function MemberPage() {
       </div>
 
       {/* Bottom tab bar */}
-      <div
-  className="bg-white flex flex-shrink-0 dark:bg-[#121212]"
+{!welcomeSlidesOpen && (
+  <div
+    className="bg-white flex flex-shrink-0 dark:bg-[#121212]"
   style={{
     paddingBottom: MEMBER_BOTTOM_TAB_PADDING,
     userSelect: 'none',
