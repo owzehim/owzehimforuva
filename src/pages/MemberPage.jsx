@@ -211,6 +211,7 @@ export default function MemberPage() {
         <WelcomeSlides
           member={member}
           onFinish={handleWelcomeSlidesFinish}
+          onBack={reopenWelcomeSlides ? () => navigate('/settings') : undefined}
         />
       )}
 
@@ -375,7 +376,7 @@ export default function MemberPage() {
   )
 }
 
-function WelcomeSlides({ member, onFinish }) {
+function WelcomeSlides({ member, onFinish, onBack }) {
   const [index, setIndex] = useState(0)
   const [closing, setClosing] = useState(false)
   const [benefitsAcknowledged, setBenefitsAcknowledged] = useState(false)
@@ -461,13 +462,13 @@ function WelcomeSlides({ member, onFinish }) {
       }}
     >
       <div className="h-10 px-6">
-        {index > 0 && (
+        {onBack && (
           <button
             type="button"
-            onClick={() => setIndex((value) => Math.max(0, value - 1))}
+            onClick={onBack}
             className="absolute left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
-            style={{ top: 'max(18px, calc(env(safe-area-inset-top) + 6px))' }}
-            aria-label="Previous slide"
+            style={{ top: 'calc(env(safe-area-inset-top) + 6px)' }}
+            aria-label="Back to settings"
           >
             <CaretLeft size={24} weight="bold" />
           </button>
@@ -3912,4 +3913,3 @@ if (typeof document !== 'undefined' && !document.getElementById('no-highlight-zo
   `
   document.head.appendChild(style)
 }
-
