@@ -109,6 +109,62 @@ export default function SettingsPage() {
     load()
   }, [navigate])
 
+  useEffect(() => {
+    const edgeWidth = 30
+    let touchStartX = 0
+    let touchStartY = 0
+    let startedAtHorizontalEdge = false
+    const root = document.documentElement
+    const body = document.body
+    const previousRootOverscrollX = root.style.overscrollBehaviorX
+    const previousBodyOverscrollX = body.style.overscrollBehaviorX
+
+    root.style.overscrollBehaviorX = 'none'
+    body.style.overscrollBehaviorX = 'none'
+
+    const handleTouchStart = (event) => {
+      if (event.touches.length !== 1) {
+        startedAtHorizontalEdge = false
+        return
+      }
+
+      const touch = event.touches[0]
+      touchStartX = touch.clientX
+      touchStartY = touch.clientY
+      startedAtHorizontalEdge =
+        touchStartX <= edgeWidth ||
+        touchStartX >= window.innerWidth - edgeWidth
+    }
+
+    const handleTouchMove = (event) => {
+      if (!startedAtHorizontalEdge || event.touches.length !== 1) return
+
+      const touch = event.touches[0]
+      const horizontalDistance = Math.abs(touch.clientX - touchStartX)
+      const verticalDistance = Math.abs(touch.clientY - touchStartY)
+
+      if (horizontalDistance > verticalDistance) event.preventDefault()
+    }
+
+    const handleTouchEnd = () => {
+      startedAtHorizontalEdge = false
+    }
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true })
+    document.addEventListener('touchmove', handleTouchMove, { passive: false })
+    document.addEventListener('touchend', handleTouchEnd, { passive: true })
+    document.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+
+    return () => {
+      root.style.overscrollBehaviorX = previousRootOverscrollX
+      body.style.overscrollBehaviorX = previousBodyOverscrollX
+      document.removeEventListener('touchstart', handleTouchStart)
+      document.removeEventListener('touchmove', handleTouchMove)
+      document.removeEventListener('touchend', handleTouchEnd)
+      document.removeEventListener('touchcancel', handleTouchEnd)
+    }
+  }, [])
+
   const handleLogout = async () => {
     navigate('/public', { replace: true })
     await supabase.auth.signOut()
