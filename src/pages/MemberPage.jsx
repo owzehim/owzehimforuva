@@ -462,13 +462,19 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       }}
     >
       <div className="h-10 px-6">
-        {onBack && (
+        {(onBack || index > 0) && (
           <button
             type="button"
-            onClick={onBack}
+            onClick={() => {
+              if (index === 0) {
+                onBack?.()
+                return
+              }
+              setIndex((value) => Math.max(0, value - 1))
+            }}
             className="absolute left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
             style={{ top: 'calc(env(safe-area-inset-top) + 6px)' }}
-            aria-label="Back to settings"
+            aria-label={index === 0 ? 'Back to settings' : 'Previous slide'}
           >
             <CaretLeft size={24} weight="bold" />
           </button>
