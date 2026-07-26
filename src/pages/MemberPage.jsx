@@ -1168,6 +1168,10 @@ function MembershipCard({
 
   const avatarSeed = `${member?.first_name || ''}${member?.last_name || ''}`
   const pastelBg = getPastelColor(avatarSeed)
+  const englishDisplayName = [member?.first_name, member?.last_name]
+    .map((namePart) => namePart?.trim())
+    .filter(Boolean)
+    .join(' ')
   const avatarSize = `calc(${W} * 0.21)`
   const hasProfileImage = !!member?.profile_image_url
   // Keep the membership-card guide identical to QRScanner's real 220px scan box.
@@ -1313,7 +1317,7 @@ function MembershipCard({
               textTransform: 'uppercase',
             }}
           >
-            {member?.first_name} {member?.last_name}
+            {englishDisplayName}
           </span>
         </div>
       </div>

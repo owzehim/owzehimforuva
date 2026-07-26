@@ -225,11 +225,18 @@ export default function SettingsPage() {
   const hasProfileImage = !!member?.profile_image_url
   const avatarSeed = `${member?.first_name || ''}${member?.last_name || ''}`
   const pastelBg = getPastelColor(avatarSeed)
-  const koreanLastName = member?.last_name_korean || member?.last_name_ko || ''
-  const koreanFirstName = member?.first_name_korean || member?.first_name_ko || ''
-  const displayName =
-    `${koreanLastName}${koreanFirstName}`.trim() ||
-    `${member?.first_name || ''} ${member?.last_name || ''}`.trim()
+  const koreanDisplayName = [
+    member?.last_name_korean || member?.last_name_ko,
+    member?.first_name_korean || member?.first_name_ko,
+  ]
+    .map((namePart) => namePart?.trim())
+    .filter(Boolean)
+    .join('')
+  const englishDisplayName = [member?.first_name, member?.last_name]
+    .map((namePart) => namePart?.trim())
+    .filter(Boolean)
+    .join(' ')
+  const displayName = koreanDisplayName || englishDisplayName
 
   return (
     <div
