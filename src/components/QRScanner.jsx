@@ -52,15 +52,9 @@ export default function QRScanner({ onScan, darkMode = false }) {
         }
       } catch (err) {
         console.error('QR scanner start error:', err)
-        const errorName = err?.name || ''
-        const errorMessage = err?.message || ''
-        if (
-          errorName === 'NotAllowedError' ||
-          errorName === 'PermissionDeniedError' ||
-          /camera.*permission|permission.*camera|permission denied|not allowed/i.test(errorMessage)
-        ) {
-          setCameraPermissionDenied(true)
-        }
+        // Browsers use inconsistent errors for denied, blocked, or unavailable
+        // cameras. All of them need the same helpful membership-card fallback.
+        setCameraPermissionDenied(true)
       }
     }
 

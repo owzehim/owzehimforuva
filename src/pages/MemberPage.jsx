@@ -3146,8 +3146,8 @@ const effectiveDateColor = isDragging
           to { opacity: 1; transform: translateX(0); }
         }
         @keyframes eventImageLoadingShimmer {
-          from { transform: translateX(-100%); }
-          to { transform: translateX(100%); }
+          from { transform: translateX(-120%); }
+          to { transform: translateX(120%); }
         }
       `}</style>
       <div
@@ -3437,12 +3437,12 @@ const effectiveDateColor = isDragging
                           >
                             <div
                               style={{
-                                width: '55%',
+                                width: '68%',
                                 height: '100%',
                                 background: darkMode
-                                  ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)'
-                                  : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)',
-                                animation: 'eventImageLoadingShimmer 1.25s ease-in-out infinite',
+                                  ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)'
+                                  : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.38), transparent)',
+                                animation: 'eventImageLoadingShimmer 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite',
                               }}
                             />
                           </div>
