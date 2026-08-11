@@ -146,7 +146,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
             className="absolute inset-0 flex items-center justify-center rounded-2xl"
             style={{
               zIndex: 1,
-              background: darkMode ? '#2C2C2E' : '#e5e7eb',
+              background: darkMode ? '#2C2C2E' : '#d6d3c0',
               color: darkMode ? '#A1A1AA' : 'rgba(44,42,39,0.45)',
             }}
           >
