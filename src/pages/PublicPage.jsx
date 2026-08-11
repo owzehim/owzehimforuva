@@ -47,10 +47,13 @@ export default function PublicPage() {
         .select('*')
         .order('created_at', { ascending: false })
       const loadedRestaurants = data || []
-      await primeStoreReviewSummaries(
-        loadedRestaurants.map((restaurant) => restaurant.partnership_id),
-      )
       setRestaurants(loadedRestaurants)
+      // Review summaries enrich spot cards but should not delay the map itself.
+      void primeStoreReviewSummaries(
+        loadedRestaurants.map((restaurant) => restaurant.partnership_id),
+      ).catch((error) => {
+        console.warn('Failed to pre-load store review summaries:', error)
+      })
     }
     fetchRestaurants()
   }, [])

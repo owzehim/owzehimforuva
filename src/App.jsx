@@ -45,7 +45,7 @@ function App() {
     typeof window !== 'undefined' &&
     Boolean(window.sessionStorage.getItem(OTP_PENDING_KEY))
   )
-  const [alienBlockReady, setAlienBlockReady] = useState(hasAlienBlockFont)
+  const [, setAlienBlockReady] = useState(hasAlienBlockFont)
 
   useEffect(() => {
     let cancelled = false
@@ -161,7 +161,9 @@ function App() {
     )
   }
 
-  if (session === undefined || !alienBlockReady) {
+  // A missing decorative font must not hold the whole app on its loading screen.
+  // The browser swaps it in when ready, using the existing fallback meanwhile.
+  if (session === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#121212]">
         <LoadingIndicator />

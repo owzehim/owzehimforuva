@@ -102,14 +102,16 @@ export default function MemberPage() {
       setMember(memberData || null)
       setIsAdmin(isAdminUser)
       const shouldShowWelcomeSlides =
-        Boolean(memberData) &&
-        (reopenWelcomeSlides || !memberData.tutorial_completed_at)
+        reopenWelcomeSlides ||
+        (Boolean(memberData) && !memberData.tutorial_completed_at)
 
       if (reopenWelcomeSlides) {
         window.sessionStorage.removeItem(REOPEN_WELCOME_SLIDES_KEY)
       }
       setWelcomeSlidesOpen(shouldShowWelcomeSlides)
-      if (shouldShowWelcomeSlides) setLoading(false)
+      // Render the member shell as soon as identity/profile data is available.
+      // Events and spots can load in the background instead of blocking startup.
+      setLoading(false)
 
       const [eventResult, restaurantResult] = await Promise.all([
         supabase.from('events').select('*').order('event_date', { ascending: true }),
@@ -126,7 +128,6 @@ export default function MemberPage() {
       const loadedRestaurants = restaurantResult.data || []
       setEvents(eventResult.data || [])
       setRestaurants(loadedRestaurants)
-      if (!shouldShowWelcomeSlides) setLoading(false)
 
       // Review summaries are an enhancement for the spot detail view, not a prerequisite
       // for entering the app. Warm their cache after the main screen is already visible.
