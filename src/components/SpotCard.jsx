@@ -352,36 +352,78 @@ function Lightbox({ imgs, startIndex, onClose }) {
 
 function ImageThumbnails({ imgs, onTap }) {
   return (
+    <>
+      <style>{`
+        @keyframes spotImageLoadingShimmer {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(100%); }
+        }
+      `}</style>
+      <div
+        className="flex gap-2 overflow-x-auto"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {imgs.map((url, i) => (
+          <SpotImageThumbnail
+            key={`${url}-${i}`}
+            url={url}
+            index={i}
+            onTap={() => onTap(i)}
+          />
+        ))}
+      </div>
+    </>
+  )
+}
+
+function SpotImageThumbnail({ url, index, onTap }) {
+  const [loaded, setLoaded] = useState(false)
+
+  return (
     <div
-      className="flex gap-2 overflow-x-auto"
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      onClick={onTap}
+      className="relative flex-shrink-0 overflow-hidden rounded-xl bg-gray-100"
+      style={{
+        width: '100px',
+        height: '125px',
+        cursor: 'zoom-in',
+      }}
     >
-      {imgs.map((url, i) => (
+      {!loaded && (
         <div
-          key={`${url}-${i}`}
-          onClick={() => onTap(i)}
-          className="flex-shrink-0 rounded-xl overflow-hidden bg-gray-100"
-          style={{
-            width: '100px',
-            height: '125px',
-            cursor: 'zoom-in',
-          }}
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+          style={{ background: '#e5e7eb' }}
         >
-          <img
-            src={url}
-            alt={'사진 ' + (i + 1)}
-            loading="eager"
-            decoding="async"
-            fetchPriority={i === 0 ? 'high' : 'low'}
+          <div
             style={{
-              width: '100px',
-              height: '125px',
-              objectFit: 'cover',
-              display: 'block',
+              width: '55%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)',
+              animation: 'spotImageLoadingShimmer 1.25s ease-in-out infinite',
             }}
           />
         </div>
-      ))}
+      )}
+      <img
+        src={url}
+        alt={'사진 ' + (index + 1)}
+        loading="eager"
+        decoding="async"
+        fetchPriority={index === 0 ? 'high' : 'low'}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: '100px',
+          height: '125px',
+          objectFit: 'cover',
+          display: 'block',
+          opacity: loaded ? 1 : 0,
+          transition: 'opacity 0.28s ease',
+        }}
+        draggable={false}
+      />
     </div>
   )
 }

@@ -1,11 +1,18 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
+import { VideoCameraSlash } from '@phosphor-icons/react'
 
 const QR_BOX_SIZE = 220
 
 export default function QRScanner({ onScan, darkMode = false }) {
   const scannerRef = useRef(null)
   const scannedRef = useRef(false)
+  const onScanRef = useRef(onScan)
+  const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false)
+
+  useEffect(() => {
+    onScanRef.current = onScan
+  }, [onScan])
 
   useEffect(() => {
     const scannerId = 'qr-scanner-container'
@@ -28,7 +35,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
           (decodedText) => {
             if (!isMounted || scannedRef.current) return
             scannedRef.current = true
-            onScan(decodedText)
+            onScanRef.current(decodedText)
             setTimeout(() => {
               scannedRef.current = false
             }, 2000)
@@ -45,6 +52,15 @@ export default function QRScanner({ onScan, darkMode = false }) {
         }
       } catch (err) {
         console.error('QR scanner start error:', err)
+        const errorName = err?.name || ''
+        const errorMessage = err?.message || ''
+        if (
+          errorName === 'NotAllowedError' ||
+          errorName === 'PermissionDeniedError' ||
+          /camera.*permission|permission.*camera|not allowed/i.test(errorMessage)
+        ) {
+          setCameraPermissionDenied(true)
+        }
       }
     }
 
@@ -68,7 +84,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
         scannerRef.current = null
       }
     }
-  }, [onScan])
+  }, [])
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
@@ -130,11 +146,39 @@ export default function QRScanner({ onScan, darkMode = false }) {
             />
           ))}
         </div>
+
+        {cameraPermissionDenied && (
+          <div
+            className="absolute inset-0 flex items-center justify-center rounded-2xl"
+            style={{
+              zIndex: 1,
+              background: darkMode ? '#2C2C2E' : '#E9E6DE',
+              color: darkMode ? '#A1A1AA' : 'rgba(44,42,39,0.45)',
+            }}
+          >
+            <VideoCameraSlash size={54} weight="regular" />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col items-center gap-1 px-4 text-center">
+        {cameraPermissionDenied && (
+          <p
+            style={{
+              fontSize: '14px',
+              fontWeight: 700,
+              color: darkMode ? '#F7F8F9' : '#2C2A27',
+              fontFamily: 'var(--font-app)',
+              letterSpacing: '0.02em',
+              margin: 0,
+            }}
+          >
+            카메라 접근 권한을 허용해주세요.
+          </p>
+        )}
         <p
           style={{
+            display: cameraPermissionDenied ? 'none' : undefined,
             fontSize: '14px',
             fontWeight: 600,
             color: darkMode ? '#F7F8F9' : '#2C2A27',
