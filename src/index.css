@@ -73,6 +73,20 @@ body {
   font-family: var(--font-app);
 }
 
+/* This is an app-like interface, not a document reader. Keep every screen
+   non-selectable and disable the browser's native image dragging. */
+#root,
+#root * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
 :lang(ko) {
   font-family: var(--font-korean), var(--font-english), -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;

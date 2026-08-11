@@ -18,6 +18,7 @@ import {
   resendConfirmationEmail,
   sendPasswordResetEmail,
 } from '../api/authRepository'
+import { supabase } from '../lib/supabase'
 
 const SKIP_OTP_EMAIL_KEY = 'uvain_skip_otp_once_email'
 const OTP_PENDING_KEY = 'uvain_otp_pending_email'
@@ -117,9 +118,11 @@ export function useLogin() {
       // 1) sign out the temp password session
       // 2) send a 6-digit OTP to the email
       // 3) move to OTP step; real session will be created after OTP verify
-      await import('../lib/supabase').then(({ supabase }) =>
-        supabase.auth.signOut()
-      )
+      // This session exists only to validate the password. Clearing it locally
+      // avoids an unnecessary second Auth network request (and the generic
+      // "Load Failed" error it could surface) before the OTP request.
+      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
+      if (signOutError) throw signOutError
 
       await sendLoginOtp(email)
       setStep('otp')

@@ -41,7 +41,11 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]">
+    <main
+      className="login-page scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]"
+      onDragStart={(event) => event.preventDefault()}
+      style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+    >
       <button
         type="button"
         onClick={isStandaloneStep ? handleBack : closeLogin}
@@ -67,6 +71,7 @@ export default function LoginPage() {
                 <img
                   src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png"
                   alt="UvA-IN Logo"
+                  draggable={false}
                   className="h-24 w-24 object-contain"
                 />
               </div>

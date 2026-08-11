@@ -692,7 +692,11 @@ export default function RegistrationPage() {
   // Final step: after successful registration, tell user to check email
   if (step === 'email') {
     return (
-      <div className="registration-page-enter" style={{ ...s.page, fontFamily: 'var(--font-app)' }}>
+      <div
+        className="registration-page-enter"
+        onDragStart={(event) => event.preventDefault()}
+        style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+      >
         <style>{registrationMotionCss}</style>
         <div style={s.topBar}>
           <button
@@ -739,7 +743,11 @@ export default function RegistrationPage() {
   }
 
   return (
-    <div className="registration-page-enter" style={{ ...s.page, fontFamily: 'var(--font-app)' }}>
+    <div
+      className="registration-page-enter"
+      onDragStart={(event) => event.preventDefault()}
+      style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+    >
       <style>{registrationMotionCss}</style>
       {/* Top Bar with Back Button and Language Toggle */}
       <div style={s.topBar}>
@@ -870,7 +878,7 @@ function ProfileHero({
             }}
           >
             {profilePreviewUrl ? (
-              <img src={profilePreviewUrl} alt="Profile" style={s.avatarImage} />
+              <img src={profilePreviewUrl} alt="Profile" draggable={false} style={s.avatarImage} />
             ) : (
               <UserCircle size="72%" weight="fill" color="rgba(44,42,39,0.55)" />
             )}
