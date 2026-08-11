@@ -378,6 +378,7 @@ function ImageThumbnails({ imgs, onTap }) {
 
 function SpotImageThumbnail({ url, index, onTap }) {
   const [loaded, setLoaded] = useState(false)
+  const revealImage = () => window.setTimeout(() => setLoaded(true), 350)
 
   return (
     <div
@@ -410,7 +411,7 @@ function SpotImageThumbnail({ url, index, onTap }) {
         loading="eager"
         decoding="async"
         fetchPriority={index === 0 ? 'high' : 'low'}
-        onLoad={() => setLoaded(true)}
+        onLoad={revealImage}
         onError={() => setLoaded(true)}
         style={{
           position: 'relative',

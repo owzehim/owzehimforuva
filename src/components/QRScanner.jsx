@@ -57,7 +57,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
         if (
           errorName === 'NotAllowedError' ||
           errorName === 'PermissionDeniedError' ||
-          /camera.*permission|permission.*camera|not allowed/i.test(errorMessage)
+          /camera.*permission|permission.*camera|permission denied|not allowed/i.test(errorMessage)
         ) {
           setCameraPermissionDenied(true)
         }

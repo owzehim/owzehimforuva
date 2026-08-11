@@ -2257,6 +2257,15 @@ function EventsTab({ events }) {
       [id]: idx,
     }))
 
+  const markEventPreviewImageLoaded = (url) => {
+    window.setTimeout(() => {
+      setLoadedEventPreviewImages((prev) => ({
+        ...prev,
+        [url]: true,
+      }))
+    }, 350)
+  }
+
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
     const shouldFadeToFirst = eventId && (slideIndexes[eventId] || 0) !== 0
 
@@ -2992,6 +3001,8 @@ function EventsTab({ events }) {
   const hasImages = displayImages.length > 0
   const displayImageRatios = imageAspectRatios[displayEvent?.id] || []
   const displayImageSlide = displayEvent ? slideIndexes[displayEvent.id] || 0 : 0
+  const isCurrentEventImageLoading =
+    hasImages && !loadedEventPreviewImages[displayImages[displayImageSlide]]
 
   useEffect(() => {
     if (!displayEvent || displayImages.length === 0) return
@@ -3133,6 +3144,10 @@ const effectiveDateColor = isDragging
         @keyframes eventPreviewImageSlideInFromLeft {
           from { opacity: 0.68; transform: translateX(-44px); }
           to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes eventImageLoadingShimmer {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(100%); }
         }
       `}</style>
       <div
@@ -3412,9 +3427,31 @@ const effectiveDateColor = isDragging
                           touchAction: 'none',
                         }}
                       >
+                        {isCurrentEventImageLoading && (
+                          <div
+                            className="pointer-events-none absolute inset-0 overflow-hidden"
+                            style={{
+                              zIndex: 0,
+                              background: darkMode ? '#27272a' : '#e5e7eb',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '55%',
+                                height: '100%',
+                                background: darkMode
+                                  ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)'
+                                  : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)',
+                                animation: 'eventImageLoadingShimmer 1.25s ease-in-out infinite',
+                              }}
+                            />
+                          </div>
+                        )}
                         <div
                           key={`event-preview-images-${displayEvent.id}`}
                           style={{
+                            position: 'relative',
+                            zIndex: 1,
                             display: 'flex',
                             height: '100%',
                             opacity: eventPreviewFadingToFirst ? 0 : 1,
@@ -3442,7 +3479,8 @@ const effectiveDateColor = isDragging
                               <img
                                 src={url}
                                 alt=""
-                                onLoad={() =>
+                                onLoad={() => markEventPreviewImageLoaded(url)}
+                                onError={() =>
                                   setLoadedEventPreviewImages((prev) => ({
                                     ...prev,
                                     [url]: true,
