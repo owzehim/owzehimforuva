@@ -4,7 +4,7 @@ import { computeStampState } from '../utils'
 export async function fetchPendingReward(userId, restaurantId) {
   const { data, error } = await supabase
     .from('stamp_card_rewards')
-    .select('*')
+    .select('id, user_id, restaurant_id, card_cycle, redeemed, redeemed_at, created_at')
     .eq('user_id', userId)
     .eq('restaurant_id', restaurantId)
     .eq('redeemed', false)
@@ -110,7 +110,7 @@ async function fetchAllMemberStampDataFallback(restaurantId, totalStamps) {
     members.map(async (member) => {
       const { data: visits, error: visitsError } = await supabase
         .from('stamp_card_visits')
-        .select('*')
+        .select('id, user_id, restaurant_id, visited_at, card_cycle, added_by_admin, admin_note')
         .eq('user_id', member.user_id)
         .eq('restaurant_id', restaurantId)
         .order('visited_at', { ascending: true })
@@ -119,7 +119,7 @@ async function fetchAllMemberStampDataFallback(restaurantId, totalStamps) {
 
       const { data: latestRewardRows, error: rewardsError } = await supabase
         .from('stamp_card_rewards')
-        .select('*')
+        .select('id, user_id, restaurant_id, card_cycle, redeemed, redeemed_at, created_at')
         .eq('user_id', member.user_id)
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false })

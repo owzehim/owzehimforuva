@@ -5,7 +5,7 @@ import { fetchPendingReward } from './rewards'
 export async function fetchVisits(userId, restaurantId) {
   const { data, error } = await supabase
     .from('stamp_card_visits')
-    .select('*')
+    .select('id, user_id, restaurant_id, visited_at, card_cycle, added_by_admin, admin_note')
     .eq('user_id', userId)
     .eq('restaurant_id', restaurantId)
     .order('visited_at', { ascending: true })

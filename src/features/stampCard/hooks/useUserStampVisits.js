@@ -87,11 +87,9 @@ export function useUserStampVisits({ userId, restaurantId, totalStamps }) {
 
     const handleFocus = () => load()
     window.addEventListener('focus', handleFocus)
-    const intervalId = window.setInterval(load, 10000)
 
     return () => {
       window.removeEventListener('focus', handleFocus)
-      window.clearInterval(intervalId)
       supabase.removeChannel(channel)
     }
   }, [load, restaurantId, totalStamps, userId])

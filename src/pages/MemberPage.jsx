@@ -19,6 +19,7 @@ const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
 const MEMBER_TABS = ['qr', 'events', 'map']
 const MEMBER_EVENT_LIST_OPEN_KEY = 'uvain_member_event_list_open'
 const MEMBER_BOTTOM_TAB_PADDING = 42
+const REOPEN_WELCOME_SLIDES_KEY = 'uvain_reopen_welcome_slides'
 
 function getStoredMemberTab() {
   if (typeof window === 'undefined') return 'qr'
@@ -45,7 +46,9 @@ export default function MemberPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const scannerOpenSignal = location.state?.reopenQrScanner || 0
-  const reopenWelcomeSlides = location.state?.reopenWelcomeSlides === true
+  const reopenWelcomeSlides =
+    location.state?.reopenWelcomeSlides === true ||
+    window.sessionStorage.getItem(REOPEN_WELCOME_SLIDES_KEY) === '1'
 
   // Review prompt hook
   const {
@@ -102,6 +105,9 @@ export default function MemberPage() {
         Boolean(memberData) &&
         (reopenWelcomeSlides || !memberData.tutorial_completed_at)
 
+      if (reopenWelcomeSlides) {
+        window.sessionStorage.removeItem(REOPEN_WELCOME_SLIDES_KEY)
+      }
       setWelcomeSlidesOpen(shouldShowWelcomeSlides)
       if (shouldShowWelcomeSlides) setLoading(false)
 

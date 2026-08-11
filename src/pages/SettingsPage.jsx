@@ -432,7 +432,12 @@ export default function SettingsPage() {
 
             <button
               type="button"
-              onClick={() => navigate('/member', { state: { reopenWelcomeSlides: true } })}
+              onClick={() => {
+                // Keep a one-time fallback signal in case navigation state is lost
+                // when the member page remounts in an installed PWA.
+                window.sessionStorage.setItem('uvain_reopen_welcome_slides', '1')
+                navigate('/member', { state: { reopenWelcomeSlides: true } })
+              }}
               className="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-center text-sm font-semibold text-gray-700 shadow-sm dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
             >
               앱 사용법 다시 보기
