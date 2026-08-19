@@ -380,11 +380,11 @@ function ImageThumbnails({ imgs, onTap, darkMode }) {
   }, [imgs])
 
   const imageLaneMask = scrollEdges.left && scrollEdges.right
-    ? 'linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%)'
+    ? 'linear-gradient(90deg, rgba(0,0,0,0.45) 0, #000 20px, #000 calc(100% - 24px), rgba(0,0,0,0.45) 100%)'
     : scrollEdges.left
-      ? 'linear-gradient(90deg, transparent 0, #000 12px, #000 100%)'
+      ? 'linear-gradient(90deg, rgba(0,0,0,0.45) 0, #000 20px, #000 100%)'
       : scrollEdges.right
-        ? 'linear-gradient(90deg, #000 0, #000 calc(100% - 16px), transparent 100%)'
+        ? 'linear-gradient(90deg, #000 0, #000 calc(100% - 24px), rgba(0,0,0,0.45) 100%)'
         : undefined
 
   return (
