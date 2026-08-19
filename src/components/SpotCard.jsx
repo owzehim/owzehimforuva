@@ -355,8 +355,8 @@ function ImageThumbnails({ imgs, onTap }) {
     <>
       <style>{`
         @keyframes spotImageLoadingShimmer {
-          from { opacity: 0.3; transform: translate3d(-12%, -10%, 0) scale(0.9); }
-          to { opacity: 0.68; transform: translate3d(12%, 10%, 0) scale(1.1); }
+          0%, 100% { opacity: 0.26; transform: scale(0.88); }
+          50% { opacity: 0.62; transform: scale(1.1); }
         }
       `}</style>
       <div
@@ -401,7 +401,7 @@ function SpotImageThumbnail({ url, index, onTap }) {
               inset: '-35%',
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(255,255,255,0.48), transparent 65%)',
-              animation: 'spotImageLoadingShimmer 4.2s ease-in-out infinite alternate',
+              animation: 'spotImageLoadingShimmer 3.6s ease-in-out infinite',
             }}
           />
         </div>
