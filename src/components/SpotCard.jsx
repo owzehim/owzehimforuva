@@ -351,6 +351,42 @@ function Lightbox({ imgs, startIndex, onClose }) {
 // ?? Thumbnail grid (same on mobile + desktop) ???????????????????
 
 function ImageThumbnails({ imgs, onTap, darkMode }) {
+  const scrollRef = useRef(null)
+  const [scrollEdges, setScrollEdges] = useState({ left: false, right: false })
+
+  const updateScrollEdges = () => {
+    const lane = scrollRef.current
+    if (!lane) return
+
+    const maxScrollLeft = lane.scrollWidth - lane.clientWidth
+    setScrollEdges({
+      left: lane.scrollLeft > 4,
+      right: maxScrollLeft > 4 && lane.scrollLeft < maxScrollLeft - 4,
+    })
+  }
+
+  useEffect(() => {
+    const lane = scrollRef.current
+    if (!lane) return undefined
+
+    const frame = window.requestAnimationFrame(updateScrollEdges)
+    const observer = new ResizeObserver(updateScrollEdges)
+    observer.observe(lane)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [imgs])
+
+  const imageLaneMask = scrollEdges.left && scrollEdges.right
+    ? 'linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 16px), transparent 100%)'
+    : scrollEdges.left
+      ? 'linear-gradient(90deg, transparent 0, #000 12px, #000 100%)'
+      : scrollEdges.right
+        ? 'linear-gradient(90deg, #000 0, #000 calc(100% - 16px), transparent 100%)'
+        : undefined
+
   return (
     <>
       <style>{`
@@ -361,8 +397,15 @@ function ImageThumbnails({ imgs, onTap, darkMode }) {
       `}</style>
       <div className="relative">
         <div
+          ref={scrollRef}
           className="flex gap-1 overflow-x-auto"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          onScroll={updateScrollEdges}
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            maskImage: imageLaneMask,
+            WebkitMaskImage: imageLaneMask,
+          }}
         >
           {imgs.map((url, i) => (
             <SpotImageThumbnail
@@ -374,24 +417,6 @@ function ImageThumbnails({ imgs, onTap, darkMode }) {
             />
           ))}
         </div>
-        {imgs.length > 1 && (
-          <>
-            <div
-              className="pointer-events-none absolute bottom-0 left-0 top-0"
-              style={{
-                width: '18px',
-                background: `linear-gradient(90deg, ${darkMode ? '#111111' : '#ffffff'}, transparent)`,
-              }}
-            />
-            <div
-              className="pointer-events-none absolute bottom-0 right-0 top-0"
-              style={{
-                width: '22px',
-                background: `linear-gradient(270deg, ${darkMode ? '#111111' : '#ffffff'}, transparent)`,
-              }}
-            />
-          </>
-        )}
       </div>
     </>
   )
