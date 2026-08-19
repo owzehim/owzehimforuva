@@ -60,6 +60,7 @@ export default function MapView({ restaurants, selected, onSelect }) {
   const activeStyleRef = useRef(null)
   const selectedMarkerIdRef = useRef(null)
   const selectedRef = useRef(selected)
+  const restaurantsRef = useRef(restaurants)
   const movingClassTimeoutRef = useRef(null)
   const [isTrackingLocation, setIsTrackingLocation] = useState(false)
   const [darkMapControls, setDarkMapControls] = useState(isDarkMode)
@@ -67,6 +68,10 @@ export default function MapView({ restaurants, selected, onSelect }) {
   useEffect(() => {
     selectedRef.current = selected
   }, [selected])
+
+  useEffect(() => {
+    restaurantsRef.current = restaurants
+  }, [restaurants])
 
   const createMarkerElement = useCallback((r, isSelected = false) => {
     const dark = isDarkMode()
@@ -243,7 +248,15 @@ export default function MapView({ restaurants, selected, onSelect }) {
     map.current.on('load', () => {
       mapReadyRef.current = true
       activeStyleRef.current = getMapStyleUrl(isDarkMode())
-      renderMarkers(restaurants)
+      map.current.resize()
+      renderMarkers(restaurantsRef.current)
+
+      // The map tab can mount while its flex container is still settling.
+      // A second resize on the next frame keeps markers visible immediately.
+      window.requestAnimationFrame(() => {
+        map.current?.resize()
+        renderMarkers(restaurantsRef.current)
+      })
     })
 
     return () => {

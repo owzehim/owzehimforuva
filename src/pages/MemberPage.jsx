@@ -3440,7 +3440,7 @@ const effectiveDateColor = isDragging
                                 background: darkMode
                                   ? 'rgba(255,255,255,0.2)'
                                   : 'rgba(255,255,255,0.62)',
-                                animation: 'eventImageLoadingShimmer 1.35s ease-in-out infinite',
+                                animation: 'eventImageLoadingShimmer 2.4s ease-in-out infinite',
                               }}
                             />
                           </div>

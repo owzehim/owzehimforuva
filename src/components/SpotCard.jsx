@@ -359,19 +359,39 @@ function ImageThumbnails({ imgs, onTap, darkMode }) {
           50% { opacity: 0.88; }
         }
       `}</style>
-      <div
-        className="flex gap-2 overflow-x-auto"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        {imgs.map((url, i) => (
-          <SpotImageThumbnail
-            key={`${url}-${i}`}
-            url={url}
-            index={i}
-            onTap={() => onTap(i)}
-            darkMode={darkMode}
-          />
-        ))}
+      <div className="relative">
+        <div
+          className="flex gap-1 overflow-x-auto"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {imgs.map((url, i) => (
+            <SpotImageThumbnail
+              key={`${url}-${i}`}
+              url={url}
+              index={i}
+              onTap={() => onTap(i)}
+              darkMode={darkMode}
+            />
+          ))}
+        </div>
+        {imgs.length > 1 && (
+          <>
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 top-0"
+              style={{
+                width: '18px',
+                background: `linear-gradient(90deg, ${darkMode ? '#111111' : '#ffffff'}, transparent)`,
+              }}
+            />
+            <div
+              className="pointer-events-none absolute bottom-0 right-0 top-0"
+              style={{
+                width: '22px',
+                background: `linear-gradient(270deg, ${darkMode ? '#111111' : '#ffffff'}, transparent)`,
+              }}
+            />
+          </>
+        )}
       </div>
     </>
   )
@@ -402,7 +422,7 @@ function SpotImageThumbnail({ url, index, onTap, darkMode }) {
               position: 'absolute',
               inset: 0,
               background: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.62)',
-              animation: 'spotImageLoadingShimmer 1.35s ease-in-out infinite',
+              animation: 'spotImageLoadingShimmer 2.4s ease-in-out infinite',
             }}
           />
         </div>
