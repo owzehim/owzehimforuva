@@ -2258,12 +2258,10 @@ function EventsTab({ events }) {
     }))
 
   const markEventPreviewImageLoaded = (url) => {
-    window.setTimeout(() => {
-      setLoadedEventPreviewImages((prev) => ({
-        ...prev,
-        [url]: true,
-      }))
-    }, 350)
+    setLoadedEventPreviewImages((prev) => ({
+      ...prev,
+      [url]: true,
+    }))
   }
 
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
@@ -3146,8 +3144,8 @@ const effectiveDateColor = isDragging
           to { opacity: 1; transform: translateX(0); }
         }
         @keyframes eventImageLoadingShimmer {
-          0%, 100% { opacity: 0.18; }
-          50% { opacity: 0.7; }
+          0%, 100% { opacity: 0.12; }
+          50% { opacity: 0.88; }
         }
       `}</style>
       <div
@@ -3440,9 +3438,9 @@ const effectiveDateColor = isDragging
                                 position: 'absolute',
                                 inset: 0,
                                 background: darkMode
-                                  ? 'rgba(255,255,255,0.12)'
-                                  : 'rgba(255,255,255,0.52)',
-                                animation: 'eventImageLoadingShimmer 2.4s ease-in-out infinite',
+                                  ? 'rgba(255,255,255,0.2)'
+                                  : 'rgba(255,255,255,0.62)',
+                                animation: 'eventImageLoadingShimmer 1.35s ease-in-out infinite',
                               }}
                             />
                           </div>

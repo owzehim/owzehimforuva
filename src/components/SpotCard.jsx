@@ -350,13 +350,13 @@ function Lightbox({ imgs, startIndex, onClose }) {
 
 // ?? Thumbnail grid (same on mobile + desktop) ???????????????????
 
-function ImageThumbnails({ imgs, onTap }) {
+function ImageThumbnails({ imgs, onTap, darkMode }) {
   return (
     <>
       <style>{`
         @keyframes spotImageLoadingShimmer {
-          0%, 100% { opacity: 0.18; }
-          50% { opacity: 0.7; }
+          0%, 100% { opacity: 0.12; }
+          50% { opacity: 0.88; }
         }
       `}</style>
       <div
@@ -369,6 +369,7 @@ function ImageThumbnails({ imgs, onTap }) {
             url={url}
             index={i}
             onTap={() => onTap(i)}
+            darkMode={darkMode}
           />
         ))}
       </div>
@@ -376,31 +377,32 @@ function ImageThumbnails({ imgs, onTap }) {
   )
 }
 
-function SpotImageThumbnail({ url, index, onTap }) {
+function SpotImageThumbnail({ url, index, onTap, darkMode }) {
   const [loaded, setLoaded] = useState(false)
-  const revealImage = () => window.setTimeout(() => setLoaded(true), 350)
+  const revealImage = () => setLoaded(true)
 
   return (
     <div
       onClick={onTap}
-      className="relative flex-shrink-0 overflow-hidden rounded-xl bg-gray-100"
+      className="relative flex-shrink-0 overflow-hidden rounded-xl"
       style={{
         width: '100px',
         height: '125px',
         cursor: 'zoom-in',
+        background: darkMode ? '#27272a' : '#e5e7eb',
       }}
     >
       {!loaded && (
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden"
-          style={{ background: '#e5e7eb' }}
+          style={{ background: darkMode ? '#27272a' : '#e5e7eb' }}
         >
           <div
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(255,255,255,0.52)',
-              animation: 'spotImageLoadingShimmer 2.4s ease-in-out infinite',
+              background: darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.62)',
+              animation: 'spotImageLoadingShimmer 1.35s ease-in-out infinite',
             }}
           />
         </div>
@@ -820,6 +822,7 @@ export function SpotCard({
               <ImageThumbnails
                 imgs={imgs}
                 onTap={(i) => setLightboxIndex(i)}
+                darkMode={darkMode}
               />
             </div>
           ) : (
