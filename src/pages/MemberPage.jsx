@@ -2675,10 +2675,7 @@ function EventsTab({ events }) {
   const displayEvent = selectedEvent
   const eventIndicatorRows = Array.from(
     { length: Math.ceil(allEvents.length / 5) },
-    (_, rowIndex) => {
-      const row = allEvents.slice(rowIndex * 5, rowIndex * 5 + 5)
-      return rowIndex % 2 === 0 ? [...row].reverse() : row
-    },
+    (_, rowIndex) => allEvents.slice(rowIndex * 5, rowIndex * 5 + 5),
   )
 
   const eventsByDate = {}
@@ -3237,17 +3234,18 @@ const effectiveDateColor = isDragging
                 }}
               >
                 {eventIndicatorRows.map((row, rowIndex) => (
-                  <div key={rowIndex} style={{ display: 'flex', gap: '5px' }}>
+                  <div key={rowIndex} style={{ display: 'flex', height: '9px', alignItems: 'center', gap: '5px' }}>
                     {row.map((event) => (
                       <span
                         key={event.id}
                         style={{
-                          width: '6px',
-                          height: '6px',
+                          width: event.id === displayEvent?.id ? '9px' : '6px',
+                          height: event.id === displayEvent?.id ? '9px' : '6px',
                           borderRadius: '999px',
-                          background: event.id === nextEvent?.id
+                          background: event.id === displayEvent?.id
                             ? '#f97316'
-                            : (darkMode ? '#d1d5db' : '#111827'),
+                            : (darkMode ? '#6b7280' : '#d1d5db'),
+                          transition: 'width 0.2s ease, height 0.2s ease, background 0.2s ease',
                         }}
                       />
                     ))}
