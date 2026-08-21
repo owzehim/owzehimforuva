@@ -3217,45 +3217,44 @@ const effectiveDateColor = isDragging
           <List size={22} weight="bold" />
         </button>
 
-        {eventIndicatorRows.length > 0 && (
-          <div
-            aria-label="Event position indicator"
-            style={{
-              position: 'fixed',
-              right: '18px',
-              top: 'calc(env(safe-area-inset-top) + 62px)',
-              zIndex: 96,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-end',
-              gap: '5px',
-              pointerEvents: 'none',
-            }}
-          >
-            {eventIndicatorRows.map((row, rowIndex) => (
-              <div key={rowIndex} style={{ display: 'flex', gap: '5px' }}>
-                {row.map((event) => (
-                  <span
-                    key={event.id}
-                    title={event.title || 'Event'}
-                    style={{
-                      width: '5px',
-                      height: '5px',
-                      borderRadius: '999px',
-                      background: event.id === nextEvent?.id
-                        ? '#f97316'
-                        : (darkMode ? '#d1d5db' : '#111827'),
-                    }}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
         {displayEvent ? (
           <>
             <div className="absolute inset-0 bg-white dark:bg-[#121212]" />
+
+            {eventIndicatorRows.length > 0 && (
+              <div
+                aria-label="Event position indicator"
+                style={{
+                  position: 'fixed',
+                  right: '18px',
+                  top: 'calc(env(safe-area-inset-top) + 62px)',
+                  zIndex: 96,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '5px',
+                  pointerEvents: 'none',
+                }}
+              >
+                {eventIndicatorRows.map((row, rowIndex) => (
+                  <div key={rowIndex} style={{ display: 'flex', gap: '5px' }}>
+                    {row.map((event) => (
+                      <span
+                        key={event.id}
+                        style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '999px',
+                          background: event.id === nextEvent?.id
+                            ? '#f97316'
+                            : (darkMode ? '#d1d5db' : '#111827'),
+                        }}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {displayEvent.instagram_url && (
               <a
