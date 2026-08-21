@@ -749,7 +749,7 @@ export function SpotCard({
       className="mb-3"
       style={{ marginTop: spotCardHeightMode === 'full' ? 8 : speechBubbleGapPx }}
     >
-      <p className="mb-2 text-left text-xs font-semibold text-gray-500">
+      <p className="mb-6 text-left text-xs font-semibold text-gray-500">
         우슐랭 가이드
       </p>
       {spotCardHeightMode === 'full' && showUsullangStars && (
