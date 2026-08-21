@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { useNavigate } from 'react-router-dom'
 import { ImageCropper } from '../components/ImageCropper'
-import { Plus, Eye, EyeSlash, MapPin, Ticket } from '@phosphor-icons/react'
+import { Plus, Eye, EyeSlash, MapPin, Ticket, StarFour } from '@phosphor-icons/react'
 import StampCardEditPanel from '../features/stampCard/components/StampCardEditPanel'
 import StampCardMemberPanel from '../features/stampCard/components/StampCardMemberPanel'
 import { fetchConfigBySpot } from '../features/stampCard/api/config'
@@ -2450,6 +2450,37 @@ function RestaurantForm({
   />
 </div>
 
+<div>
+  <label className="text-sm text-gray-500 block mb-1">우슐랭 스타</label>
+  <div className="flex items-center gap-1" aria-label="우슐랭 스타 설정">
+    {[1, 2, 3].map((star) => {
+      const highlighted = star <= form.usullang_star_count
+      return (
+        <button
+          key={star}
+          type="button"
+          onClick={() =>
+            setForm((f) => ({
+              ...f,
+              usullang_star_count: highlighted ? star - 1 : star,
+            }))
+          }
+          className="rounded-md p-1 transition-colors hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-300"
+          aria-pressed={highlighted}
+          aria-label={`우슐랭 스타 ${star}개${highlighted ? ' 해제' : ' 표시'}`}
+        >
+          <StarFour
+            size={26}
+            weight={highlighted ? 'fill' : 'regular'}
+            className={highlighted ? 'text-orange-500' : 'text-gray-300'}
+          />
+        </button>
+      )
+    })}
+  </div>
+  <p className="mt-1 text-xs text-gray-400">선택하지 않으면 카드에 표시되지 않습니다.</p>
+</div>
+
 {/* 임원 리뷰 */}
 <div className="mt-3 space-y-2">
   <p className="text-sm font-medium text-gray-900">임원 리뷰</p>
@@ -2532,6 +2563,7 @@ function RestaurantsTab() {
     is_sponsored: false,
     show_rating: true,
     show_google_maps_button: true,
+    usullang_star_count: 0,
     stamp_card_enabled: false,
     spot_card_height: 'compact',
   })
@@ -2631,6 +2663,7 @@ function RestaurantsTab() {
       is_sponsored: false,
       show_rating: true,
       show_google_maps_button: true,
+      usullang_star_count: 0,
       stamp_card_enabled: false,
       spot_card_height: 'compact',
     })
@@ -2710,6 +2743,7 @@ function RestaurantsTab() {
       is_sponsored: form.is_sponsored,
       show_rating: form.show_rating,
       show_google_maps_button: form.show_google_maps_button,
+      usullang_star_count: form.usullang_star_count,
       stamp_card_enabled: form.stamp_card_enabled,
       spot_card_height:
         form.spot_card_height === 'full' ? 'full' : 'compact',
@@ -2768,6 +2802,10 @@ function RestaurantsTab() {
         typeof r.show_google_maps_button === 'boolean'
           ? r.show_google_maps_button
           : true,
+      usullang_star_count: Math.max(
+        0,
+        Math.min(3, Number(r.usullang_star_count) || 0),
+      ),
       stamp_card_enabled: r.stamp_card_enabled || false,
       spot_card_height: r.spot_card_height === 'full' ? 'full' : 'compact',
     })
@@ -2799,6 +2837,7 @@ function RestaurantsTab() {
       is_sponsored: false,
       show_rating: true,
       show_google_maps_button: true,
+      usullang_star_count: 0,
       stamp_card_enabled: false,
       spot_card_height: 'compact',
     })

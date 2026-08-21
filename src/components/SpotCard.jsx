@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { Image as ImageIcon, MapPin, Ticket, Star } from '@phosphor-icons/react'
+import { Image as ImageIcon, MapPin, Ticket, Star, StarFour } from '@phosphor-icons/react'
 import { CATEGORY_ICONS } from '../lib/mapCategories'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
@@ -684,6 +684,10 @@ export function SpotCard({
     : null
   const reviewCount = ratingSummary?.review_count ?? 0
   const averageRating = ratingSummary?.average_rating ?? 0
+  const usullangStarCount = Math.max(
+    0,
+    Math.min(3, Number(selected.usullang_star_count) || 0),
+  )
 
   // treat empty / whitespace / HTML-only as empty (no ※)
   const rawTerms = selected.discount_terms ?? ''
@@ -870,6 +874,16 @@ export function SpotCard({
               <p className="mb-2 text-left text-xs font-semibold text-gray-500">
                 우슐랭 평가
               </p>
+              {spotCardHeightMode === 'full' && usullangStarCount > 0 && (
+                <div
+                  className="mb-3 flex items-center justify-center gap-3 text-orange-500"
+                  aria-label={`우슐랭 스타 ${usullangStarCount}개`}
+                >
+                  {Array.from({ length: usullangStarCount }).map((_, index) => (
+                    <StarFour key={index} size={22} weight="fill" />
+                  ))}
+                </div>
+              )}
               <div className="relative w-full">
                 <div
                   aria-hidden="true"
