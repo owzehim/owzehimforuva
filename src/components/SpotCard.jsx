@@ -366,6 +366,7 @@ function Lightbox({ imgs, startIndex, onClose }) {
           </div>
         )}
       </div>
+      </div>
     </>
   )
 }
