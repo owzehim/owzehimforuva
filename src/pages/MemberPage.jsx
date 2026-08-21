@@ -2680,6 +2680,13 @@ function EventsTab({ events }) {
     ? '0'
     : `calc(100% - ${eventCollapsedCardHeight})`
   const displayEvent = selectedEvent
+  const eventIndicatorRows = Array.from(
+    { length: Math.ceil(allEvents.length / 5) },
+    (_, rowIndex) => {
+      const row = allEvents.slice(rowIndex * 5, rowIndex * 5 + 5)
+      return rowIndex % 2 === 0 ? [...row].reverse() : row
+    },
+  )
 
   const eventsByDate = {}
   datedEvents.forEach((ev) => {
@@ -3216,6 +3223,40 @@ const effectiveDateColor = isDragging
         >
           <List size={22} weight="bold" />
         </button>
+
+        {eventIndicatorRows.length > 0 && (
+          <div
+            aria-label="Event position indicator"
+            style={{
+              position: 'fixed',
+              right: '18px',
+              top: 'calc(env(safe-area-inset-top) + 62px)',
+              zIndex: 70,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: '5px',
+              pointerEvents: 'none',
+            }}
+          >
+            {eventIndicatorRows.map((row, rowIndex) => (
+              <div key={rowIndex} style={{ display: 'flex', gap: '5px' }}>
+                {row.map((event) => (
+                  <span
+                    key={event.id}
+                    title={event.title || 'Event'}
+                    style={{
+                      width: '5px',
+                      height: '5px',
+                      borderRadius: '999px',
+                      background: event.id === nextEvent?.id ? '#f97316' : '#111827',
+                    }}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
 
         {displayEvent ? (
           <>
