@@ -3223,32 +3223,46 @@ const effectiveDateColor = isDragging
                 aria-label="Event position indicator"
                 style={{
                   position: 'fixed',
-                  right: '18px',
+                  right: '24px',
                   top: 'calc(env(safe-area-inset-top) + 62px)',
                   zIndex: 96,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-end',
-                  gap: '5px',
+                  gap: '3px',
                   pointerEvents: 'none',
+                  opacity: eventCardOpen || eventListOpen ? 0 : 1,
+                  transition: 'opacity 0.2s ease',
                 }}
               >
                 {eventIndicatorRows.map((row, rowIndex) => (
-                  <div key={rowIndex} style={{ display: 'flex', height: '9px', alignItems: 'center', gap: '5px' }}>
-                    {row.map((event) => (
+                  <div key={rowIndex} style={{ display: 'flex', height: '9px', alignItems: 'center', gap: '3px' }}>
+                    {row.map((event) => {
+                      const isDisplayed = event.id === displayEvent?.id
+                      const isUpcoming = event.id === nextEvent?.id
+                      return (
                       <span
                         key={event.id}
                         style={{
-                          width: event.id === displayEvent?.id ? '9px' : '6px',
-                          height: event.id === displayEvent?.id ? '9px' : '6px',
-                          borderRadius: '999px',
-                          background: event.id === displayEvent?.id
-                            ? '#f97316'
-                            : (darkMode ? '#6b7280' : '#d1d5db'),
-                          transition: 'width 0.2s ease, height 0.2s ease, background 0.2s ease',
+                          width: '9px',
+                          height: '9px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                         }}
-                      />
-                    ))}
+                      >
+                        <span
+                          style={{
+                            width: isDisplayed ? '9px' : '6px',
+                            height: isDisplayed ? '9px' : '6px',
+                            borderRadius: '999px',
+                            background: isUpcoming ? '#f97316' : '#111827',
+                            transition: 'width 0.2s ease, height 0.2s ease',
+                          }}
+                        />
+                      </span>
+                      )
+                    })}
                   </div>
                 ))}
               </div>
@@ -3674,7 +3688,7 @@ const effectiveDateColor = isDragging
         <div
           className="fixed inset-0"
           style={{
-            zIndex: 80,
+            zIndex: 120,
             backgroundColor: eventListBg,
             backdropFilter: 'blur(22px)',
             WebkitBackdropFilter: 'blur(22px)',
