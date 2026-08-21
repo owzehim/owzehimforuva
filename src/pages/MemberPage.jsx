@@ -2342,23 +2342,23 @@ function EventsTab({ events }) {
         img.src = url
       })
 
-    let cancelled = false
+    const event = selectedEvent
+    const firstImage = event?.image_urls?.[0]
+    if (!event?.id || !firstImage) return undefined
 
-    events.forEach((event) => {
-      const imgs = event.image_urls || []
-      Promise.all(imgs.map(loadImageDimensions)).then((ratios) => {
-        if (cancelled) return
-        setImageAspectRatios((previous) => ({
-          ...previous,
-          [event.id]: ratios,
-        }))
-      })
+    let cancelled = false
+    loadImageDimensions(firstImage).then((ratio) => {
+      if (cancelled) return
+      setImageAspectRatios((previous) => ({
+        ...previous,
+        [event.id]: [ratio],
+      }))
     })
 
     return () => {
       cancelled = true
     }
-  }, [events])
+  }, [selectedEvent?.id])
 
   const isPortrait = (aspectRatio) =>
     aspectRatio >= 0.75 && aspectRatio <= 0.85
@@ -2410,21 +2410,14 @@ function EventsTab({ events }) {
   useEffect(() => {
     if (typeof Image === 'undefined' || !allEvents.length) return
 
-    const nearbyImageUrls = [
-      activeEventIndex - 2,
-      activeEventIndex - 1,
-      activeEventIndex,
-      activeEventIndex + 1,
-      activeEventIndex + 2,
-    ]
-      .flatMap((idx) => allEvents[idx]?.image_urls?.slice(0, 2) || [])
-      .filter(Boolean)
+    const currentImageUrl = allEvents[activeEventIndex]?.image_urls?.[0]
+    if (!currentImageUrl) return
 
-    Array.from(new Set(nearbyImageUrls)).forEach((url) => {
+    {
       const img = new Image()
       img.decoding = 'async'
-      img.src = url
-    })
+      img.src = currentImageUrl
+    }
   }, [allEvents, activeEventIndex])
 
   const resetDragState = () => {
@@ -3231,7 +3224,7 @@ const effectiveDateColor = isDragging
               position: 'fixed',
               right: '18px',
               top: 'calc(env(safe-area-inset-top) + 62px)',
-              zIndex: 70,
+              zIndex: 96,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'flex-end',
@@ -3249,7 +3242,9 @@ const effectiveDateColor = isDragging
                       width: '5px',
                       height: '5px',
                       borderRadius: '999px',
-                      background: event.id === nextEvent?.id ? '#f97316' : '#111827',
+                      background: event.id === nextEvent?.id
+                        ? '#f97316'
+                        : (darkMode ? '#d1d5db' : '#111827'),
                     }}
                   />
                 ))}
@@ -3555,6 +3550,8 @@ const effectiveDateColor = isDragging
                               <img
                                 src={url}
                                 alt=""
+                                loading={index === displayImageSlide ? 'eager' : 'lazy'}
+                                fetchPriority={index === displayImageSlide ? 'high' : 'low'}
                                 onLoad={(event) => {
                                   markEventPreviewImageLoaded(url)
                                   recordEventPreviewImageRatio(
@@ -3670,7 +3667,7 @@ const effectiveDateColor = isDragging
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center">
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              예정된 이벤트가 없어요
+              이벤트 로딩중
             </p>
           </div>
         )}
