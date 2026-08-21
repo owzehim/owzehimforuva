@@ -3454,19 +3454,12 @@ const effectiveDateColor = isDragging
                       <div
                         onTouchStart={handleEventPreviewTouchStart}
                         onTouchEnd={handleEventPreviewTouchEnd}
-                        onClick={() => {
-                          if (eventPreviewSuppressClick.current) {
-                            eventPreviewSuppressClick.current = false
-                            return
-                          }
-                          if (eventCardOpen) openLightboxAt(displayImageSlide)
-                        }}
                         style={{
                           position: 'relative',
                           height: '100%',
                           width: '100%',
                           overflow: 'hidden',
-                          cursor: eventCardOpen ? 'pointer' : 'default',
+                          cursor: 'default',
                           touchAction: 'none',
                         }}
                       >
@@ -3827,16 +3820,6 @@ const effectiveDateColor = isDragging
         </div>
       )}
 
-      {lightboxIndex !== null && detailImages.length > 0 && (
-        <EventLightbox
-          imgs={detailImages}
-          startIndex={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-          onIndexChange={(index) => {
-            if (displayEvent?.id) setSlide(displayEvent.id, index)
-          }}
-        />
-      )}
     </>
   )
 
