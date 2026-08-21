@@ -873,17 +873,17 @@ export function SpotCard({
           {selected.one_line_review && (!isTallCollapsed || !hasImages) && (
             <div className="mb-3" style={{ marginTop: speechBubbleGapPx }}>
               <p className="mb-2 text-left text-xs font-semibold text-gray-500">
-                우슐랭 평가
+                우슐랭 가이드
               </p>
               {spotCardHeightMode === 'full' && showUsullangStars && (
                 <div
-                  className="mb-3 flex items-center justify-center gap-3 text-orange-500"
+                  className="mb-6 flex items-center justify-center gap-3 text-orange-500"
                   aria-label={`우슐랭 스타 ${usullangStarCount}개`}
                 >
                   {Array.from({ length: 3 }).map((_, index) => (
                     <StarFour
                       key={index}
-                      size={66}
+                      size={44}
                       weight={index < usullangStarCount ? 'fill' : 'regular'}
                       className={index < usullangStarCount ? 'text-orange-500' : 'text-gray-300'}
                     />
