@@ -3564,6 +3564,7 @@ const effectiveDateColor = isDragging
                         justifyContent: 'center',
                         alignItems: 'center',
                         gap: '6px',
+                        height: '8px',
                         marginTop: '10px',
                         marginBottom: eventCardOpen ? 0 : '2px',
                         pointerEvents: eventCardOpen ? 'auto' : 'none',
@@ -3581,17 +3582,27 @@ const effectiveDateColor = isDragging
                             }
                           }}
                           style={{
-                            width: index === displayImageSlide ? 8 : 6,
-                            height: index === displayImageSlide ? 8 : 6,
-                            borderRadius: '999px',
+                            width: 8,
+                            height: 8,
                             border: 0,
                             padding: 0,
-                            backgroundColor: index === displayImageSlide
-                              ? (darkMode ? '#ffffff' : '#374151')
-                              : (darkMode ? 'rgba(255,255,255,0.42)' : '#d1d5db'),
-                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
-                        />
+                        >
+                          <span
+                            style={{
+                              width: index === displayImageSlide ? 8 : 6,
+                              height: index === displayImageSlide ? 8 : 6,
+                              borderRadius: '999px',
+                              backgroundColor: index === displayImageSlide
+                                ? (darkMode ? '#ffffff' : '#374151')
+                                : (darkMode ? 'rgba(255,255,255,0.42)' : '#d1d5db'),
+                              transition: 'all 0.2s',
+                            }}
+                          />
+                        </button>
                       ))}
                     </div>
                   )}
