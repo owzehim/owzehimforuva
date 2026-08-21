@@ -149,9 +149,17 @@ function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
 function Lightbox({ imgs, startIndex, onClose }) {
   const [index, setIndex] = useState(startIndex)
   const [visible, setVisible] = useState(false)
+  const [imageRatios, setImageRatios] = useState({})
+  const [lightboxBounds, setLightboxBounds] = useState(() => ({
+    width: window.innerWidth * 0.9,
+    height: window.innerHeight * 0.9,
+  }))
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
-  const lightboxDotsBottom = 'calc(env(safe-area-inset-bottom) + 10px)'
+  const activeImageRatio = imageRatios[index] || 1
+  const imageMaxHeight = lightboxBounds.height - (imgs.length > 1 ? 38 : 0)
+  const imageWidth = Math.min(lightboxBounds.width, imageMaxHeight * activeImageRatio)
+  const imageHeight = imageWidth / activeImageRatio
 
   const goToIndex = (nextIndex) => {
     const clampedIndex = Math.max(0, Math.min(nextIndex, imgs.length - 1))
@@ -162,6 +170,15 @@ function Lightbox({ imgs, startIndex, onClose }) {
   // zoom-in + fade-in on open
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true))
+  }, [])
+
+  useEffect(() => {
+    const updateBounds = () => setLightboxBounds({
+      width: window.innerWidth * 0.9,
+      height: window.innerHeight * 0.9,
+    })
+    window.addEventListener('resize', updateBounds)
+    return () => window.removeEventListener('resize', updateBounds)
   }, [])
 
   useEffect(() => {
@@ -260,12 +277,15 @@ function Lightbox({ imgs, startIndex, onClose }) {
           style={{
             width: '100%',
             maxWidth: '90vw',
-            height: '90vh',
             maxHeight: '90vh',
-            overflow: 'hidden',
-            transform: 'translateY(-18px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
           }}
         >
+          <div style={{ width: `${imageWidth}px`, height: `${imageHeight}px`, overflow: 'hidden' }}>
           <div
             style={{
               display: 'flex',
@@ -295,6 +315,12 @@ function Lightbox({ imgs, startIndex, onClose }) {
                   decoding="async"
                   fetchPriority={imgIndex === index ? 'high' : 'auto'}
                   loading={Math.abs(imgIndex - index) <= 1 ? 'eager' : 'lazy'}
+                  onLoad={(event) => {
+                    const ratio = event.currentTarget.naturalWidth / event.currentTarget.naturalHeight
+                    if (Number.isFinite(ratio) && ratio > 0) {
+                      setImageRatios((previous) => previous[imgIndex] === ratio ? previous : { ...previous, [imgIndex]: ratio })
+                    }
+                  }}
                   style={{
                     maxWidth: '100%',
                     maxHeight: '100%',
@@ -309,19 +335,15 @@ function Lightbox({ imgs, startIndex, onClose }) {
               </div>
             ))}
           </div>
-        </div>
+          </div>
 
-        {/* Dots */}
         {imgs.length > 1 && (
           <div
             style={{
-              position: 'absolute',
-              bottom: lightboxDotsBottom,
-              left: 0,
-              right: 0,
               display: 'flex',
               justifyContent: 'center',
               gap: 6,
+              paddingTop: 4,
             }}
           >
             {imgs.map((_, i) => (
