@@ -3256,7 +3256,9 @@ const effectiveDateColor = isDragging
                             width: isDisplayed ? '9px' : '6px',
                             height: isDisplayed ? '9px' : '6px',
                             borderRadius: '999px',
-                            background: isUpcoming ? '#f97316' : '#111827',
+                            background: isDisplayed
+                              ? (isUpcoming ? '#f97316' : (darkMode ? '#ffffff' : '#111827'))
+                              : (darkMode ? '#6b7280' : '#d1d5db'),
                             transition: 'width 0.2s ease, height 0.2s ease',
                           }}
                         />
@@ -3677,9 +3679,7 @@ const effectiveDateColor = isDragging
           </>
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              이벤트 로딩중
-            </p>
+            <LoadingIndicator />
           </div>
         )}
       </div>
