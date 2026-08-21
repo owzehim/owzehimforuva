@@ -5,7 +5,7 @@ import MapView from '../components/MapView'
 import { SpotCard, RichText } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
-import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, ArrowsVertical, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning } from '@phosphor-icons/react'
+import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, ArrowsVertical, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning, Image as ImageIcon } from '@phosphor-icons/react'
 import { useReviewPrompt } from '../hooks/useReviewPrompt'
 import ReviewModal from '../components/ReviewModal'
 import ActivityStatsCard from '../components/ActivityStatsCard'
@@ -3548,6 +3548,12 @@ const effectiveDateColor = isDragging
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+                    {!hasImages && (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-gray-400 dark:text-gray-500">
+                        <ImageIcon size={30} weight="regular" />
+                        <span className="text-xs">No images</span>
                       </div>
                     )}
                   </div>
