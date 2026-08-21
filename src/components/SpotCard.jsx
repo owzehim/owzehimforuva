@@ -477,7 +477,7 @@ export function SpotCard({
   const lastYRef = useRef(0)
   const cardRef = useRef(null)
   const previousSpotRef = useRef(null)
-  const reviewBoxTouchStartXRef = useRef(null)
+  const reviewBoxTouchStartRef = useRef(null)
 
   const imgs = selected['image_urls'] || []
   const imagesKey = imgs.join('|')
@@ -726,20 +726,29 @@ export function SpotCard({
   }
 
   const handleReviewBoxTouchStart = (event) => {
-    reviewBoxTouchStartXRef.current = event.touches[0].clientX
+    reviewBoxTouchStartRef.current = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+    }
   }
 
   const handleReviewBoxTouchEnd = (event) => {
-    if (reviewBoxTouchStartXRef.current == null) return
+    if (reviewBoxTouchStartRef.current == null) return
 
-    const distance = event.changedTouches[0].clientX - reviewBoxTouchStartXRef.current
-    if (distance < -40) setReviewBoxPanel('executive')
-    if (distance > 40) setReviewBoxPanel('guide')
-    reviewBoxTouchStartXRef.current = null
+    const distanceX = event.changedTouches[0].clientX - reviewBoxTouchStartRef.current.x
+    const distanceY = event.changedTouches[0].clientY - reviewBoxTouchStartRef.current.y
+    if (Math.abs(distanceX) > Math.abs(distanceY)) {
+      if (distanceX < -40) setReviewBoxPanel('executive')
+      if (distanceX > 40) setReviewBoxPanel('guide')
+    }
+    reviewBoxTouchStartRef.current = null
   }
 
   const guideContent = selected.one_line_review && (!isTallCollapsed || !hasImages) && (
-    <div className="mb-3" style={{ marginTop: speechBubbleGapPx }}>
+    <div
+      className="mb-3"
+      style={{ marginTop: spotCardHeightMode === 'full' ? 8 : speechBubbleGapPx }}
+    >
       <p className="mb-2 text-left text-xs font-semibold text-gray-500">
         우슐랭 가이드
       </p>
@@ -782,7 +791,7 @@ export function SpotCard({
         >
           <RichText
             text={selected.one_line_review}
-            className="block max-w-full break-keep text-center text-[clamp(14px,4vw,18px)] font-semibold leading-tight text-white"
+            className="block max-w-full break-keep text-center text-[clamp(12px,3.2vw,16px)] font-semibold leading-tight text-white"
           />
         </div>
       </div>
@@ -965,15 +974,8 @@ export function SpotCard({
             <section
               className="mb-3 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
               aria-label="리뷰 박스"
-              onTouchStart={(event) => {
-                event.stopPropagation()
-                handleReviewBoxTouchStart(event)
-              }}
-              onTouchMove={(event) => event.stopPropagation()}
-              onTouchEnd={(event) => {
-                event.stopPropagation()
-                handleReviewBoxTouchEnd(event)
-              }}
+              onTouchStart={handleReviewBoxTouchStart}
+              onTouchEnd={handleReviewBoxTouchEnd}
             >
               <div
                 className="flex w-[200%] transition-transform duration-300 ease-out"
