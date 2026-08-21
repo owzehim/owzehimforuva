@@ -2452,7 +2452,33 @@ function RestaurantForm({
 
 <div>
   <label className="text-sm text-gray-500 block mb-1">우슐랭 스타</label>
-  <div className="flex items-center gap-1" aria-label="우슐랭 스타 설정">
+  <div className="mb-2 flex items-center justify-between">
+    <span className="text-xs text-gray-400">SpotCard에 표시</span>
+    <button
+      type="button"
+      onClick={() =>
+        setForm((f) => ({
+          ...f,
+          show_usullang_stars: !f.show_usullang_stars,
+        }))
+      }
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${
+        form.show_usullang_stars
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : 'bg-gray-50 text-gray-500 border-gray-200'
+      }`}
+      aria-pressed={form.show_usullang_stars}
+    >
+      {form.show_usullang_stars ? '켜짐' : '꺼짐'}
+    </button>
+  </div>
+  <div
+    className={
+      'flex items-center gap-1 ' +
+      (form.show_usullang_stars ? '' : 'pointer-events-none opacity-40')
+    }
+    aria-label="우슐랭 스타 채움 수"
+  >
     {[1, 2, 3].map((star) => {
       const highlighted = star <= form.usullang_star_count
       return (
@@ -2478,7 +2504,7 @@ function RestaurantForm({
       )
     })}
   </div>
-  <p className="mt-1 text-xs text-gray-400">선택하지 않으면 카드에 표시되지 않습니다.</p>
+  <p className="mt-1 text-xs text-gray-400">켜진 뒤, 채울 별 개수를 선택하세요.</p>
 </div>
 
 {/* 임원 리뷰 */}
@@ -2563,6 +2589,7 @@ function RestaurantsTab() {
     is_sponsored: false,
     show_rating: true,
     show_google_maps_button: true,
+    show_usullang_stars: false,
     usullang_star_count: 0,
     stamp_card_enabled: false,
     spot_card_height: 'compact',
@@ -2663,6 +2690,7 @@ function RestaurantsTab() {
       is_sponsored: false,
       show_rating: true,
       show_google_maps_button: true,
+      show_usullang_stars: false,
       usullang_star_count: 0,
       stamp_card_enabled: false,
       spot_card_height: 'compact',
@@ -2743,6 +2771,7 @@ function RestaurantsTab() {
       is_sponsored: form.is_sponsored,
       show_rating: form.show_rating,
       show_google_maps_button: form.show_google_maps_button,
+      show_usullang_stars: form.show_usullang_stars,
       usullang_star_count: form.usullang_star_count,
       stamp_card_enabled: form.stamp_card_enabled,
       spot_card_height:
@@ -2802,6 +2831,7 @@ function RestaurantsTab() {
         typeof r.show_google_maps_button === 'boolean'
           ? r.show_google_maps_button
           : true,
+      show_usullang_stars: r.show_usullang_stars === true,
       usullang_star_count: Math.max(
         0,
         Math.min(3, Number(r.usullang_star_count) || 0),
@@ -2837,6 +2867,7 @@ function RestaurantsTab() {
       is_sponsored: false,
       show_rating: true,
       show_google_maps_button: true,
+      show_usullang_stars: false,
       usullang_star_count: 0,
       stamp_card_enabled: false,
       spot_card_height: 'compact',
