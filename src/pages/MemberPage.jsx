@@ -1894,8 +1894,24 @@ function NavBtn({ onClick, children, style = {} }) {
 function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const [index, setIndex] = useState(startIndex)
   const [visible, setVisible] = useState(false)
+  const [imageRatios, setImageRatios] = useState({})
+  const [lightboxBounds, setLightboxBounds] = useState(() => ({
+    width: typeof window === 'undefined' ? 360 : window.innerWidth * 0.9,
+    height: typeof window === 'undefined' ? 640 : window.innerHeight * 0.9,
+  }))
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
+
+  const activeImageRatio = imageRatios[index] || 1
+  const lightboxImageMaxHeight = Math.max(
+    0,
+    lightboxBounds.height - (imgs.length > 1 ? 38 : 0),
+  )
+  const lightboxImageWidth = Math.min(
+    lightboxBounds.width,
+    lightboxImageMaxHeight * activeImageRatio,
+  )
+  const lightboxImageHeight = lightboxImageWidth / activeImageRatio
 
   const goToIndex = (nextIndex) => {
     const clampedIndex = Math.max(0, Math.min(nextIndex, imgs.length - 1))
@@ -1907,6 +1923,18 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   // zoom-in + fade-in on open
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true))
+  }, [])
+
+  useEffect(() => {
+    const updateBounds = () => {
+      setLightboxBounds({
+        width: window.innerWidth * 0.9,
+        height: window.innerHeight * 0.9,
+      })
+    }
+
+    window.addEventListener('resize', updateBounds)
+    return () => window.removeEventListener('resize', updateBounds)
   }, [])
 
   useEffect(() => {
@@ -2023,12 +2051,9 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
         >
           <div
             style={{
-              width: '100%',
-              maxWidth: '90vw',
-              height: imgs.length > 1 ? 'calc(90vh - 38px)' : '90vh',
-              maxHeight: imgs.length > 1 ? 'calc(90vh - 38px)' : '90vh',
+              width: `${lightboxImageWidth}px`,
+              height: `${lightboxImageHeight}px`,
               overflow: 'hidden',
-              transform: 'translateY(-18px)',
             }}
           >
             <div
@@ -2060,6 +2085,15 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
                     fetchPriority={imgIndex === index ? 'high' : 'auto'}
                     loading={Math.abs(imgIndex - index) <= 1 ? 'eager' : 'lazy'}
                     alt={`사진 ${imgIndex + 1}`}
+                    onLoad={(event) => {
+                      const ratio = event.currentTarget.naturalWidth / event.currentTarget.naturalHeight
+                      if (!Number.isFinite(ratio) || ratio <= 0) return
+                      setImageRatios((previous) => (
+                        previous[imgIndex] === ratio
+                          ? previous
+                          : { ...previous, [imgIndex]: ratio }
+                      ))
+                    }}
                     style={{
                       maxWidth: '100%',
                       maxHeight: '100%',
@@ -2308,21 +2342,22 @@ function EventsTab({ events }) {
         img.src = url
       })
 
-    const loadAllRatios = async () => {
-      const ratios = {}
-      for (const ev of events) {
-        const imgs = ev.image_urls || []
-        const evRatios = []
-        for (const url of imgs) {
-          const ratio = await loadImageDimensions(url)
-          evRatios.push(ratio)
-        }
-        ratios[ev.id] = evRatios
-      }
-      setImageAspectRatios(ratios)
-    }
+    let cancelled = false
 
-    loadAllRatios()
+    events.forEach((event) => {
+      const imgs = event.image_urls || []
+      Promise.all(imgs.map(loadImageDimensions)).then((ratios) => {
+        if (cancelled) return
+        setImageAspectRatios((previous) => ({
+          ...previous,
+          [event.id]: ratios,
+        }))
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [events])
 
   const isPortrait = (aspectRatio) =>
@@ -3006,7 +3041,7 @@ function EventsTab({ events }) {
   const hasImages = displayImages.length > 0
   const displayImageRatios = imageAspectRatios[displayEvent?.id] || []
   const displayImageSlide = displayEvent ? slideIndexes[displayEvent.id] || 0 : 0
-  const displayImageRatio = displayImageRatios[displayImageSlide] || 1
+  const eventImageBoxRatio = displayImageRatios[0] || 1
   const isCurrentEventImageLoading =
     hasImages && !loadedEventPreviewImages[displayImages[displayImageSlide]]
 
@@ -3412,8 +3447,7 @@ const effectiveDateColor = isDragging
                   <div
                     className="overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800"
                     style={{
-                      aspectRatio: `${displayImageRatio} / 1`,
-                      transition: 'aspect-ratio 0.3s ease',
+                      aspectRatio: `${eventImageBoxRatio} / 1`,
                     }}
                   >
                     {hasImages && (
@@ -3481,7 +3515,6 @@ const effectiveDateColor = isDragging
                                 width: '100%',
                                 height: '100%',
                                 flexShrink: 0,
-                                padding: '0 6px',
                                 boxSizing: 'border-box',
                               }}
                             >
@@ -3507,8 +3540,6 @@ const effectiveDateColor = isDragging
                                   height: '100%',
                                   objectFit: 'cover',
                                   display: 'block',
-                                  borderRadius: '12px',
-                                  boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                                   opacity: loadedEventPreviewImages[url] ? 1 : 0,
                                   transition: 'opacity 0.28s ease',
                                 }}
