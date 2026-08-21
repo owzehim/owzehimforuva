@@ -749,7 +749,7 @@ export function SpotCard({
       className="mb-3"
       style={{ marginTop: spotCardHeightMode === 'full' ? 8 : speechBubbleGapPx }}
     >
-      <p className="mb-6 text-left text-xs font-semibold text-gray-500">
+      <p className="mb-2 text-left text-xs font-semibold text-gray-500">
         우슐랭 가이드
       </p>
       {spotCardHeightMode === 'full' && showUsullangStars && (
@@ -987,10 +987,12 @@ export function SpotCard({
               >
                 <div className="w-1/2 flex-shrink-0 px-4 pt-1">
                   {guideContent}
-                  <TagBarChart
-                    tagCounts={ratingSummary?.tag_counts}
-                    reviewCount={reviewCount}
-                  />
+                  <div className="pt-2">
+                    <TagBarChart
+                      tagCounts={ratingSummary?.tag_counts}
+                      reviewCount={reviewCount}
+                    />
+                  </div>
                 </div>
                 <div className="w-1/2 flex-shrink-0 px-4">
                   {executiveContent}
