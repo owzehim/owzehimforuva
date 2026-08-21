@@ -1896,7 +1896,6 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const [visible, setVisible] = useState(false)
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
-  const lightboxDotsBottom = 'calc(env(safe-area-inset-bottom) + 10px)'
 
   const goToIndex = (nextIndex) => {
     const clampedIndex = Math.max(0, Math.min(nextIndex, imgs.length - 1))
@@ -2026,8 +2025,8 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
             style={{
               width: '100%',
               maxWidth: '90vw',
-              height: '90vh',
-              maxHeight: '90vh',
+              height: imgs.length > 1 ? 'calc(90vh - 38px)' : '90vh',
+              maxHeight: imgs.length > 1 ? 'calc(90vh - 38px)' : '90vh',
               overflow: 'hidden',
               transform: 'translateY(-18px)',
             }}
@@ -2076,41 +2075,37 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
               ))}
             </div>
           </div>
+          {imgs.length > 1 && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 6,
+                paddingTop: 4,
+              }}
+            >
+              {imgs.map((_, i) => (
+                <div
+                  key={i}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    goToIndex(i)
+                  }}
+                  style={{
+                    width: i === index ? 8 : 6,
+                    height: i === index ? 8 : 6,
+                    borderRadius: '999px',
+                    background:
+                      i === index ? '#fff' : 'rgba(255,255,255,0.4)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Dots */}
-        {imgs.length > 1 && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: lightboxDotsBottom,
-              left: 0,
-              right: 0,
-              display: 'flex',
-              justifyContent: 'center',
-              gap: 6,
-            }}
-          >
-            {imgs.map((_, i) => (
-              <div
-                key={i}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  goToIndex(i)
-                }}
-                style={{
-                  width: i === index ? 8 : 6,
-                  height: i === index ? 8 : 6,
-                  borderRadius: '999px',
-                  background:
-                    i === index ? '#fff' : 'rgba(255,255,255,0.4)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </>
   )
@@ -2262,6 +2257,18 @@ function EventsTab({ events }) {
       ...prev,
       [url]: true,
     }))
+  }
+
+  const recordEventPreviewImageRatio = (eventId, imageIndex, image) => {
+    const ratio = image.naturalWidth / image.naturalHeight
+    if (!Number.isFinite(ratio) || ratio <= 0) return
+
+    setImageAspectRatios((prev) => {
+      const ratios = [...(prev[eventId] || [])]
+      if (ratios[imageIndex] === ratio) return prev
+      ratios[imageIndex] = ratio
+      return { ...prev, [eventId]: ratios }
+    })
   }
 
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
@@ -2999,6 +3006,7 @@ function EventsTab({ events }) {
   const hasImages = displayImages.length > 0
   const displayImageRatios = imageAspectRatios[displayEvent?.id] || []
   const displayImageSlide = displayEvent ? slideIndexes[displayEvent.id] || 0 : 0
+  const displayImageRatio = displayImageRatios[displayImageSlide] || 1
   const isCurrentEventImageLoading =
     hasImages && !loadedEventPreviewImages[displayImages[displayImageSlide]]
 
@@ -3403,7 +3411,10 @@ const effectiveDateColor = isDragging
                 >
                   <div
                     className="overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800"
-                    style={{ aspectRatio: '1 / 1' }}
+                    style={{
+                      aspectRatio: `${displayImageRatio} / 1`,
+                      transition: 'aspect-ratio 0.3s ease',
+                    }}
                   >
                     {hasImages && (
                       <div
@@ -3477,7 +3488,14 @@ const effectiveDateColor = isDragging
                               <img
                                 src={url}
                                 alt=""
-                                onLoad={() => markEventPreviewImageLoaded(url)}
+                                onLoad={(event) => {
+                                  markEventPreviewImageLoaded(url)
+                                  recordEventPreviewImageRatio(
+                                    displayEvent.id,
+                                    index,
+                                    event.currentTarget,
+                                  )
+                                }}
                                 onError={() =>
                                   setLoadedEventPreviewImages((prev) => ({
                                     ...prev,
@@ -3499,50 +3517,47 @@ const effectiveDateColor = isDragging
                             </div>
                           ))}
                         </div>
-                        {displayImages.length > 1 && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: 0,
-                              right: 0,
-                              bottom: '10px',
-                              display: 'flex',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              gap: '6px',
-                              pointerEvents: eventCardOpen ? 'auto' : 'none',
-                            }}
-                          >
-                            {displayImages.map((_, index) => (
-                              <button
-                                key={index}
-                                type="button"
-                                aria-label={`Show event image ${index + 1}`}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (eventCardOpen && displayEvent) {
-                                    setSlide(displayEvent.id, index)
-                                  }
-                                }}
-                                style={{
-                                  width: index === displayImageSlide ? 8 : 6,
-                                  height: index === displayImageSlide ? 8 : 6,
-                                  borderRadius: '999px',
-                                  border: 0,
-                                  padding: 0,
-                                  backgroundColor:
-                                    index === displayImageSlide
-                                      ? '#ffffff'
-                                      : 'rgba(255,255,255,0.55)',
-                                  boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
+                  {displayImages.length > 1 && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '6px',
+                        marginTop: '10px',
+                        marginBottom: eventCardOpen ? 0 : '2px',
+                        pointerEvents: eventCardOpen ? 'auto' : 'none',
+                      }}
+                    >
+                      {displayImages.map((_, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          aria-label={`Show event image ${index + 1}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (eventCardOpen && displayEvent) {
+                              setSlide(displayEvent.id, index)
+                            }
+                          }}
+                          style={{
+                            width: index === displayImageSlide ? 8 : 6,
+                            height: index === displayImageSlide ? 8 : 6,
+                            borderRadius: '999px',
+                            border: 0,
+                            padding: 0,
+                            backgroundColor: index === displayImageSlide
+                              ? (darkMode ? '#ffffff' : '#374151')
+                              : (darkMode ? 'rgba(255,255,255,0.42)' : '#d1d5db'),
+                            transition: 'all 0.2s',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
                   {displayEvent.instagram_url && (
                     <a
                       href={displayEvent.instagram_url}
@@ -3668,9 +3683,10 @@ const effectiveDateColor = isDragging
           />
 
           <div
-            className="event-list-scroll h-full overflow-y-auto px-6 pb-10"
+            className="event-list-scroll h-full overflow-y-auto px-6"
             style={{
               paddingTop: 'calc(env(safe-area-inset-top) + 84px)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 116px)',
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
             }}
