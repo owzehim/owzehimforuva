@@ -471,11 +471,13 @@ export function SpotCard({
   const [isVisible, setIsVisible] = useState(false)
   const [darkMode, setDarkMode] = useState(() => isDarkMode())
   const [sheetMaxHeight, setSheetMaxHeight] = useState(0)
+  const [reviewBoxPanel, setReviewBoxPanel] = useState('guide')
   const startYRef = useRef(0)
   const startHeightRef = useRef(0)
   const lastYRef = useRef(0)
   const cardRef = useRef(null)
   const previousSpotRef = useRef(null)
+  const reviewBoxTouchStartXRef = useRef(null)
 
   const imgs = selected['image_urls'] || []
   const imagesKey = imgs.join('|')
@@ -575,6 +577,10 @@ export function SpotCard({
       requestAnimationFrame(() => setIsVisible(true))
     }
   }, [selected?.id, MIN_HEIGHT, spotCardHeightMode])
+
+  useEffect(() => {
+    setReviewBoxPanel('guide')
+  }, [selected?.id])
 
   useEffect(() => {
     if (!selected || isDesktop) return undefined
@@ -718,6 +724,91 @@ export function SpotCard({
       : 'transform 0.35s cubic-bezier(0.4,0,0.2,1), border-radius 0.35s cubic-bezier(0.4,0,0.2,1)',
     willChange: 'transform',
   }
+
+  const handleReviewBoxTouchStart = (event) => {
+    reviewBoxTouchStartXRef.current = event.touches[0].clientX
+  }
+
+  const handleReviewBoxTouchEnd = (event) => {
+    if (reviewBoxTouchStartXRef.current == null) return
+
+    const distance = event.changedTouches[0].clientX - reviewBoxTouchStartXRef.current
+    if (distance < -40) setReviewBoxPanel('executive')
+    if (distance > 40) setReviewBoxPanel('guide')
+    reviewBoxTouchStartXRef.current = null
+  }
+
+  const guideContent = selected.one_line_review && (!isTallCollapsed || !hasImages) && (
+    <div className="mb-3" style={{ marginTop: speechBubbleGapPx }}>
+      <p className="mb-2 text-left text-xs font-semibold text-gray-500">
+        우슐랭 가이드
+      </p>
+      {spotCardHeightMode === 'full' && showUsullangStars && (
+        <div
+          className="mb-6 flex items-center justify-center gap-3 text-orange-500"
+          aria-label={`우슐랭 스타 ${usullangStarCount}개`}
+        >
+          {Array.from({ length: 3 }).map((_, index) => (
+            <StarFour
+              key={index}
+              size={66}
+              weight={index < usullangStarCount ? 'fill' : 'regular'}
+              className={index < usullangStarCount ? 'text-orange-500' : 'text-gray-300'}
+            />
+          ))}
+        </div>
+      )}
+      <div className="relative w-full">
+        <div
+          aria-hidden="true"
+          className="block w-[97.5%] origin-left select-none"
+          style={{
+            aspectRatio: '3435 / 612',
+            backgroundColor: '#f97316',
+            mask: 'url(/spotcard-speech-bubble.png) center / contain no-repeat',
+            WebkitMask:
+              'url(/spotcard-speech-bubble.png) center / contain no-repeat',
+          }}
+        />
+        <div
+          className="absolute flex items-center justify-center px-6 sm:px-8 md:px-10"
+          style={{
+            left: '8%',
+            right: '8%',
+            top: '10%',
+            bottom: '15%',
+            overflow: 'hidden',
+          }}
+        >
+          <RichText
+            text={selected.one_line_review}
+            className="block max-w-full break-keep text-center text-[clamp(14px,4vw,18px)] font-semibold leading-tight text-white"
+          />
+        </div>
+      </div>
+    </div>
+  )
+
+  const executiveContent = (
+    <div className="pb-4 pt-3">
+      <p className="mb-1.5 text-xs font-semibold text-gray-500">
+        임원 추천 메뉴
+      </p>
+      {selected.review ? (
+        <RichText
+          text={selected.review}
+          className="block pl-4 text-xs text-gray-600"
+        />
+      ) : (
+        <p className="pl-4 text-xs text-gray-400">추천 메뉴를 준비 중이에요.</p>
+      )}
+      {selected.reviewer_name && (
+        <p className="mt-0.5 pl-4 text-xs text-gray-400">
+          {'— ' + selected.reviewer_name}
+        </p>
+      )}
+    </div>
+  )
 
   return (
     <>
@@ -869,8 +960,55 @@ export function SpotCard({
             </div>
           ))}
 
+          {/* Review box: swipe left for the executive recommendation. */}
+          {spotCardHeightMode === 'full' && !isTallCollapsed && (
+            <section
+              className="mb-3 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
+              aria-label="리뷰 박스"
+              onTouchStart={(event) => {
+                event.stopPropagation()
+                handleReviewBoxTouchStart(event)
+              }}
+              onTouchMove={(event) => event.stopPropagation()}
+              onTouchEnd={(event) => {
+                event.stopPropagation()
+                handleReviewBoxTouchEnd(event)
+              }}
+            >
+              <div
+                className="flex w-[200%] transition-transform duration-300 ease-out"
+                style={{
+                  transform: reviewBoxPanel === 'executive'
+                    ? 'translateX(-50%)'
+                    : 'translateX(0)',
+                }}
+              >
+                <div className="w-1/2 flex-shrink-0 px-4 pt-1">
+                  {guideContent}
+                  <TagBarChart
+                    tagCounts={ratingSummary?.tag_counts}
+                    reviewCount={reviewCount}
+                  />
+                </div>
+                <div className="w-1/2 flex-shrink-0 px-4">
+                  {executiveContent}
+                </div>
+              </div>
+              <div className="flex justify-center gap-1.5 pb-3" aria-hidden="true">
+                <span className={
+                  'h-1.5 rounded-full transition-all ' +
+                  (reviewBoxPanel === 'guide' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
+                } />
+                <span className={
+                  'h-1.5 rounded-full transition-all ' +
+                  (reviewBoxPanel === 'executive' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
+                } />
+              </div>
+            </section>
+          )}
+
           {/* 한 줄 평가 */}
-          {selected.one_line_review && (!isTallCollapsed || !hasImages) && (
+          {spotCardHeightMode !== 'full' && selected.one_line_review && (!isTallCollapsed || !hasImages) && (
             <div className="mb-3" style={{ marginTop: speechBubbleGapPx }}>
               <p className="mb-2 text-left text-xs font-semibold text-gray-500">
                 우슐랭 가이드
@@ -922,16 +1060,8 @@ export function SpotCard({
             </div>
           )}
 
-          {/* Member review bar chart */}
-          {spotCardHeightMode === 'full' && !isTallCollapsed && (
-            <TagBarChart
-              tagCounts={ratingSummary?.tag_counts}
-              reviewCount={reviewCount}
-            />
-          )}
-
           {/* 임원 리뷰 */}
-          {!isTallCollapsed && (selected.review || selected.reviewer_name) && (
+          {spotCardHeightMode !== 'full' && !isTallCollapsed && (selected.review || selected.reviewer_name) && (
             <div className="pb-4">
               <div className="pt-3">
                 <p className="mb-1.5 text-xs font-semibold text-gray-500">
