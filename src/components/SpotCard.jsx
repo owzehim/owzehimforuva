@@ -978,13 +978,13 @@ export function SpotCard({
           {/* Review box: swipe left for the executive recommendation. */}
           {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
-              className="mt-6 mb-3 h-[360px] overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
+              className="mt-6 mb-3 flex h-[360px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
               aria-label="리뷰 박스"
               onTouchStart={handleReviewBoxTouchStart}
               onTouchEnd={handleReviewBoxTouchEnd}
             >
               <div
-                className="flex w-[200%] transition-transform duration-300 ease-out"
+                className="flex min-h-0 w-[200%] flex-1 transition-transform duration-300 ease-out"
                 style={{
                   transform: reviewBoxPanel === 'executive'
                     ? 'translateX(-50%)'
@@ -1004,7 +1004,7 @@ export function SpotCard({
                   {executiveContent}
                 </div>
               </div>
-              <div className="flex justify-center gap-1.5 pb-3" aria-hidden="true">
+              <div className="flex flex-shrink-0 justify-center gap-1.5 pb-4" aria-hidden="true">
                 <span className={
                   'h-1.5 rounded-full transition-all ' +
                   (reviewBoxPanel === 'guide' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
