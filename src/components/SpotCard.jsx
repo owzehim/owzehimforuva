@@ -762,7 +762,13 @@ export function SpotCard({
               key={index}
               size={66}
               weight={index < usullangStarCount ? 'fill' : 'regular'}
-              className={index < usullangStarCount ? 'text-orange-500' : 'text-gray-300'}
+              color={
+                index < usullangStarCount
+                  ? '#f97316'
+                  : darkMode
+                    ? '#6b7280'
+                    : '#d1d5db'
+              }
             />
           ))}
         </div>
@@ -972,7 +978,7 @@ export function SpotCard({
           {/* Review box: swipe left for the executive recommendation. */}
           {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
-              className="mt-2 mb-3 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
+              className="mt-6 mb-3 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
               aria-label="리뷰 박스"
               onTouchStart={handleReviewBoxTouchStart}
               onTouchEnd={handleReviewBoxTouchEnd}

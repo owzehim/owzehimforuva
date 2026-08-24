@@ -2500,14 +2500,12 @@ function EventsTab({ events }) {
 
   const handleEventPreviewTouchStart = (e) => {
     if (!eventCardOpen) return
-    e.stopPropagation()
     eventPreviewTouchStartX.current = e.touches[0].clientX
     eventPreviewTouchStartY.current = e.touches[0].clientY
   }
 
   const handleEventPreviewTouchEnd = (e) => {
     if (!eventCardOpen) return
-    e.stopPropagation()
     if (eventPreviewTouchStartX.current == null || eventPreviewTouchStartY.current == null) return
     if (!displayEvent) return
 
@@ -2517,11 +2515,7 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
     const currentSlide = slideIndexes[displayEvent.id] || 0
 
-    if (dy > 42 && absDy > absDx * 1.1) {
-      eventPreviewSuppressClick.current = true
-      closeEventCard(displayEvent.id)
-    } else if (displayImages.length > 1 && absDx > absDy && absDx > 40) {
-      e.stopPropagation()
+    if (displayImages.length > 1 && absDx > absDy && absDx > 40) {
       eventPreviewSuppressClick.current = true
       if (dx < 0) {
         setSlide(displayEvent.id, Math.min(currentSlide + 1, displayImages.length - 1))
@@ -3509,7 +3503,7 @@ const effectiveDateColor = isDragging
                           width: '100%',
                           overflow: 'hidden',
                           cursor: 'default',
-                          touchAction: 'none',
+                          touchAction: 'pan-y',
                         }}
                       >
                         {isCurrentEventImageLoading && (
