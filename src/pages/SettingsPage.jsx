@@ -88,6 +88,10 @@ export default function SettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameLoading, setUsernameLoading] = useState(false)
+  const [usernameError, setUsernameError] = useState('')
+  const [usernameSuccess, setUsernameSuccess] = useState('')
   const fileInputRef = useRef(null)
 
   const [cropImageSrc, setCropImageSrc] = useState(null)
@@ -104,6 +108,7 @@ export default function SettingsPage() {
         .from('members').select('*').eq('user_id', user.id).maybeSingle()
       if (memberError) console.error('load member error:', memberError)
       setMember(memberData || null)
+      setUsernameInput(memberData?.username || '')
       setLoading(false)
     }
     load()
@@ -168,6 +173,36 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     navigate('/public', { replace: true })
     await supabase.auth.signOut()
+  }
+
+  const handleUsernameSave = async (event) => {
+    event.preventDefault()
+    if (!member) return
+    const username = usernameInput.trim()
+    setUsernameError('')
+    setUsernameSuccess('')
+    if (username.length < 2 || username.length > 24) {
+      setUsernameError('사용자 이름은 2~24자로 입력해주세요.')
+      return
+    }
+
+    setUsernameLoading(true)
+    const { error: updateError } = await supabase
+      .from('members')
+      .update({ username })
+      .eq('id', member.id)
+    setUsernameLoading(false)
+
+    if (updateError) {
+      setUsernameError(
+        updateError.code === '23505'
+          ? '이미 사용 중인 사용자 이름입니다.'
+          : '사용자 이름 변경 중 오류가 발생했습니다.'
+      )
+      return
+    }
+    setMember((previous) => (previous ? { ...previous, username } : previous))
+    setUsernameSuccess('사용자 이름이 변경되었습니다.')
   }
 
   const handlePasswordPanelToggle = () => {
@@ -423,6 +458,39 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-6 pb-6">
+            <form
+              onSubmit={handleUsernameSave}
+              className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-[#2c2c2e] dark:bg-[#111111]"
+            >
+              <label className="mb-3 block text-sm font-semibold text-gray-900 dark:text-white">
+                사용자 이름
+                <span className="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">
+                  댓글 작성 시 표시됩니다. 2~24자
+                </span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={usernameInput}
+                  onChange={(event) => setUsernameInput(event.target.value)}
+                  maxLength={24}
+                  autoCapitalize="none"
+                  className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none dark:border-[#2c2c2e] dark:bg-[#121212] dark:text-white"
+                  placeholder="사용자 이름"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={usernameLoading}
+                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {usernameLoading ? '저장 중' : '저장'}
+                </button>
+              </div>
+              {usernameError && <p className="mt-2 text-xs text-red-500">{usernameError}</p>}
+              {usernameSuccess && <p className="mt-2 text-xs text-green-600">{usernameSuccess}</p>}
+            </form>
+
             <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">화면 모드</p>
