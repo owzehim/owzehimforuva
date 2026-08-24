@@ -2247,6 +2247,7 @@ function EventsTab({ events }) {
   const eventCardScrollRef = useRef(null)
   const eventPreviewTouchStartX = useRef(null)
   const eventPreviewTouchStartY = useRef(null)
+  const eventPreviewGestureAxis = useRef(null)
   const eventPreviewSuppressClick = useRef(false)
 
   useEffect(() => {
@@ -2502,6 +2503,29 @@ function EventsTab({ events }) {
     if (!eventCardOpen) return
     eventPreviewTouchStartX.current = e.touches[0].clientX
     eventPreviewTouchStartY.current = e.touches[0].clientY
+    eventPreviewGestureAxis.current = null
+  }
+
+  const handleEventPreviewTouchMove = (e) => {
+    if (
+      !eventCardOpen ||
+      eventPreviewTouchStartX.current == null ||
+      eventPreviewTouchStartY.current == null
+    ) return
+
+    const dx = e.touches[0].clientX - eventPreviewTouchStartX.current
+    const dy = e.touches[0].clientY - eventPreviewTouchStartY.current
+    const absDx = Math.abs(dx)
+    const absDy = Math.abs(dy)
+
+    if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
+      eventPreviewGestureAxis.current = absDx > absDy ? 'x' : 'y'
+    }
+
+    if (eventPreviewGestureAxis.current === 'x') {
+      e.preventDefault()
+      e.stopPropagation()
+    }
   }
 
   const handleEventPreviewTouchEnd = (e) => {
@@ -2515,7 +2539,12 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
     const currentSlide = slideIndexes[displayEvent.id] || 0
 
-    if (displayImages.length > 1 && absDx > absDy && absDx > 40) {
+    if (
+      eventPreviewGestureAxis.current === 'x' &&
+      displayImages.length > 1 &&
+      absDx > 40
+    ) {
+      e.stopPropagation()
       eventPreviewSuppressClick.current = true
       if (dx < 0) {
         setSlide(displayEvent.id, Math.min(currentSlide + 1, displayImages.length - 1))
@@ -2526,6 +2555,7 @@ function EventsTab({ events }) {
 
     eventPreviewTouchStartX.current = null
     eventPreviewTouchStartY.current = null
+    eventPreviewGestureAxis.current = null
   }
 
   // Formatting helpers
@@ -3496,6 +3526,7 @@ const effectiveDateColor = isDragging
                     {hasImages && (
                       <div
                         onTouchStart={handleEventPreviewTouchStart}
+                        onTouchMove={handleEventPreviewTouchMove}
                         onTouchEnd={handleEventPreviewTouchEnd}
                         style={{
                           position: 'relative',

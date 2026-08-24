@@ -978,7 +978,7 @@ export function SpotCard({
           {/* Review box: swipe left for the executive recommendation. */}
           {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
-              className="mt-6 mb-3 flex h-[360px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
+              className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
               aria-label="리뷰 박스"
               onTouchStart={handleReviewBoxTouchStart}
               onTouchEnd={handleReviewBoxTouchEnd}
