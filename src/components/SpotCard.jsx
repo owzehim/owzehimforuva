@@ -1004,7 +1004,7 @@ export function SpotCard({
                   {executiveContent}
                 </div>
               </div>
-              <div className="flex flex-shrink-0 justify-center gap-1.5 pb-4" aria-hidden="true">
+              <div className="flex flex-shrink-0 justify-center gap-1.5 pb-4 pt-4" aria-hidden="true">
                 <span className={
                   'h-1.5 rounded-full transition-all ' +
                   (reviewBoxPanel === 'guide' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
