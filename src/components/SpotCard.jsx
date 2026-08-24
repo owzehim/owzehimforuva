@@ -797,7 +797,7 @@ export function SpotCard({
         >
           <RichText
             text={selected.one_line_review}
-            className="block max-w-full break-keep text-center text-[clamp(12px,3.2vw,16px)] font-semibold leading-tight text-white"
+            className="block max-w-full break-keep text-center text-[clamp(14px,3.8vw,16px)] font-semibold leading-tight text-white"
           />
         </div>
       </div>
@@ -1004,7 +1004,7 @@ export function SpotCard({
                   {executiveContent}
                 </div>
               </div>
-              <div className="relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-2" aria-hidden="true">
+              <div className="relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-3" aria-hidden="true">
                 <span className={
                   'h-1.5 rounded-full transition-all ' +
                   (reviewBoxPanel === 'guide' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
