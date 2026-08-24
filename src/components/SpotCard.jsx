@@ -778,7 +778,7 @@ export function SpotCard({
           aria-hidden="true"
           className="block w-[97.5%] origin-left select-none"
           style={{
-            aspectRatio: '3435 / 612',
+            aspectRatio: '3435 / 720',
             backgroundColor: '#f97316',
             mask: 'url(/spotcard-speech-bubble.png) center / contain no-repeat',
             WebkitMask:
@@ -797,7 +797,7 @@ export function SpotCard({
         >
           <RichText
             text={selected.one_line_review}
-            className="block max-w-full break-keep text-center text-[clamp(12px,3.2vw,16px)] font-semibold leading-tight text-white"
+            className="block max-w-full break-keep text-center text-lg font-semibold leading-tight text-white"
           />
         </div>
       </div>
