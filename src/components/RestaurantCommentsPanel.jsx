@@ -93,14 +93,6 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
     if (!trimmedBody || !userId) return
     setSaving(true)
     setError('')
-    const { data: moderation, error: moderationError } = await supabase.functions.invoke('moderate-comment', {
-      body: { body: trimmedBody },
-    })
-    if (moderationError || moderation?.allowed === false) {
-      setSaving(false)
-      setError('부적절한 표현이 포함되어 있어 등록할 수 없어요.')
-      return
-    }
     const payload = { body: trimmedBody, is_anonymous: anonymous }
     const result = editingComment
       ? await supabase.from('restaurant_comments').update(payload).eq('id', editingComment.id)
