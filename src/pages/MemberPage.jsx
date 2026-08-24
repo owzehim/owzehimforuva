@@ -2247,6 +2247,7 @@ function EventsTab({ events }) {
   const eventCardScrollRef = useRef(null)
   const eventPreviewTouchStartX = useRef(null)
   const eventPreviewTouchStartY = useRef(null)
+  const eventPreviewTouchLastY = useRef(null)
   const eventPreviewGestureAxis = useRef(null)
   const eventPreviewSuppressClick = useRef(false)
 
@@ -2503,6 +2504,7 @@ function EventsTab({ events }) {
     if (!eventCardOpen) return
     eventPreviewTouchStartX.current = e.touches[0].clientX
     eventPreviewTouchStartY.current = e.touches[0].clientY
+    eventPreviewTouchLastY.current = e.touches[0].clientY
     eventPreviewGestureAxis.current = null
   }
 
@@ -2519,13 +2521,26 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
 
     if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
-      eventPreviewGestureAxis.current = absDx > absDy ? 'x' : 'y'
+      // Treat ambiguous diagonal drags as vertical. An image swipe must be
+      // clearly horizontal, preventing one gesture from moving both views.
+      eventPreviewGestureAxis.current = absDx > absDy * 1.5 ? 'x' : 'y'
     }
 
     if (eventPreviewGestureAxis.current === 'x') {
       e.preventDefault()
       e.stopPropagation()
+      return
     }
+
+    if (eventPreviewGestureAxis.current === 'y') {
+      e.preventDefault()
+      const scrollContainer = eventCardScrollRef.current
+      if (scrollContainer && eventPreviewTouchLastY.current != null) {
+        scrollContainer.scrollTop -= e.touches[0].clientY - eventPreviewTouchLastY.current
+      }
+    }
+
+    eventPreviewTouchLastY.current = e.touches[0].clientY
   }
 
   const handleEventPreviewTouchEnd = (e) => {
@@ -2555,6 +2570,7 @@ function EventsTab({ events }) {
 
     eventPreviewTouchStartX.current = null
     eventPreviewTouchStartY.current = null
+    eventPreviewTouchLastY.current = null
     eventPreviewGestureAxis.current = null
   }
 
@@ -3534,7 +3550,7 @@ const effectiveDateColor = isDragging
                           width: '100%',
                           overflow: 'hidden',
                           cursor: 'default',
-                          touchAction: 'pan-y',
+                          touchAction: 'none',
                         }}
                       >
                         {isCurrentEventImageLoading && (

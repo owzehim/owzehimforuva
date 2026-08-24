@@ -729,6 +729,28 @@ export function SpotCard({
     reviewBoxTouchStartRef.current = {
       x: event.touches[0].clientX,
       y: event.touches[0].clientY,
+      axis: null,
+    }
+  }
+
+  const handleReviewBoxTouchMove = (event) => {
+    const touchStart = reviewBoxTouchStartRef.current
+    if (!touchStart) return
+
+    const distanceX = event.touches[0].clientX - touchStart.x
+    const distanceY = event.touches[0].clientY - touchStart.y
+    const absX = Math.abs(distanceX)
+    const absY = Math.abs(distanceY)
+
+    if (!touchStart.axis && Math.max(absX, absY) > 8) {
+      // Diagonal gestures stay vertical; only a clearly horizontal gesture
+      // can switch review panels.
+      touchStart.axis = absX > absY * 1.5 ? 'x' : 'y'
+    }
+
+    if (touchStart.axis === 'x') {
+      event.preventDefault()
+      event.stopPropagation()
     }
   }
 
@@ -737,7 +759,8 @@ export function SpotCard({
 
     const distanceX = event.changedTouches[0].clientX - reviewBoxTouchStartRef.current.x
     const distanceY = event.changedTouches[0].clientY - reviewBoxTouchStartRef.current.y
-    if (Math.abs(distanceX) > Math.abs(distanceY)) {
+    if (reviewBoxTouchStartRef.current.axis === 'x') {
+      event.stopPropagation()
       if (distanceX < -40) setReviewBoxPanel('executive')
       if (distanceX > 40) setReviewBoxPanel('guide')
     }
@@ -978,9 +1001,10 @@ export function SpotCard({
           {/* Review box: swipe left for the executive recommendation. */}
           {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
-              className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
+              className="mt-8 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
               aria-label="리뷰 박스"
               onTouchStart={handleReviewBoxTouchStart}
+              onTouchMove={handleReviewBoxTouchMove}
               onTouchEnd={handleReviewBoxTouchEnd}
             >
               <div
