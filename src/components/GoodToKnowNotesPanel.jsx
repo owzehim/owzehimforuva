@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Flag, PencilSimple, Plus, Trash, Translate } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 
@@ -46,6 +46,7 @@ export function GoodToKnowNotesPanel({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [translations, setTranslations] = useState({})
+  const touchStartRef = useRef(null)
 
   const loadNotes = useCallback(async () => {
     if (!restaurantId || !userId) {
@@ -171,6 +172,47 @@ export function GoodToKnowNotesPanel({
     else setError('Thanks. The note has been reported.')
   }
 
+  const handleNotesTouchStart = (event) => {
+    touchStartRef.current = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+      axis: null,
+      ownsGesture: false,
+    }
+  }
+
+  const handleNotesTouchMove = (event) => {
+    const touchStart = touchStartRef.current
+    if (!touchStart) return
+
+    const distanceX = event.touches[0].clientX - touchStart.x
+    const distanceY = event.touches[0].clientY - touchStart.y
+    const absX = Math.abs(distanceX)
+    const absY = Math.abs(distanceY)
+
+    if (!touchStart.axis && Math.max(absX, absY) > 8) {
+      touchStart.axis = absX > absY * 1.5 ? 'x' : 'y'
+    }
+
+    if (touchStart.axis !== 'y') return
+
+    const scrollTop = event.currentTarget.scrollTop || 0
+    const pullingDownAtTop = distanceY > 0 && scrollTop <= 0
+    const canUseSpotCardGesture = pullingDownAtTop || notes.length === 0
+
+    if (!canUseSpotCardGesture) {
+      touchStart.ownsGesture = true
+      event.stopPropagation()
+    }
+  }
+
+  const handleNotesTouchEnd = (event) => {
+    if (touchStartRef.current?.ownsGesture) {
+      event.stopPropagation()
+    }
+    touchStartRef.current = null
+  }
+
   return (
     <div className="relative flex h-full min-h-0 flex-col py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -190,9 +232,10 @@ export function GoodToKnowNotesPanel({
 
       <div
         className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1"
-        onTouchStart={(event) => event.stopPropagation()}
-        onTouchMove={(event) => event.stopPropagation()}
-        onTouchEnd={(event) => event.stopPropagation()}
+        onTouchStart={handleNotesTouchStart}
+        onTouchMove={handleNotesTouchMove}
+        onTouchEnd={handleNotesTouchEnd}
+        onTouchCancel={handleNotesTouchEnd}
       >
         {loading ? (
           <p className="py-8 text-center text-xs text-gray-400">Loading notes...</p>
