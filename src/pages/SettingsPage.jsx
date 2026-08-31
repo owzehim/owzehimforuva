@@ -451,7 +451,7 @@ export default function SettingsPage() {
               <p className="text-sm font-medium text-gray-900 dark:text-white">
                 {displayName}
               </p>
-              <div className="mt-1 flex items-center justify-center gap-0.5">
+              <div className="mt-1 flex items-center justify-center">
                 {usernameEditing ? (
                   <>
                     <input
@@ -487,19 +487,19 @@ export default function SettingsPage() {
                     </button>
                   </>
                 ) : (
-                  <>
+                  <div className="relative inline-flex min-w-0 justify-center">
                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                       {username ? `@${username}` : '@username'}
                     </span>
                     <button
                       type="button"
                       onClick={handleUsernameEditStart}
-                      className="flex h-6 w-6 items-center justify-center rounded-full text-gray-500 dark:text-gray-400"
+                      className="absolute left-full top-1/2 ml-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 dark:text-gray-400"
                       aria-label="사용자 이름 편집"
                     >
                       <PencilSimpleLine size={15} weight="regular" />
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
               {usernameError && <p className="mt-1 text-xs text-red-500">{usernameError}</p>}
