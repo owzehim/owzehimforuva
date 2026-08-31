@@ -42,7 +42,9 @@ function errorMessage(error) {
   if (message.includes('row-level security')) {
     return 'You do not have permission to save this note.'
   }
-  return 'Could not save your note. Please try again.'
+  return error?.message
+    ? `Could not save your note: ${error.message}`
+    : 'Could not save your note. Please try again.'
 }
 
 export function GoodToKnowNotesPanel({
