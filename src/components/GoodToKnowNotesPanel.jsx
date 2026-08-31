@@ -84,7 +84,7 @@ export function GoodToKnowNotesPanel({
 
     const { data, error: loadError } = await supabase
       .from('restaurant_notes')
-      .select('id, user_id, username, is_anonymous, body, created_at, updated_at')
+      .select('id, user_id, username, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -197,6 +197,16 @@ export function GoodToKnowNotesPanel({
       console.error('save restaurant note error:', result.error)
       setError(errorMessage(result.error))
       return
+    }
+
+    if (editingNote?.source_redemption_id && editingNote?.source_store_id) {
+      syncLinkedReviewNoteToSheets({
+        redemptionId: editingNote.source_redemption_id,
+        storeId: editingNote.source_store_id,
+        rating: editingNote.source_rating,
+        tags: editingNote.source_tags,
+        comment: trimmedBody,
+      }).catch((err) => console.warn('Linked review note sheet sync failed:', err?.message))
     }
 
     closeComposer()
@@ -425,4 +435,24 @@ export function GoodToKnowNotesPanel({
       )}
     </div>
   )
+}
+
+async function syncLinkedReviewNoteToSheets({ redemptionId, storeId, rating, tags, comment }) {
+  if (!redemptionId || !storeId || !rating || !tags) return
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+
+  await supabase.functions.invoke('sync-to-sheets', {
+    body: {
+      redemption_id: redemptionId,
+      store_id: storeId,
+      rating,
+      tags,
+      comment,
+    },
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  })
 }

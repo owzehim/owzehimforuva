@@ -43,7 +43,6 @@ function isAlreadyRegisteredError(error) {
  *  password: string,
  *  firstName: string,
  *  lastName: string,
- *  username: string,
  *  firstNameKorean?: string,
  *  lastNameKorean?: string,
  *  studentNumber: string,
@@ -67,7 +66,6 @@ export async function registerMember(payload) {
     password,
     firstName,
     lastName,
-    username,
     firstNameKorean,
     lastNameKorean,
     studentNumber,
@@ -116,7 +114,6 @@ export async function registerMember(payload) {
       data: {
         first_name: firstName,
         last_name: lastName,
-        username: username.trim(),
       },
     },
   });

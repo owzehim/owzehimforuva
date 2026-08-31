@@ -16,7 +16,6 @@ export function validateRegistrationForm(fields) {
   const {
     firstName,
     lastName,
-    username,
     email,
     studentNumber,
     gender,
@@ -27,10 +26,6 @@ export function validateRegistrationForm(fields) {
 
   if (!firstName?.trim()) return 'First name is required';
   if (!lastName?.trim()) return 'Last name is required';
-  if (!username?.trim()) return 'Username is required';
-  if (username.trim().length < 2 || username.trim().length > 24) {
-    return 'Username must be between 2 and 24 characters';
-  }
   if (!email?.trim()) return 'Email is required';
   if (!email.includes('@')) return 'Please enter a valid email';
   if (!studentNumber?.trim()) return 'Student number is required';
