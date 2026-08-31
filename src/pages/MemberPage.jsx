@@ -4065,6 +4065,10 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
             isAdmin={isAdmin}
             onClosingStart={() => setSpotCardClosing(true)}
             onClose={() => setSelected(null)}
+            currentUserId={stampCardUserId}
+            currentUsername={member?.username}
+            canComment={isValid || isAdmin}
+            isAdmin={isAdmin}
           />
         )}
 

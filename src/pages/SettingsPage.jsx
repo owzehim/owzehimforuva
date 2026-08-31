@@ -178,11 +178,13 @@ export default function SettingsPage() {
   const handleUsernameSave = async (event) => {
     event.preventDefault()
     if (!member) return
+
     const username = usernameInput.trim()
     setUsernameError('')
     setUsernameSuccess('')
+
     if (username.length < 2 || username.length > 24) {
-      setUsernameError('사용자 이름은 2~24자로 입력해주세요.')
+      setUsernameError('Username must be 2-24 characters.')
       return
     }
 
@@ -196,13 +198,14 @@ export default function SettingsPage() {
     if (updateError) {
       setUsernameError(
         updateError.code === '23505'
-          ? '이미 사용 중인 사용자 이름입니다.'
-          : '사용자 이름 변경 중 오류가 발생했습니다.'
+          ? 'That username is already taken.'
+          : 'Could not save username.'
       )
       return
     }
+
     setMember((previous) => (previous ? { ...previous, username } : previous))
-    setUsernameSuccess('사용자 이름이 변경되었습니다.')
+    setUsernameSuccess('Username saved.')
   }
 
   const handlePasswordPanelToggle = () => {
@@ -463,9 +466,9 @@ export default function SettingsPage() {
               className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-[#2c2c2e] dark:bg-[#111111]"
             >
               <label className="mb-3 block text-sm font-semibold text-gray-900 dark:text-white">
-                사용자 이름
+                Username
                 <span className="mt-1 block text-xs font-normal text-gray-500 dark:text-gray-400">
-                  댓글 작성 시 표시됩니다. 2~24자
+                  Shown on Good to Know Notes. 2-24 characters.
                 </span>
               </label>
               <div className="flex gap-2">
@@ -476,7 +479,7 @@ export default function SettingsPage() {
                   maxLength={24}
                   autoCapitalize="none"
                   className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none dark:border-[#2c2c2e] dark:bg-[#121212] dark:text-white"
-                  placeholder="사용자 이름"
+                  placeholder="Username"
                   required
                 />
                 <button
@@ -484,7 +487,7 @@ export default function SettingsPage() {
                   disabled={usernameLoading}
                   className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
-                  {usernameLoading ? '저장 중' : '저장'}
+                  {usernameLoading ? 'Saving' : 'Save'}
                 </button>
               </div>
               {usernameError && <p className="mt-2 text-xs text-red-500">{usernameError}</p>}

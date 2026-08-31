@@ -5,7 +5,7 @@ import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, getSortedTagsForDisplay, formatAverageRating } from '../domain/reviewDomain'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
-import { RestaurantCommentsPanel } from './RestaurantCommentsPanel'
+import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -763,10 +763,9 @@ export function SpotCard({
     if (reviewBoxTouchStartRef.current == null) return
 
     const distanceX = event.changedTouches[0].clientX - reviewBoxTouchStartRef.current.x
-    const distanceY = event.changedTouches[0].clientY - reviewBoxTouchStartRef.current.y
     if (reviewBoxTouchStartRef.current.axis === 'x') {
       event.stopPropagation()
-      if (distanceX < -40) setReviewBoxPanel('comments')
+      if (distanceX < -40) setReviewBoxPanel('notes')
       if (distanceX > 40) setReviewBoxPanel('guide')
     }
     reviewBoxTouchStartRef.current = null
@@ -982,7 +981,7 @@ export function SpotCard({
             </div>
           ))}
 
-          {/* Review box: swipe left for member comments. */}
+          {/* Review box: swipe left for member notes. */}
           {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
               className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
@@ -994,7 +993,7 @@ export function SpotCard({
               <div
                 className="flex min-h-0 w-[200%] flex-1 transition-transform duration-300 ease-out"
                 style={{
-                  transform: reviewBoxPanel === 'comments'
+                  transform: reviewBoxPanel === 'notes'
                     ? 'translateX(-50%)'
                     : 'translateX(0)',
                 }}
@@ -1009,7 +1008,7 @@ export function SpotCard({
                   </div>
                 </div>
                 <div className="w-1/2 flex-shrink-0 px-4">
-                  <RestaurantCommentsPanel
+                  <GoodToKnowNotesPanel
                     restaurantId={selected.id}
                     userId={currentUserId}
                     username={currentUsername}
@@ -1025,7 +1024,7 @@ export function SpotCard({
                 } />
                 <span className={
                   'h-1.5 rounded-full transition-all ' +
-                  (reviewBoxPanel === 'comments' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
+                  (reviewBoxPanel === 'notes' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
                 } />
               </div>
             </section>
