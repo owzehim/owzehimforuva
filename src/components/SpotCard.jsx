@@ -507,7 +507,7 @@ export function SpotCard({
       ? 'full'
       : 'compact'
   const COMPACT_HEIGHT = Math.min(WIN_H * 0.22, 150)
-  const FULL_HEIGHT = Math.min(WIN_H * 0.38, 260)
+  const FULL_HEIGHT = Math.min(WIN_H * 0.48, 340)
   const MIN_HEIGHT = spotCardHeightMode === 'full' ? FULL_HEIGHT : COMPACT_HEIGHT
   const MAX_HEIGHT = isDesktop ? 460 : Math.max(320, sheetMaxHeight || WIN_H)
   const SHEET_RADIUS = 20
@@ -679,6 +679,11 @@ export function SpotCard({
   const isMax = cardHeight >= MAX_HEIGHT * 0.85
   const isCollapsed = cardHeight < MAX_HEIGHT * 0.85
   const isTallCollapsed = isTallSpotCard && isCollapsed
+  const googleMapsReservedSpace = spotCardHeightMode === 'full'
+    ? isCollapsed
+      ? 104
+      : 56
+    : 64
   const speechBubbleGapPx = isTallSpotCard && !hasImages
     ? isCollapsed
       ? 8
@@ -1105,7 +1110,7 @@ export function SpotCard({
             </div>
           )}
 
-          <div className="pb-16" />
+          <div style={{ height: googleMapsReservedSpace }} />
         </div>
 
       </div>
