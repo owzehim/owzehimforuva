@@ -2644,8 +2644,9 @@ function EventsTab({ events }) {
     if (!eventDate) return 'TBD'
     const days = getDayDiff(eventDate)
     if (days < 0) return 'PAST'
+    if (days === 0) return 'D-DAY'
     if (nextEvent && ev.id === nextEvent.id)
-      return days === 0 ? 'TODAY' : `D-${days}`
+      return `D-${days}`
     return 'UPCOMING'
   }
 
