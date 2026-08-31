@@ -2533,11 +2533,8 @@ function EventsTab({ events }) {
     }
 
     if (eventPreviewGestureAxis.current === 'y') {
-      e.preventDefault()
-      const scrollContainer = eventCardScrollRef.current
-      if (scrollContainer && eventPreviewTouchLastY.current != null) {
-        scrollContainer.scrollTop -= e.touches[0].clientY - eventPreviewTouchLastY.current
-      }
+      eventPreviewTouchLastY.current = e.touches[0].clientY
+      return
     }
 
     eventPreviewTouchLastY.current = e.touches[0].clientY
@@ -3549,7 +3546,7 @@ const effectiveDateColor = isDragging
                           width: '100%',
                           overflow: 'hidden',
                           cursor: 'default',
-                          touchAction: 'none',
+                          touchAction: 'pan-y',
                         }}
                       >
                         {isCurrentEventImageLoading && (

@@ -53,6 +53,7 @@ export function GoodToKnowNotesPanel({
   username,
   canComment,
   isAdmin,
+  mutedAccentColor,
   targetLanguage = 'en',
 }) {
   const [notes, setNotes] = useState([])
@@ -70,6 +71,10 @@ export function GoodToKnowNotesPanel({
     note.user_id === userId && formatAmsterdamDay(note.created_at) === todayKey
   ))
   const canCreateNote = !!userId && canComment && !hasNoteToday
+  const mutedAccentStyle = mutedAccentColor ? { color: mutedAccentColor } : undefined
+  const disabledNoteButtonStyle = !canCreateNote && mutedAccentColor
+    ? { backgroundColor: mutedAccentColor, color: '#9ca3af' }
+    : undefined
 
   const loadNotes = useCallback(async () => {
     if (!restaurantId || !userId) {
@@ -291,7 +296,7 @@ export function GoodToKnowNotesPanel({
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-gray-500">가본 사람 한마디</p>
-          <p className="mt-0.5 text-[10px] text-gray-400">Newest 10 · one per day</p>
+          <p className="mt-0.5 text-[10px] text-gray-400">Newest 10</p>
         </div>
         <button
           type="button"
@@ -300,6 +305,7 @@ export function GoodToKnowNotesPanel({
           className="flex items-center gap-1 rounded-full bg-orange-500 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:bg-gray-200 disabled:text-gray-400 disabled:opacity-100"
           aria-disabled={!canCreateNote}
           title={hasNoteToday ? 'You already left a note here today.' : undefined}
+          style={disabledNoteButtonStyle}
         >
           <Plus size={13} weight="bold" /> 한마디
         </button>
@@ -319,7 +325,7 @@ export function GoodToKnowNotesPanel({
             Log in as a member to read and leave notes.
           </p>
         ) : notes.length === 0 ? (
-          <div className="flex h-full min-h-[120px] items-center justify-center text-gray-300">
+          <div className="flex h-full min-h-[120px] items-center justify-center text-gray-300" style={mutedAccentStyle}>
             <ChatDots size={34} weight="regular" />
           </div>
         ) : notes.map((note) => {
