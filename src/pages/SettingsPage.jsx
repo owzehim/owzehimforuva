@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { updatePassword } from '../api/authRepository'
-import { UserCircle, CaretLeft, Camera } from '@phosphor-icons/react'
+import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X } from '@phosphor-icons/react'
 import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
 
@@ -88,6 +88,10 @@ export default function SettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [usernameEditing, setUsernameEditing] = useState(false)
+  const [usernameDraft, setUsernameDraft] = useState('')
+  const [usernameSaving, setUsernameSaving] = useState(false)
+  const [usernameError, setUsernameError] = useState('')
   const fileInputRef = useRef(null)
 
   const [cropImageSrc, setCropImageSrc] = useState(null)
@@ -270,6 +274,54 @@ export default function SettingsPage() {
     }
   }
 
+  const handleUsernameEditStart = () => {
+    setUsernameDraft(member?.username || '')
+    setUsernameError('')
+    setUsernameEditing(true)
+  }
+
+  const handleUsernameEditCancel = () => {
+    setUsernameDraft('')
+    setUsernameError('')
+    setUsernameEditing(false)
+  }
+
+  const handleUsernameSave = async () => {
+    if (!member || usernameSaving) return
+
+    const trimmedUsername = usernameDraft.trim()
+    setUsernameError('')
+
+    if (!trimmedUsername) {
+      setUsernameError('사용자 이름을 입력해주세요.')
+      return
+    }
+
+    if (!/^[A-Za-z0-9_]{2,20}$/.test(trimmedUsername)) {
+      setUsernameError('2-20자의 영문, 숫자, 밑줄만 사용할 수 있습니다.')
+      return
+    }
+
+    setUsernameSaving(true)
+    try {
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({ username: trimmedUsername })
+        .eq('id', member.id)
+
+      if (updateError) throw updateError
+
+      setMember((prev) => prev ? { ...prev, username: trimmedUsername } : prev)
+      setUsernameEditing(false)
+      setUsernameDraft('')
+    } catch (err) {
+      console.error(err)
+      setUsernameError('사용자 이름 저장 중 오류가 발생했습니다.')
+    } finally {
+      setUsernameSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#121212]">
@@ -293,6 +345,7 @@ export default function SettingsPage() {
     .filter(Boolean)
     .join(' ')
   const displayName = koreanDisplayName || englishDisplayName
+  const username = member?.username?.trim()
 
   return (
     <div
@@ -398,6 +451,58 @@ export default function SettingsPage() {
               <p className="text-sm font-medium text-gray-900 dark:text-white">
                 {displayName}
               </p>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                {usernameEditing ? (
+                  <>
+                    <input
+                      type="text"
+                      value={usernameDraft}
+                      onChange={(event) => setUsernameDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') handleUsernameSave()
+                        if (event.key === 'Escape') handleUsernameEditCancel()
+                      }}
+                      disabled={usernameSaving}
+                      autoFocus
+                      className="h-8 w-36 rounded-none border-0 border-b border-dotted border-gray-400 bg-transparent px-1 text-center text-xs font-medium text-gray-700 outline-none focus:border-gray-800 dark:border-gray-500 dark:text-gray-200 dark:focus:border-white"
+                      placeholder="username"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleUsernameSave}
+                      disabled={usernameSaving}
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-gray-700 disabled:opacity-50 dark:text-gray-200"
+                      aria-label="사용자 이름 저장"
+                    >
+                      <Check size={17} weight="bold" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUsernameEditCancel}
+                      disabled={usernameSaving}
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 disabled:opacity-50 dark:text-gray-400"
+                      aria-label="사용자 이름 편집 취소"
+                    >
+                      <X size={16} weight="bold" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="border-b border-dotted border-gray-400 pb-0.5 text-xs font-medium text-gray-500 dark:border-gray-500 dark:text-gray-400">
+                      {username ? `@${username}` : '@username'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleUsernameEditStart}
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 dark:text-gray-400"
+                      aria-label="사용자 이름 편집"
+                    >
+                      <PencilSimpleLine size={16} weight="regular" />
+                    </button>
+                  </>
+                )}
+              </div>
+              {usernameError && <p className="mt-1 text-xs text-red-500">{usernameError}</p>}
               <p className="text-xs text-gray-400 mt-1 dark:text-gray-500">{member?.email}</p>
               {hasProfileImage && (
                 <button
