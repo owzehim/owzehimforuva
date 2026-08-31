@@ -1238,6 +1238,8 @@ function AccountStep({
 }) {
   const allLegalAccepted = Object.values(legalAgreements).every(Boolean);
   const isComplete =
+    formData.username.trim().length >= 2 &&
+    formData.username.trim().length <= 24 &&
     formData.email &&
     formData.password &&
     formData.confirmPassword &&
@@ -1264,6 +1266,21 @@ function AccountStep({
         </div>
 
         <div style={{ ...s.fieldStack, ...s.accountFieldStart }}>
+          <Field label={language === 'ko' ? '닉네임 *' : 'Username *'}>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              style={s.input}
+              placeholder={language === 'ko' ? '댓글에 표시될 닉네임 (2–24자)' : 'Shown on comments (2–24 characters)'}
+              minLength={2}
+              maxLength={24}
+              autoCapitalize="none"
+              required
+            />
+          </Field>
+
           <Field label={t.email}>
             <input
               type="email"
@@ -1716,7 +1733,7 @@ const s = {
   },
   accountFieldStart: {
     position: 'absolute',
-    top: '204px',
+    top: '220px',
     left: 0,
     right: 0,
   },

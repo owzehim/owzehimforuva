@@ -12,6 +12,7 @@ import { changeUnconfirmedRegistrationEmail, registerMember } from '../api/membe
 const INITIAL_FORM = {
   firstName: '',
   lastName: '',
+  username: '',
   firstNameKorean: '',
   lastNameKorean: '',
   email: '',
@@ -163,6 +164,7 @@ export function useRegisterMember() {
     const validationError = validateRegistrationForm({
       firstName: formData.firstName,
       lastName: formData.lastName,
+      username: formData.username,
       email: formData.email,
       studentNumber: formData.studentNumber,
       gender: genderForDb,
@@ -232,6 +234,7 @@ export function useRegisterMember() {
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
+        username: formData.username,
         firstNameKorean: formData.firstNameKorean,
         lastNameKorean: formData.lastNameKorean,
         studentNumber: formData.studentNumber,
