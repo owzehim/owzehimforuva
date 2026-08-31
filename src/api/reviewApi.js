@@ -54,6 +54,18 @@ export async function createReview({ redemptionId, storeId, rating, tags, commen
   syncReviewToSheets({ redemptionId, storeId, rating, tags, comment, userId: user.id })
     .catch((err) => console.warn('Sheet sync failed (non-critical):', err?.message))
 
+  if (comment?.trim()) {
+    syncReviewCommentToRestaurantNotes({
+      reviewId: data.id,
+      redemptionId,
+      storeId,
+      rating,
+      tags,
+      comment,
+      userId: user.id,
+    }).catch((err) => console.warn('Review note sync failed (non-critical):', err?.message))
+  }
+
   return { data, error: null }
 }
 
@@ -198,4 +210,56 @@ async function syncReviewToSheets({ redemptionId, storeId, rating, tags, comment
       Authorization: `Bearer ${session.access_token}`,
     },
   })
+}
+
+async function syncReviewCommentToRestaurantNotes({
+  reviewId,
+  redemptionId,
+  storeId,
+  rating,
+  tags,
+  comment,
+  userId,
+}) {
+  const trimmedComment = comment?.trim()
+  if (!trimmedComment) return
+
+  const { data: restaurant, error: restaurantError } = await supabase
+    .from('restaurants')
+    .select('id')
+    .eq('partnership_id', storeId)
+    .maybeSingle()
+
+  if (restaurantError || !restaurant?.id) {
+    throw restaurantError || new Error('Matching restaurant not found')
+  }
+
+  const { data: member } = await supabase
+    .from('members')
+    .select('username, first_name, last_name, first_name_korean, last_name_korean')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  const noteUsername = (
+    member?.username ||
+    [member?.last_name_korean, member?.first_name_korean].filter(Boolean).join('') ||
+    [member?.first_name, member?.last_name].filter(Boolean).join(' ')
+  ).trim()
+
+  const { error } = await supabase
+    .from('restaurant_notes')
+    .insert({
+      restaurant_id: restaurant.id,
+      user_id: userId,
+      username: noteUsername,
+      body: trimmedComment,
+      is_anonymous: false,
+      source_review_id: reviewId,
+      source_redemption_id: redemptionId,
+      source_store_id: storeId,
+      source_rating: rating,
+      source_tags: tags,
+    })
+
+  if (error) throw error
 }

@@ -194,10 +194,10 @@ export default function ReviewModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-2 pb-4">
           <div>
-            <p className="text-xs text-orange-500 font-medium mb-0.5">방문 후기</p>
+            <p className="text-xs text-orange-500 font-medium mb-0.5">가본 사람 한마디</p>
             <h2 className="text-base font-bold text-gray-900">{storeName}</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              방문 하신 장소의 후기를 남겨주세요!
+              추천 메뉴나 매장 분위기, 다음 사람을 위한 꿀팁을 남겨주세요!
             </p>
           </div>
           <button
@@ -261,7 +261,7 @@ export default function ReviewModal({
               disabled={submitting}
               className="w-full py-3.5 bg-orange-500 text-white font-semibold rounded-2xl text-sm hover:bg-orange-600 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {submitting ? '저장 중...' : '후기 남기기'}
+              {submitting ? '저장 중...' : '한마디 등록'}
             </button>
             <button
               onClick={handleClose}

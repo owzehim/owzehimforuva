@@ -694,7 +694,6 @@ function MembersTab() {
         user_id: userId,
         first_name: form.first_name,
         last_name: form.last_name,
-        username: form.username.trim() || null,
         student_number: form.student_number,
         major: form.major,
         is_member: form.is_member,
@@ -720,7 +719,6 @@ function MembersTab() {
         confirmPassword: '',
         first_name: '',
         last_name: '',
-        username: '',
         student_number: '',
         major: '',
         year_of_birth: '',
@@ -747,7 +745,6 @@ function MembersTab() {
       .update({
         first_name: form.first_name,
         last_name: form.last_name,
-        username: form.username.trim() || null,
         student_number: form.student_number,
         major: form.major,
         year_of_birth: form.year_of_birth || null,
@@ -814,7 +811,6 @@ function MembersTab() {
       confirmPassword: '',
       first_name: member.first_name || '',
       last_name: member.last_name || '',
-      username: member.username || '',
       student_number: member.student_number || '',
       major: member.major || '',
       year_of_birth: member.year_of_birth || '',
@@ -839,7 +835,6 @@ function MembersTab() {
       confirmPassword: '',
       first_name: '',
       last_name: '',
-      username: '',
       student_number: '',
       major: '',
       year_of_birth: '',
@@ -1073,17 +1068,6 @@ function MembersTab() {
               </div>
             </div>
 
-            <div>
-              <label className="text-sm text-gray-700 block mb-1">사용자 이름</label>
-              <input
-                placeholder="댓글에 표시될 이름"
-                value={form.username || ''}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                maxLength={24}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-sm text-gray-700 block mb-1">
@@ -1179,9 +1163,6 @@ function MembersTab() {
                     <p className="text-xs text-gray-500">
                       {member.student_number} · {member.major}
                     </p>
-                    {member.username && (
-                      <p className="text-xs text-gray-500">사용자 이름: {member.username}</p>
-                    )}
                     <p className="text-xs text-gray-400">
                       유효기간:{' '}
                       {member.membership_valid_until || '없음'}
@@ -1251,16 +1232,6 @@ function MembersTab() {
                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                       />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-gray-700 block mb-1">사용자 이름</label>
-                    <input
-                      value={form.username || ''}
-                      onChange={(e) => setForm({ ...form, username: e.target.value })}
-                      maxLength={24}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
