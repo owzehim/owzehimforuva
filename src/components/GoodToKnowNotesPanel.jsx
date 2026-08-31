@@ -33,8 +33,14 @@ function errorMessage(error) {
   if (message.includes('username is required')) {
     return 'Add a username in Settings before leaving a note.'
   }
+  if (message.includes('member name is required')) {
+    return 'Add your name in Settings before leaving a note.'
+  }
   if (message.includes('only active members')) {
     return 'Only active members can leave notes.'
+  }
+  if (message.includes('row-level security')) {
+    return 'You do not have permission to save this note.'
   }
   return 'Could not save your note. Please try again.'
 }
@@ -106,6 +112,29 @@ export function GoodToKnowNotesPanel({
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [restaurantId, loadNotes])
 
+  useEffect(() => {
+    if (!composerOpen) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    const previousPosition = document.body.style.position
+    const previousTop = document.body.style.top
+    const previousWidth = document.body.style.width
+    const scrollY = window.scrollY
+
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.body.style.position = previousPosition
+      document.body.style.top = previousTop
+      document.body.style.width = previousWidth
+      window.scrollTo(0, scrollY)
+    }
+  }, [composerOpen])
+
   const openNewNote = () => {
     if (!canCreateNote) return
     setError('')
@@ -143,6 +172,7 @@ export function GoodToKnowNotesPanel({
 
     setSaving(false)
     if (result.error) {
+      console.error('save restaurant note error:', result.error)
       setError(errorMessage(result.error))
       return
     }
@@ -160,8 +190,13 @@ export function GoodToKnowNotesPanel({
       .delete()
       .eq('id', noteId)
 
-    if (deleteError) setError('Could not delete the note.')
-    else loadNotes()
+    if (deleteError) {
+      console.error('delete restaurant note error:', deleteError)
+      setError('Could not delete the note.')
+    } else {
+      setNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId))
+      await loadNotes()
+    }
   }
 
   const translateNote = async (noteId) => {
@@ -267,7 +302,7 @@ export function GoodToKnowNotesPanel({
             Log in as a member to read and leave notes.
           </p>
         ) : notes.length === 0 ? (
-          <div className="flex min-h-[120px] items-center justify-center text-gray-300">
+          <div className="flex h-full min-h-[120px] items-center justify-center text-gray-300">
             <ChatDots size={34} weight="regular" />
           </div>
         ) : notes.map((note) => {
@@ -339,7 +374,6 @@ export function GoodToKnowNotesPanel({
               onChange={(event) => setBody(event.target.value)}
               maxLength={MAX_NOTE_LENGTH}
               rows={3}
-              autoFocus
               placeholder="추천 메뉴나 매장 분위기, 다음 사람을 위한 꿀팁을 남겨주세요!"
               className="good-to-know-note-textarea w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-orange-400"
             />
