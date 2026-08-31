@@ -117,25 +117,42 @@ export function GoodToKnowNotesPanel({
   useEffect(() => {
     if (!composerOpen) return undefined
 
+    const root = document.documentElement
     const previousOverflow = document.body.style.overflow
     const previousPosition = document.body.style.position
     const previousTop = document.body.style.top
     const previousWidth = document.body.style.width
+    const previousRootOverflow = root.style.overflow
+    const previousRootOverscroll = root.style.overscrollBehavior
+    const previousBodyOverscroll = document.body.style.overscrollBehavior
     const scrollY = window.scrollY
 
+    root.style.overflow = 'hidden'
+    root.style.overscrollBehavior = 'none'
     document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehavior = 'none'
     document.body.style.position = 'fixed'
     document.body.style.top = `-${scrollY}px`
     document.body.style.width = '100%'
 
     return () => {
+      root.style.overflow = previousRootOverflow
+      root.style.overscrollBehavior = previousRootOverscroll
       document.body.style.overflow = previousOverflow
+      document.body.style.overscrollBehavior = previousBodyOverscroll
       document.body.style.position = previousPosition
       document.body.style.top = previousTop
       document.body.style.width = previousWidth
       window.scrollTo(0, scrollY)
     }
   }, [composerOpen])
+
+  const closeComposer = () => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
+    setComposerOpen(false)
+  }
 
   const openNewNote = () => {
     if (!canCreateNote) return
@@ -179,7 +196,7 @@ export function GoodToKnowNotesPanel({
       return
     }
 
-    setComposerOpen(false)
+    closeComposer()
     setBody('')
     setEditingNote(null)
     loadNotes()
@@ -351,20 +368,22 @@ export function GoodToKnowNotesPanel({
 
       {composerOpen && createPortal(
         <div
-          className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/45 px-4"
-          onClick={() => setComposerOpen(false)}
+          className="fixed inset-0 z-[1400] flex h-[100dvh] items-center justify-center overflow-hidden bg-black/45 px-4"
+          onClick={closeComposer}
           onTouchStart={(event) => event.stopPropagation()}
+          onTouchMove={(event) => event.preventDefault()}
         >
           <form
             onSubmit={saveNote}
             onClick={(event) => event.stopPropagation()}
+            onTouchMove={(event) => event.stopPropagation()}
             className="w-full max-w-[320px] rounded-2xl bg-white p-4 shadow-xl"
           >
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-800">{editingNote ? 'Edit note' : '나의 한마디'}</p>
+              <p className="text-sm font-semibold text-gray-800">{editingNote ? '나의 한마디 수정' : '나의 한마디'}</p>
               <button
                 type="button"
-                onClick={() => setComposerOpen(false)}
+                onClick={closeComposer}
                 className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400"
                 aria-label="Close note composer"
               >
