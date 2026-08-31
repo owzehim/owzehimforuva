@@ -19,6 +19,8 @@ const TAG_ICON_COMPONENTS = {
   CoinVertical,
 }
 
+const DARK_MUTED_ACCENT = '#374151'
+
 function isDarkMode() {
   return (
     typeof document !== 'undefined' &&
@@ -44,7 +46,7 @@ function StarDisplay({
   const { filled, half, empty } = computeStarDisplay(averageRating)
 
   // Only change grey in dark mode; keep original grey in light mode
-  const emptyColor = darkMode ? '#4b5563' : '#d1d5db' // gray-600 vs gray-300
+  const emptyColor = darkMode ? DARK_MUTED_ACCENT : '#d1d5db'
 
   return (
     <div className="flex items-center gap-1">
@@ -798,7 +800,7 @@ export function SpotCard({
                 index < usullangStarCount
                   ? '#f97316'
                   : darkMode
-                    ? '#6b7280'
+                    ? DARK_MUTED_ACCENT
                     : '#d1d5db'
               }
             />
@@ -968,7 +970,7 @@ export function SpotCard({
 
           {/* Images */}
           {spotCardHeightMode === 'full' && (hasImages ? (
-            <div className="mb-2.5">
+            <div className="mb-2">
               <ImageThumbnails
                 imgs={imgs}
                 onTap={(i) => setLightboxIndex(i)}
@@ -1027,6 +1029,7 @@ export function SpotCard({
                     username={currentUsername}
                     canComment={canComment}
                     isAdmin={isAdmin}
+                    mutedAccentColor={darkMode ? DARK_MUTED_ACCENT : undefined}
                   />
                 </div>
               </div>
@@ -1059,7 +1062,7 @@ export function SpotCard({
                       key={index}
                       size={44}
                       weight={index < usullangStarCount ? 'fill' : 'regular'}
-                      className={index < usullangStarCount ? 'text-orange-500' : 'text-gray-300'}
+                      color={index < usullangStarCount ? '#f97316' : darkMode ? DARK_MUTED_ACCENT : '#d1d5db'}
                     />
                   ))}
                 </div>
