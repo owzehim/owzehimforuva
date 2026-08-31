@@ -261,7 +261,7 @@ export default function ReviewModal({
               disabled={submitting}
               className="w-full py-3.5 bg-orange-500 text-white font-semibold rounded-2xl text-sm hover:bg-orange-600 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {submitting ? '저장 중...' : '한마디 등록'}
+              {submitting ? '저장 중...' : '추가'}
             </button>
             <button
               onClick={handleClose}
