@@ -351,9 +351,14 @@ export default function MapView({ restaurants, selected, onSelect }) {
 
   useEffect(() => {
     if (!map.current || !selected) return
+    const shouldLiftMarker =
+      selected.spot_card_height === 'full' ||
+      selected.spot_card_height === 'tall'
+
     map.current.flyTo({
       center: [selected.longitude, selected.latitude],
       zoom: 16,
+      offset: shouldLiftMarker ? [0, -90] : [0, 0],
       duration: 1000,
     })
   }, [selected])
