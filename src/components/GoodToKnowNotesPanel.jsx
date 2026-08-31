@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Flag, PencilSimple, Plus, Trash, Translate } from '@phosphor-icons/react'
+import { Flag, PencilSimple, Plus, Trash, Translate, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 
 const MAX_NOTE_LENGTH = 200
@@ -9,6 +9,15 @@ function formatNoteDate(value) {
     timeZone: 'Europe/Amsterdam',
     day: 'numeric',
     month: 'short',
+  }).format(new Date(value))
+}
+
+function formatAmsterdamDay(value) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Amsterdam',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(new Date(value))
 }
 
@@ -47,6 +56,11 @@ export function GoodToKnowNotesPanel({
   const [error, setError] = useState('')
   const [translations, setTranslations] = useState({})
   const touchStartRef = useRef(null)
+  const todayKey = formatAmsterdamDay(Date.now())
+  const hasNoteToday = notes.some((note) => (
+    note.user_id === userId && formatAmsterdamDay(note.created_at) === todayKey
+  ))
+  const canCreateNote = !!userId && canComment && !hasNoteToday
 
   const loadNotes = useCallback(async () => {
     if (!restaurantId || !userId) {
@@ -92,6 +106,7 @@ export function GoodToKnowNotesPanel({
   }, [restaurantId, loadNotes])
 
   const openNewNote = () => {
+    if (!canCreateNote) return
     setError('')
     setEditingNote(null)
     setBody('')
@@ -217,16 +232,18 @@ export function GoodToKnowNotesPanel({
     <div className="relative flex h-full min-h-0 flex-col py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-gray-500">Good to Know Notes</p>
+          <p className="text-xs font-semibold text-gray-500">가본 사람 한마디</p>
           <p className="mt-0.5 text-[10px] text-gray-400">Newest 10 · one per day</p>
         </div>
         <button
           type="button"
           onClick={openNewNote}
-          disabled={!userId || !canComment}
-          className="flex items-center gap-1 rounded-full bg-orange-500 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
+          disabled={!canCreateNote}
+          className="flex items-center gap-1 rounded-full bg-orange-500 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:bg-gray-200 disabled:text-gray-400 disabled:opacity-100"
+          aria-disabled={!canCreateNote}
+          title={hasNoteToday ? 'You already left a note here today.' : undefined}
         >
-          <Plus size={13} weight="bold" /> Note
+          <Plus size={13} weight="bold" /> 한마디
         </button>
       </div>
 
@@ -253,7 +270,7 @@ export function GoodToKnowNotesPanel({
             <article key={note.id} className="rounded-xl bg-white px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="truncate text-[11px] font-semibold text-gray-700">
-                  {note.is_anonymous ? 'Anonymous' : note.username}
+                  {note.is_anonymous ? '익명' : note.username}
                 </p>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] text-gray-400">{formatNoteDate(note.created_at)}</span>
@@ -290,11 +307,18 @@ export function GoodToKnowNotesPanel({
       )}
 
       {composerOpen && (
-        <div className="absolute inset-0 z-20 flex items-end bg-black/20" onTouchStart={(event) => event.stopPropagation()}>
-          <form onSubmit={saveNote} className="w-full rounded-t-2xl bg-white p-4 shadow-xl">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/25 px-4" onTouchStart={(event) => event.stopPropagation()}>
+          <form onSubmit={saveNote} className="w-full max-w-[320px] rounded-2xl bg-white p-4 shadow-xl">
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-800">{editingNote ? 'Edit note' : 'New note'}</p>
-              <button type="button" onClick={() => setComposerOpen(false)} className="text-xs text-gray-400">Close</button>
+              <p className="text-sm font-semibold text-gray-800">{editingNote ? 'Edit note' : '나의 한마디'}</p>
+              <button
+                type="button"
+                onClick={() => setComposerOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400"
+                aria-label="Close note composer"
+              >
+                <X size={17} weight="bold" />
+              </button>
             </div>
             <textarea
               value={body}
@@ -302,17 +326,17 @@ export function GoodToKnowNotesPanel({
               maxLength={MAX_NOTE_LENGTH}
               rows={3}
               autoFocus
-              placeholder="Menu pick, seating, waiting time, payment, or anything good to know"
+              placeholder="추천 메뉴나 매장 분위기, 다음 사람을 위한 꿀팁을 남겨주세요!"
               className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-orange-400"
             />
             <div className="mt-2 flex items-center justify-between">
               <label className="flex items-center gap-1.5 text-xs text-gray-600">
-                <input type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} /> Anonymous
+                <input type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} /> 익명
               </label>
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-gray-400">{body.length}/{MAX_NOTE_LENGTH}</span>
                 <button type="submit" disabled={saving || !body.trim()} className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
-                  {saving ? 'Saving' : 'Post'}
+                  {saving ? 'Saving' : '추가'}
                 </button>
               </div>
             </div>

@@ -292,12 +292,7 @@ export default function SettingsPage() {
     const trimmedUsername = usernameDraft.trim()
     setUsernameError('')
 
-    if (!trimmedUsername) {
-      setUsernameError('사용자 이름을 입력해주세요.')
-      return
-    }
-
-    if (!/^[A-Za-z0-9_]{2,20}$/.test(trimmedUsername)) {
+    if (trimmedUsername && !/^[A-Za-z0-9_]{2,20}$/.test(trimmedUsername)) {
       setUsernameError('2-20자의 영문, 숫자, 밑줄만 사용할 수 있습니다.')
       return
     }
@@ -306,12 +301,12 @@ export default function SettingsPage() {
     try {
       const { error: updateError } = await supabase
         .from('members')
-        .update({ username: trimmedUsername })
+        .update({ username: trimmedUsername || null })
         .eq('id', member.id)
 
       if (updateError) throw updateError
 
-      setMember((prev) => prev ? { ...prev, username: trimmedUsername } : prev)
+      setMember((prev) => prev ? { ...prev, username: trimmedUsername || null } : prev)
       setUsernameEditing(false)
       setUsernameDraft('')
     } catch (err) {
@@ -346,6 +341,7 @@ export default function SettingsPage() {
     .join(' ')
   const displayName = koreanDisplayName || englishDisplayName
   const username = member?.username?.trim()
+  const usernameDisplay = username || displayName
 
   return (
     <div
@@ -488,8 +484,8 @@ export default function SettingsPage() {
                   </>
                 ) : (
                   <div className="relative inline-flex min-w-0 justify-center">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                      {username ? `@${username}` : '@username'}
+                    <span className={`text-xs font-medium text-gray-500 dark:text-gray-400 ${username ? '' : 'italic'}`}>
+                      {usernameDisplay}
                     </span>
                     <button
                       type="button"
