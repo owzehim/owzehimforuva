@@ -968,7 +968,7 @@ export function SpotCard({
 
           {/* Images */}
           {spotCardHeightMode === 'full' && (hasImages ? (
-            <div className="mb-3">
+            <div className="mb-2.5">
               <ImageThumbnails
                 imgs={imgs}
                 onTap={(i) => setLightboxIndex(i)}
@@ -987,13 +987,21 @@ export function SpotCard({
           ))}
 
           {/* Review box: swipe left for member notes. */}
-          {spotCardHeightMode === 'full' && !isCollapsed && !isTallCollapsed && (
+          {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
-              className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
+              className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out"
               aria-label="리뷰 박스"
               onTouchStart={handleReviewBoxTouchStart}
               onTouchMove={handleReviewBoxTouchMove}
               onTouchEnd={handleReviewBoxTouchEnd}
+              style={{
+                opacity: isCollapsed ? 0 : 1,
+                transform: isCollapsed ? 'translateY(8px)' : 'translateY(0)',
+                visibility: isCollapsed ? 'hidden' : 'visible',
+                pointerEvents: isCollapsed ? 'none' : 'auto',
+                transitionProperty: 'opacity, transform, visibility',
+                transitionDelay: isCollapsed ? '0s, 0s, 0.3s' : '0s',
+              }}
             >
               <div
                 className="flex min-h-0 w-[200%] flex-1 transition-transform duration-300 ease-out"
