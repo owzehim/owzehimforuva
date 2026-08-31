@@ -3929,6 +3929,14 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
   }, [selected])
 
   const stampCardUserId = member?.user_id || authUserId
+  const noteDisplayName = (
+    member?.username ||
+    [
+      member?.last_name_korean || member?.last_name_ko,
+      member?.first_name_korean || member?.first_name_ko,
+    ].filter(Boolean).join('') ||
+    [member?.first_name, member?.last_name].filter(Boolean).join(' ')
+  ).trim()
   const canSeeStampCard = isValid || isAdmin
   const stampCardEligible = !!(
     selected?.stamp_card_enabled &&
@@ -4061,7 +4069,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
             onClosingStart={() => setSpotCardClosing(true)}
             onClose={() => setSelected(null)}
             currentUserId={stampCardUserId}
-            currentUsername={member?.username}
+            currentUsername={noteDisplayName}
             canComment={isValid || isAdmin}
             isAdmin={isAdmin}
           />
