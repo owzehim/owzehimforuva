@@ -119,31 +119,29 @@ export function GoodToKnowNotesPanel({
 
     const root = document.documentElement
     const previousOverflow = document.body.style.overflow
-    const previousPosition = document.body.style.position
-    const previousTop = document.body.style.top
     const previousWidth = document.body.style.width
     const previousRootOverflow = root.style.overflow
     const previousRootOverscroll = root.style.overscrollBehavior
     const previousBodyOverscroll = document.body.style.overscrollBehavior
-    const scrollY = window.scrollY
+    const preventBackgroundScroll = (event) => {
+      if (event.target?.closest?.('.good-to-know-note-modal')) return
+      event.preventDefault()
+    }
 
     root.style.overflow = 'hidden'
     root.style.overscrollBehavior = 'none'
     document.body.style.overflow = 'hidden'
     document.body.style.overscrollBehavior = 'none'
-    document.body.style.position = 'fixed'
-    document.body.style.top = `-${scrollY}px`
     document.body.style.width = '100%'
+    document.addEventListener('touchmove', preventBackgroundScroll, { passive: false })
 
     return () => {
       root.style.overflow = previousRootOverflow
       root.style.overscrollBehavior = previousRootOverscroll
       document.body.style.overflow = previousOverflow
       document.body.style.overscrollBehavior = previousBodyOverscroll
-      document.body.style.position = previousPosition
-      document.body.style.top = previousTop
       document.body.style.width = previousWidth
-      window.scrollTo(0, scrollY)
+      document.removeEventListener('touchmove', preventBackgroundScroll)
     }
   }, [composerOpen])
 
@@ -368,7 +366,13 @@ export function GoodToKnowNotesPanel({
 
       {composerOpen && createPortal(
         <div
-          className="fixed inset-0 z-[1400] flex h-[100dvh] items-center justify-center overflow-hidden bg-black/45 px-4"
+          className="fixed inset-x-0 z-[1400] flex items-center justify-center overflow-hidden bg-black/45 px-4"
+          style={{
+            top: 'calc(-1 * env(safe-area-inset-top, 0px))',
+            bottom: 'calc(-1 * env(safe-area-inset-bottom, 0px))',
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
           onClick={closeComposer}
           onTouchStart={(event) => event.stopPropagation()}
           onTouchMove={(event) => event.preventDefault()}
@@ -377,7 +381,7 @@ export function GoodToKnowNotesPanel({
             onSubmit={saveNote}
             onClick={(event) => event.stopPropagation()}
             onTouchMove={(event) => event.stopPropagation()}
-            className="w-full max-w-[320px] rounded-2xl bg-white p-4 shadow-xl"
+            className="good-to-know-note-modal w-full max-w-[320px] rounded-2xl bg-white p-4 shadow-xl"
           >
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-800">{editingNote ? '나의 한마디 수정' : '나의 한마디'}</p>
