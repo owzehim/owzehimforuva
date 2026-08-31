@@ -507,7 +507,7 @@ export function SpotCard({
       ? 'full'
       : 'compact'
   const COMPACT_HEIGHT = Math.min(WIN_H * 0.22, 150)
-  const FULL_HEIGHT = Math.min(WIN_H * 0.48, 340)
+  const FULL_HEIGHT = Math.min(WIN_H * 0.44, 315)
   const MIN_HEIGHT = spotCardHeightMode === 'full' ? FULL_HEIGHT : COMPACT_HEIGHT
   const MAX_HEIGHT = isDesktop ? 460 : Math.max(320, sheetMaxHeight || WIN_H)
   const SHEET_RADIUS = 20
@@ -681,7 +681,7 @@ export function SpotCard({
   const isTallCollapsed = isTallSpotCard && isCollapsed
   const googleMapsReservedSpace = spotCardHeightMode === 'full'
     ? isCollapsed
-      ? 104
+      ? 86
       : 56
     : 64
   const speechBubbleGapPx = isTallSpotCard && !hasImages
@@ -987,7 +987,7 @@ export function SpotCard({
           ))}
 
           {/* Review box: swipe left for member notes. */}
-          {spotCardHeightMode === 'full' && !isTallCollapsed && (
+          {spotCardHeightMode === 'full' && !isCollapsed && !isTallCollapsed && (
             <section
               className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
               aria-label="리뷰 박스"
