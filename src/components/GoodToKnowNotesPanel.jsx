@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Flag, PencilSimple, Plus, Trash, Translate, X } from '@phosphor-icons/react'
+import { createPortal } from 'react-dom'
+import { ChatDots, Flag, PencilSimple, Plus, Trash, Translate, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 
 const MAX_NOTE_LENGTH = 200
@@ -230,6 +231,11 @@ export function GoodToKnowNotesPanel({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col py-3">
+      <style>{`
+        .good-to-know-note-textarea::placeholder {
+          font-size: 12px;
+        }
+      `}</style>
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-gray-500">가본 사람 한마디</p>
@@ -261,9 +267,9 @@ export function GoodToKnowNotesPanel({
             Log in as a member to read and leave notes.
           </p>
         ) : notes.length === 0 ? (
-          <p className="py-8 text-center text-xs leading-relaxed text-gray-400">
-            Share a menu pick, seat note, waiting-time note, or anything useful to know.
-          </p>
+          <div className="flex min-h-[120px] items-center justify-center text-gray-300">
+            <ChatDots size={34} weight="regular" />
+          </div>
         ) : notes.map((note) => {
           const isMine = note.user_id === userId
           return (
@@ -306,9 +312,17 @@ export function GoodToKnowNotesPanel({
         <p className="mt-2 text-center text-[11px] text-gray-400">Only active members can leave notes.</p>
       )}
 
-      {composerOpen && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/25 px-4" onTouchStart={(event) => event.stopPropagation()}>
-          <form onSubmit={saveNote} className="w-full max-w-[320px] rounded-2xl bg-white p-4 shadow-xl">
+      {composerOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/45 px-4"
+          onClick={() => setComposerOpen(false)}
+          onTouchStart={(event) => event.stopPropagation()}
+        >
+          <form
+            onSubmit={saveNote}
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-[320px] rounded-2xl bg-white p-4 shadow-xl"
+          >
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-800">{editingNote ? 'Edit note' : '나의 한마디'}</p>
               <button
@@ -327,7 +341,7 @@ export function GoodToKnowNotesPanel({
               rows={3}
               autoFocus
               placeholder="추천 메뉴나 매장 분위기, 다음 사람을 위한 꿀팁을 남겨주세요!"
-              className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-orange-400"
+              className="good-to-know-note-textarea w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-orange-400"
             />
             <div className="mt-2 flex items-center justify-between">
               <label className="flex items-center gap-1.5 text-xs text-gray-600">
@@ -341,7 +355,8 @@ export function GoodToKnowNotesPanel({
               </div>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
