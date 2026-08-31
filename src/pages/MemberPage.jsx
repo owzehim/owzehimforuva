@@ -2830,8 +2830,6 @@ function EventsTab({ events }) {
 
     if (dy > 42 && scrollTop <= 0) {
       if (eventCardScrollRef.current) eventCardScrollRef.current.scrollTop = 0
-      eventCardStartY.current = null
-      closeEventCard()
     }
   }
 
@@ -3258,7 +3256,7 @@ const effectiveDateColor = isDragging
           <>
             <div className="absolute inset-0 bg-white dark:bg-[#121212]" />
 
-            {eventIndicatorRows.length > 0 && (
+            {false && eventIndicatorRows.length > 0 && (
               <div
                 aria-label="Event position indicator"
                 style={{
@@ -4059,10 +4057,6 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
         {selected && (
           <SpotCard
             selected={selected}
-            currentUserId={authUserId}
-            currentUsername={member?.username}
-            canComment={isValid}
-            isAdmin={isAdmin}
             onClosingStart={() => setSpotCardClosing(true)}
             onClose={() => setSelected(null)}
             currentUserId={stampCardUserId}
