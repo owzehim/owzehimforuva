@@ -5,6 +5,7 @@ import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, getSortedTagsForDisplay, formatAverageRating } from '../domain/reviewDomain'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
+import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -463,6 +464,10 @@ export function SpotCard({
   selected,
   onClose,
   onClosingStart,
+  currentUserId,
+  currentUsername,
+  canComment,
+  isAdmin,
 }) {
   const [cardHeight, setCardHeight] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -758,10 +763,9 @@ export function SpotCard({
     if (reviewBoxTouchStartRef.current == null) return
 
     const distanceX = event.changedTouches[0].clientX - reviewBoxTouchStartRef.current.x
-    const distanceY = event.changedTouches[0].clientY - reviewBoxTouchStartRef.current.y
     if (reviewBoxTouchStartRef.current.axis === 'x') {
       event.stopPropagation()
-      if (distanceX < -40) setReviewBoxPanel('executive')
+      if (distanceX < -40) setReviewBoxPanel('notes')
       if (distanceX > 40) setReviewBoxPanel('guide')
     }
     reviewBoxTouchStartRef.current = null
@@ -824,27 +828,6 @@ export function SpotCard({
           />
         </div>
       </div>
-    </div>
-  )
-
-  const executiveContent = (
-    <div className="pb-4 pt-3">
-      <p className="mb-1.5 text-xs font-semibold text-gray-500">
-        임원 추천 메뉴
-      </p>
-      {selected.review ? (
-        <RichText
-          text={selected.review}
-          className="block pl-4 text-xs text-gray-600"
-        />
-      ) : (
-        <p className="pl-4 text-xs text-gray-400">추천 메뉴를 준비 중이에요.</p>
-      )}
-      {selected.reviewer_name && (
-        <p className="mt-0.5 pl-4 text-xs text-gray-400">
-          {'— ' + selected.reviewer_name}
-        </p>
-      )}
     </div>
   )
 
@@ -998,7 +981,7 @@ export function SpotCard({
             </div>
           ))}
 
-          {/* Review box: swipe left for the executive recommendation. */}
+          {/* Review box: swipe left for member notes. */}
           {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
               className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50"
@@ -1010,7 +993,7 @@ export function SpotCard({
               <div
                 className="flex min-h-0 w-[200%] flex-1 transition-transform duration-300 ease-out"
                 style={{
-                  transform: reviewBoxPanel === 'executive'
+                  transform: reviewBoxPanel === 'notes'
                     ? 'translateX(-50%)'
                     : 'translateX(0)',
                 }}
@@ -1025,7 +1008,13 @@ export function SpotCard({
                   </div>
                 </div>
                 <div className="w-1/2 flex-shrink-0 px-4">
-                  {executiveContent}
+                  <GoodToKnowNotesPanel
+                    restaurantId={selected.id}
+                    userId={currentUserId}
+                    username={currentUsername}
+                    canComment={canComment}
+                    isAdmin={isAdmin}
+                  />
                 </div>
               </div>
               <div className="relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4" aria-hidden="true">
@@ -1035,7 +1024,7 @@ export function SpotCard({
                 } />
                 <span className={
                   'h-1.5 rounded-full transition-all ' +
-                  (reviewBoxPanel === 'executive' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
+                  (reviewBoxPanel === 'notes' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
                 } />
               </div>
             </section>
