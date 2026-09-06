@@ -36,7 +36,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-start justify-center overflow-hidden bg-white px-4 pt-[16vh]">
+    <div className="phone-app-shell flex min-h-[100dvh] items-start justify-center overflow-hidden bg-white px-4 pt-[16vh]">
       <div className="w-full max-w-sm px-2">
         <div className="mb-8 min-h-[176px] pt-[54px] text-left">
           <h1 className="text-2xl font-semibold text-gray-900">새 비밀번호 설정</h1>

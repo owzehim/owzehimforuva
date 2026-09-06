@@ -18,7 +18,7 @@ import LoadingIndicator from '../components/LoadingIndicator'
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
 const MEMBER_TABS = ['qr', 'events', 'map']
 const MEMBER_EVENT_LIST_OPEN_KEY = 'uvain_member_event_list_open'
-const MEMBER_BOTTOM_TAB_PADDING = 42
+const MEMBER_BOTTOM_TAB_PADDING = 'clamp(28px, 9.8vw, 42px)'
 const REOPEN_WELCOME_SLIDES_KEY = 'uvain_reopen_welcome_slides'
 
 function getStoredMemberTab() {
@@ -1160,7 +1160,7 @@ function MembershipCard({
 }) {
   const [flipped, setFlipped] = useState(false)
 
-  const W = 'min(calc(100vw - 32px), 398px)'
+  const W = 'var(--member-screen-width, min(calc(100vw - 32px), 398px))'
   const cardW = W
   const cardH = `calc(${W} * 1.586)`
   const fs = {
@@ -1187,10 +1187,10 @@ function MembershipCard({
     .join(' ')
   const avatarSize = `calc(${W} * 0.21)`
   const hasProfileImage = !!member?.profile_image_url
-  // Keep the membership-card guide identical to QRScanner's real 220px scan box.
-  const qrOutlineSize = '220px'
-  const BRACKET = 28
-  const BRACKET_STROKE = 3
+  // Keep the membership-card guide proportional to QRScanner's real scan box.
+  const qrOutlineSize = `min(220px, calc(${W} * 0.55))`
+  const BRACKET = `calc(${qrOutlineSize} * 0.127)`
+  const BRACKET_STROKE = `max(2px, calc(${W} * 0.0075))`
   const cardBg = darkMode ? '#1C1C1E' : '#F6F4F1'
   const cardBorder = darkMode ? '#2C2C2E' : '#d6d3c0'
   const cardShadow = darkMode
@@ -1360,8 +1360,8 @@ function MembershipCard({
               left: 0,
               width: BRACKET,
               height: BRACKET,
-              borderTop: `${BRACKET_STROKE}px solid ${scannerLine}`,
-              borderLeft: `${BRACKET_STROKE}px solid ${scannerLine}`,
+              borderTop: `${BRACKET_STROKE} solid ${scannerLine}`,
+              borderLeft: `${BRACKET_STROKE} solid ${scannerLine}`,
               borderRadius: '4px 0 0 0',
             }}
           />
@@ -1372,8 +1372,8 @@ function MembershipCard({
               right: 0,
               width: BRACKET,
               height: BRACKET,
-              borderTop: `${BRACKET_STROKE}px solid ${scannerLine}`,
-              borderRight: `${BRACKET_STROKE}px solid ${scannerLine}`,
+              borderTop: `${BRACKET_STROKE} solid ${scannerLine}`,
+              borderRight: `${BRACKET_STROKE} solid ${scannerLine}`,
               borderRadius: '0 4px 0 0',
             }}
           />
@@ -1384,8 +1384,8 @@ function MembershipCard({
               left: 0,
               width: BRACKET,
               height: BRACKET,
-              borderBottom: `${BRACKET_STROKE}px solid ${scannerLine}`,
-              borderLeft: `${BRACKET_STROKE}px solid ${scannerLine}`,
+              borderBottom: `${BRACKET_STROKE} solid ${scannerLine}`,
+              borderLeft: `${BRACKET_STROKE} solid ${scannerLine}`,
               borderRadius: '0 0 0 4px',
             }}
           />
@@ -1396,8 +1396,8 @@ function MembershipCard({
               right: 0,
               width: BRACKET,
               height: BRACKET,
-              borderBottom: `${BRACKET_STROKE}px solid ${scannerLine}`,
-              borderRight: `${BRACKET_STROKE}px solid ${scannerLine}`,
+              borderBottom: `${BRACKET_STROKE} solid ${scannerLine}`,
+              borderRight: `${BRACKET_STROKE} solid ${scannerLine}`,
               borderRadius: '0 0 4px 0',
             }}
           />
@@ -1596,7 +1596,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const activityRef = useRef(null)
   const touchStartY = useRef(null)
   const liftedRef = useRef(false)
-  const W = 'min(calc(100vw - 32px), 398px)'
+  const W = 'var(--member-screen-width, min(calc(100vw - 32px), 398px))'
   const cardRestingOffsetPx = 0
   const liftedActivityGapPx = 0
   const cardRestingOffsetY = `${cardRestingOffsetPx}px`
@@ -2689,7 +2689,7 @@ function EventsTab({ events }) {
     window.open(ev.participation_url, '_blank', 'noopener,noreferrer')
   }
 
-  const W = 'min(calc(100vw - 32px), 398px)'
+  const W = 'var(--member-screen-width, min(calc(100vw - 32px), 398px))'
   const fs = {
     day: `calc(${W} * 0.06)`,
     date: `calc(${W} * 0.24)`,
@@ -2705,8 +2705,8 @@ function EventsTab({ events }) {
   const eventDateBottomNudge = '6px'
   const eventDateNumberStretch = 1.35
   const eventDateTop = '1px'
-  const eventDetailsTop = '186px'
-  const eventCollapsedCardHeight = '260px'
+  const eventDetailsTop = `calc(${W} * 0.467)`
+  const eventCollapsedCardHeight = `calc(${W} * 0.653)`
   const eventCardTranslateY = eventCardOpen
     ? '0'
     : `calc(100% - ${eventCollapsedCardHeight})`

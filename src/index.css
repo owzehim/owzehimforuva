@@ -65,6 +65,8 @@
   --font-korean: "Pretendard";
   --font-app: var(--font-english), var(--font-korean), -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --member-screen-width: min(calc(100vw - 32px), 398px);
+  --app-screen-width: min(calc(100vw - 32px), 398px);
 }
 
 html,
@@ -243,7 +245,10 @@ select {
 }
 
 @media (min-width: 768px) {
+  .phone-app-shell,
   .member-app-shell {
+    --member-screen-width: min(calc(100% - 32px), 398px);
+    --app-screen-width: min(calc(100% - 32px), 398px);
     width: min(100vw, 430px);
     margin: 0 auto;
     box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08);

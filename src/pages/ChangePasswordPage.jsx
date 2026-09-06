@@ -53,7 +53,7 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <main className="scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]">
+    <main className="phone-app-shell scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]">
       <button
         type="button"
         onClick={() => navigate('/settings')}

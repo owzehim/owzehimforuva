@@ -3,16 +3,35 @@ import { Html5Qrcode } from 'html5-qrcode'
 import { VideoCameraSlash } from '@phosphor-icons/react'
 
 const QR_BOX_SIZE = 220
+const QR_BOX_FRAME_RATIO = 0.804
+const QR_BOX_SCAN_RATIO = 0.6875
 
 export default function QRScanner({ onScan, darkMode = false }) {
   const scannerRef = useRef(null)
+  const frameRef = useRef(null)
   const scannedRef = useRef(false)
   const onScanRef = useRef(onScan)
   const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false)
+  const [qrBoxSize, setQrBoxSize] = useState(QR_BOX_SIZE)
 
   useEffect(() => {
     onScanRef.current = onScan
   }, [onScan])
+
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame || typeof ResizeObserver === 'undefined') return undefined
+
+    const observer = new ResizeObserver(([entry]) => {
+      const nextSize = Math.round(
+        Math.min(entry.contentRect.width * QR_BOX_SCAN_RATIO, QR_BOX_SIZE),
+      )
+      setQrBoxSize((current) => (current === nextSize ? current : nextSize))
+    })
+
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const scannerId = 'qr-scanner-container'
@@ -29,7 +48,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
           { facingMode: 'environment' },
           {
             fps: 10,
-            qrbox: { width: QR_BOX_SIZE, height: QR_BOX_SIZE },
+            qrbox: { width: qrBoxSize, height: qrBoxSize },
             aspectRatio: 1.0,
           },
           (decodedText) => {
@@ -78,7 +97,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
         scannerRef.current = null
       }
     }
-  }, [])
+  }, [qrBoxSize])
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
@@ -99,7 +118,14 @@ export default function QRScanner({ onScan, darkMode = false }) {
         }
       `}</style>
 
-      <div className="relative w-full max-w-xs" style={{ aspectRatio: '1' }}>
+      <div
+        ref={frameRef}
+        className="relative w-full"
+        style={{
+          aspectRatio: '1',
+          maxWidth: `calc(var(--member-screen-width, min(calc(100vw - 32px), 398px)) * ${QR_BOX_FRAME_RATIO})`,
+        }}
+      >
         <div
           id="qr-scanner-container"
           className="h-full w-full overflow-hidden rounded-2xl"
@@ -110,8 +136,8 @@ export default function QRScanner({ onScan, darkMode = false }) {
           style={{
             top: '50%',
             left: '50%',
-            width: QR_BOX_SIZE,
-            height: QR_BOX_SIZE,
+            width: qrBoxSize,
+            height: qrBoxSize,
             transform: 'translate(-50%, -50%)',
           }}
         >

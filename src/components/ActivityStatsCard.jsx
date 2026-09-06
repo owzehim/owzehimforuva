@@ -4,7 +4,7 @@ import { ChartLine, Money, Star, FireSimple, MapPin } from '@phosphor-icons/reac
 import { useActivityStats } from '../hooks/useActivityStats'
 import { useRecentVisits } from '../hooks/useRecentVisits'
 
-const W = 'calc(100vw - 56px)'
+const W = 'calc(var(--member-screen-width, min(calc(100vw - 32px), 398px)) - 24px)'
 // This card sits below a draggable membership card.  Its height is used to
 // calculate that card's lift distance, so it must not change when the async
 // stats replace the loading skeleton.
