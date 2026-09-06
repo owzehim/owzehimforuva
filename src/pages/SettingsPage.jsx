@@ -7,27 +7,7 @@ import { updatePassword } from '../api/authRepository'
 import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X } from '@phosphor-icons/react'
 import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
-
-// ─── Pastel avatar (must match MemberPage) ───────────────────────────────────
-const PASTEL_COLORS = [
-  '#FFB3B3',
-  '#FFD9A0',
-  '#FFF3A0',
-  '#B3F0C2',
-  '#A8D8FF',
-  '#C5B3FF',
-  '#FFB3E6',
-  '#B3F0EE',
-]
-
-function getPastelColor(seed) {
-  const str = seed || 'default'
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0
-  }
-  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length]
-}
+import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 
 // ─── Image helpers ────────────────────────────────────────────────────────────
 
@@ -312,6 +292,7 @@ export default function SettingsPage() {
           .update({
             username: trimmedUsername,
             profile_image_url: member.profile_image_url || null,
+            avatar_color_seed: getMemberAvatarSeed(member),
           })
           .eq('user_id', member.user_id)
 
@@ -338,7 +319,7 @@ export default function SettingsPage() {
   }
 
   const hasProfileImage = !!member?.profile_image_url
-  const avatarSeed = `${member?.first_name || ''}${member?.last_name || ''}`
+  const avatarSeed = getMemberAvatarSeed(member)
   const pastelBg = getPastelColor(avatarSeed)
   const koreanDisplayName = [
     member?.last_name_korean || member?.last_name_ko,
