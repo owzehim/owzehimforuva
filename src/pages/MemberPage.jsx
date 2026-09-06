@@ -14,6 +14,7 @@ import StampCardMini from '../features/stampCard/components/StampCardMini'
 import StampCardModal from '../features/stampCard/components/StampCardModal'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 import LoadingIndicator from '../components/LoadingIndicator'
+import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
 const MEMBER_TABS = ['qr', 'events', 'map']
@@ -1129,25 +1130,6 @@ function TourBottomTab({ activeIndex, style, lift = 5 }) {
     </div>
   )
 }
-// Pastel avatar colors
-const PASTEL_COLORS = [
-  '#FFB3B3',
-  '#FFD9A0',
-  '#FFF3A0',
-  '#B3F0C2',
-  '#A8D8FF',
-  '#C5B3FF',
-  '#FFB3E6',
-  '#B3F0EE',
-]
-
-function getPastelColor(seed) {
-  const str = seed || 'default'
-  let hash = 0
-  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) | 0
-  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length]
-}
-
 // Membership Card
 function MembershipCard({
   member,
@@ -1179,7 +1161,7 @@ function MembershipCard({
     name: `calc(${W} * 0.084 + ${cardLayout.membershipToValidGap} + ${cardLayout.validToNameGap})`,
   }
 
-  const avatarSeed = `${member?.first_name || ''}${member?.last_name || ''}`
+  const avatarSeed = getMemberAvatarSeed(member)
   const pastelBg = getPastelColor(avatarSeed)
   const englishDisplayName = [member?.first_name, member?.last_name]
     .map((namePart) => namePart?.trim())

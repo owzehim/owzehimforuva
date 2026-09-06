@@ -11,6 +11,7 @@ import { useRegisterMember } from '../hooks/useRegisterMember';
 import { getYearOptions } from '../domain/member/memberRegistration';
 import { LEGAL_DOCUMENT_VERSION, legalDocuments } from '../content/legalDocuments';
 import { isProductionEnv } from '../lib/appEnv';
+import { getPastelColor } from '../lib/avatarColor';
 
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
@@ -334,27 +335,7 @@ function getNextButtonStyle(isComplete) {
   };
 }
 
-const PASTEL_COLORS = [
-  '#FFB3B3',
-  '#FFD9A0',
-  '#FFF3A0',
-  '#B3F0C2',
-  '#A8D8FF',
-  '#C5B3FF',
-  '#FFB3E6',
-  '#B3F0EE',
-];
-
 const AUTH_BOX_WIDTH = 'min(var(--app-screen-width, min(calc(100vw - 32px), 398px)), 368px)';
-
-function getPastelColor(seed) {
-  const str = seed || 'default';
-  let hash = 0;
-  for (let i = 0; i < str.length; i += 1) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  }
-  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length];
-}
 
 async function getCroppedImgAsFile(imageSrc, pixelCrop, fileName = 'profile.jpg') {
   const img = new Image();

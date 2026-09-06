@@ -2,25 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChatDots, Flag, PencilSimple, Plus, Trash, Translate, UserCircle, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
+import { getPastelColor } from '../lib/avatarColor'
 
 const MAX_NOTE_LENGTH = 200
-const PASTEL_COLORS = [
-  '#FFB3B3',
-  '#FFD9A0',
-  '#FFF3A0',
-  '#B3F0C2',
-  '#A8D8FF',
-  '#C5B3FF',
-  '#FFB3E6',
-  '#B3F0EE',
-]
-
-function getPastelColor(seed) {
-  const str = seed || 'default'
-  let hash = 0
-  for (let i = 0; i < str.length; i += 1) hash = (hash * 31 + str.charCodeAt(i)) | 0
-  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length]
-}
 
 function formatNoteDate(value) {
   return new Intl.DateTimeFormat('nl-NL', {
@@ -101,7 +85,7 @@ export function GoodToKnowNotesPanel({
 
     const { data, error: loadError } = await supabase
       .from('restaurant_notes')
-      .select('id, user_id, username, profile_image_url, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags')
+      .select('id, user_id, username, profile_image_url, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -357,7 +341,7 @@ export function GoodToKnowNotesPanel({
           </div>
         ) : notes.map((note) => {
           const isMine = note.user_id === userId
-          const avatarBg = getPastelColor(note.user_id || note.username)
+          const avatarBg = getPastelColor(note.avatar_color_seed || note.username || note.user_id)
           return (
             <article key={note.id} className="flex gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm">
               <div
