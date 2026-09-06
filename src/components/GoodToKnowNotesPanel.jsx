@@ -4,6 +4,23 @@ import { ChatDots, Flag, PencilSimple, Plus, Trash, Translate, UserCircle, X } f
 import { supabase } from '../lib/supabase'
 
 const MAX_NOTE_LENGTH = 200
+const PASTEL_COLORS = [
+  '#FFB3B3',
+  '#FFD9A0',
+  '#FFF3A0',
+  '#B3F0C2',
+  '#A8D8FF',
+  '#C5B3FF',
+  '#FFB3E6',
+  '#B3F0EE',
+]
+
+function getPastelColor(seed) {
+  const str = seed || 'default'
+  let hash = 0
+  for (let i = 0; i < str.length; i += 1) hash = (hash * 31 + str.charCodeAt(i)) | 0
+  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length]
+}
 
 function formatNoteDate(value) {
   return new Intl.DateTimeFormat('nl-NL', {
@@ -340,9 +357,13 @@ export function GoodToKnowNotesPanel({
           </div>
         ) : notes.map((note) => {
           const isMine = note.user_id === userId
+          const avatarBg = getPastelColor(note.user_id || note.username)
           return (
             <article key={note.id} className="flex gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm">
-              <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-gray-300">
+              <div
+                className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-gray-600"
+                style={{ backgroundColor: note.is_anonymous ? '#f3f4f6' : avatarBg }}
+              >
                 {!note.is_anonymous && note.profile_image_url ? (
                   <img
                     src={note.profile_image_url}

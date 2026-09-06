@@ -306,6 +306,18 @@ export default function SettingsPage() {
 
       if (updateError) throw updateError
 
+      if (trimmedUsername) {
+        const { error: notesUpdateError } = await supabase
+          .from('restaurant_notes')
+          .update({
+            username: trimmedUsername,
+            profile_image_url: member.profile_image_url || null,
+          })
+          .eq('user_id', member.user_id)
+
+        if (notesUpdateError) throw notesUpdateError
+      }
+
       setMember((prev) => prev ? { ...prev, username: trimmedUsername || null } : prev)
       setUsernameEditing(false)
       setUsernameDraft('')
