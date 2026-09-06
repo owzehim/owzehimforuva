@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChatDots, Flag, PencilSimple, Plus, Trash, Translate, X } from '@phosphor-icons/react'
+import { ChatDots, Flag, PencilSimple, Plus, Trash, Translate, UserCircle, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 
 const MAX_NOTE_LENGTH = 200
@@ -84,7 +84,7 @@ export function GoodToKnowNotesPanel({
 
     const { data, error: loadError } = await supabase
       .from('restaurant_notes')
-      .select('id, user_id, username, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags')
+      .select('id, user_id, username, profile_image_url, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -341,35 +341,49 @@ export function GoodToKnowNotesPanel({
         ) : notes.map((note) => {
           const isMine = note.user_id === userId
           return (
-            <article key={note.id} className="rounded-xl bg-white px-3 py-2 shadow-sm">
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-[11px] font-semibold text-gray-700">
-                  {note.is_anonymous ? '익명' : note.username}
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-gray-400">{formatNoteDate(note.created_at)}</span>
-                  {isMine && (
-                    <>
-                      <button type="button" aria-label="Edit note" onClick={() => openEdit(note)} className="text-gray-400"><PencilSimple size={13} /></button>
-                      <button type="button" aria-label="Delete note" onClick={() => deleteNote(note.id)} className="text-gray-400"><Trash size={13} /></button>
-                    </>
-                  )}
-                  {!isMine && userId && (
-                    <button type="button" aria-label="Report note" onClick={() => reportNote(note.id)} className="text-gray-400"><Flag size={13} /></button>
-                  )}
-                  {isAdmin && (
-                    <button type="button" aria-label="Admin delete note" onClick={() => deleteNote(note.id)} className="text-red-400"><Trash size={13} /></button>
-                  )}
-                </div>
+            <article key={note.id} className="flex gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm">
+              <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-gray-300">
+                {!note.is_anonymous && note.profile_image_url ? (
+                  <img
+                    src={note.profile_image_url}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                ) : (
+                  <UserCircle size={24} weight="fill" />
+                )}
               </div>
-              <p className="mt-1 break-words text-xs leading-relaxed text-gray-600">{note.body}</p>
-              {translations[note.id] ? (
-                <p className="mt-1 break-words border-t border-gray-100 pt-1 text-xs leading-relaxed text-gray-500">{translations[note.id]}</p>
-              ) : (
-                <button type="button" onClick={() => translateNote(note.id)} className="mt-1 flex items-center gap-1 text-[10px] text-orange-500">
-                  <Translate size={12} /> Translate
-                </button>
-              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-[11px] font-semibold text-gray-700">
+                    {note.is_anonymous ? '익명' : note.username}
+                  </p>
+                  <div className="flex flex-shrink-0 items-center gap-1.5">
+                    <span className="text-[10px] text-gray-400">{formatNoteDate(note.created_at)}</span>
+                    {isMine && (
+                      <>
+                        <button type="button" aria-label="Edit note" onClick={() => openEdit(note)} className="text-gray-400"><PencilSimple size={13} /></button>
+                        <button type="button" aria-label="Delete note" onClick={() => deleteNote(note.id)} className="text-gray-400"><Trash size={13} /></button>
+                      </>
+                    )}
+                    {!isMine && userId && (
+                      <button type="button" aria-label="Report note" onClick={() => reportNote(note.id)} className="text-gray-400"><Flag size={13} /></button>
+                    )}
+                    {isAdmin && (
+                      <button type="button" aria-label="Admin delete note" onClick={() => deleteNote(note.id)} className="text-red-400"><Trash size={13} /></button>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-1 break-words text-xs leading-relaxed text-gray-600">{note.body}</p>
+                {translations[note.id] ? (
+                  <p className="mt-1 break-words border-t border-gray-100 pt-1 text-xs leading-relaxed text-gray-500">{translations[note.id]}</p>
+                ) : (
+                  <button type="button" onClick={() => translateNote(note.id)} className="mt-1 flex items-center gap-1 text-[10px] text-orange-500">
+                    <Translate size={12} /> Translate
+                  </button>
+                )}
+              </div>
             </article>
           )
         })}
