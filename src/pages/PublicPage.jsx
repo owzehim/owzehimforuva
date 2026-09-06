@@ -9,7 +9,7 @@ import { MapPin, Lock, ForkKnife, CalendarDots, Users } from '@phosphor-icons/re
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 
 const PUBLIC_ACTIVE_TAB_KEY = 'uvain_public_active_tab'
-const PUBLIC_BOTTOM_TAB_PADDING = 42
+const PUBLIC_BOTTOM_TAB_PADDING = 'clamp(28px, 9.8vw, 42px)'
 
 function getStoredPublicTab() {
   return 'membership'
@@ -69,7 +69,7 @@ export default function PublicPage() {
   return (
     <div
       className={
-        'flex flex-col overflow-hidden no-highlight-zone ' +
+        'phone-app-shell flex flex-col overflow-hidden no-highlight-zone ' +
         (activeTab === 'membership'
           ? 'bg-black'
           : 'bg-white dark:bg-[#121212]')
@@ -410,7 +410,7 @@ const MEMBERSHIP_SLIDES = [
 
 const SLIDE_INTERVAL_MS = 12000
 const IMAGE_INTERVAL_MS = 2600
-const BOTTOM_TAB_OFFSET = `${PUBLIC_BOTTOM_TAB_PADDING + 45}px`
+const BOTTOM_TAB_OFFSET = `calc(${PUBLIC_BOTTOM_TAB_PADDING} + 45px)`
 
 function MembershipCarousel() {
   const navigate = useNavigate()
@@ -607,11 +607,11 @@ function MembershipCarousel() {
       <div
         className="pointer-events-none absolute left-0 right-0 px-6 text-left"
         style={{
-          bottom: `calc(${BOTTOM_TAB_OFFSET} + 62px)`,
+          bottom: `calc(${BOTTOM_TAB_OFFSET} + clamp(46px, 14.4vw, 62px))`,
           zIndex: 20,
         }}
       >
-        <h2 className="max-w-sm text-[31px] font-bold leading-tight text-gray-950 dark:text-white">
+        <h2 className="max-w-sm text-[clamp(27px,7.2vw,31px)] font-bold leading-tight text-gray-950 dark:text-white">
           {slides[realActiveSlide].title}
         </h2>
         {slides[realActiveSlide].description && (
@@ -624,7 +624,7 @@ function MembershipCarousel() {
       <div
         className="pointer-events-none absolute left-0 right-0 flex justify-center gap-1.5"
         style={{
-          bottom: `calc(${BOTTOM_TAB_OFFSET} + 24px)`,
+          bottom: `calc(${BOTTOM_TAB_OFFSET} + clamp(18px, 5.6vw, 24px))`,
           zIndex: 25,
         }}
       >

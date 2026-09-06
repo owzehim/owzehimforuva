@@ -345,7 +345,7 @@ export default function SettingsPage() {
 
   return (
     <div
-      className="flex flex-col bg-white no-highlight-zone dark:bg-[#121212]"
+      className="phone-app-shell flex flex-col bg-white no-highlight-zone dark:bg-[#121212]"
       style={{
         minHeight: '100dvh',
         userSelect: 'none',
@@ -379,7 +379,7 @@ export default function SettingsPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-4 py-6 max-w-md mx-auto space-y-6">
+        <div className="mx-auto space-y-6 px-4 py-6" style={{ maxWidth: 'var(--app-screen-width)' }}>
 
           {/* Profile card */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4 dark:border-[#2c2c2e] dark:bg-[#111111]">

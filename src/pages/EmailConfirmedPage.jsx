@@ -61,7 +61,7 @@ export default function EmailConfirmedPage() {
       : copy.errorMessage
 
   return (
-    <div style={styles.page}>
+    <div className="phone-app-shell" style={styles.page}>
       <div style={styles.panel}>
         {isVerifying ? (
           <SpinnerGap size={54} weight="bold" color="#f97316" style={styles.spinnerIcon} />

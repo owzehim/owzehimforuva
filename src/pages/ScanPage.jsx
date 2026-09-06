@@ -187,7 +187,7 @@ export default function ScanPage() {
 
   return (
     <div
-      className="force-light flex flex-col bg-white overflow-hidden"
+      className="phone-app-shell force-light flex flex-col bg-white overflow-hidden"
       style={{
         height: '100dvh',
         backgroundColor: isLoading ? loadingBg : undefined,

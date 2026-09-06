@@ -345,7 +345,7 @@ const PASTEL_COLORS = [
   '#B3F0EE',
 ];
 
-const AUTH_BOX_WIDTH = '368px';
+const AUTH_BOX_WIDTH = 'min(var(--app-screen-width, min(calc(100vw - 32px), 398px)), 368px)';
 
 function getPastelColor(seed) {
   const str = seed || 'default';
@@ -693,7 +693,7 @@ export default function RegistrationPage() {
   if (step === 'email') {
     return (
       <div
-        className="registration-page-enter"
+        className="phone-app-shell registration-page-enter"
         onDragStart={(event) => event.preventDefault()}
         style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
       >
@@ -744,7 +744,7 @@ export default function RegistrationPage() {
 
   return (
     <div
-      className="registration-page-enter"
+      className="phone-app-shell registration-page-enter"
       onDragStart={(event) => event.preventDefault()}
       style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
     >

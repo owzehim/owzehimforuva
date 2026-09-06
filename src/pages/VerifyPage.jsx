@@ -122,14 +122,14 @@ export default function VerifyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="phone-app-shell min-h-screen flex items-center justify-center bg-gray-50">
         <LoadingIndicator label="Verifying..." />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="phone-app-shell min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl border border-gray-100 p-6 w-full max-w-sm">
         {/* Header */}
         <div className="text-center mb-6">
