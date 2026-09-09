@@ -2205,6 +2205,7 @@ function EventsTab({ events }) {
   const [eventListClosing, setEventListClosing] = useState(false)
   const [eventListNewestFirst, setEventListNewestFirst] = useState(true)
   const [eventCardOpen, setEventCardOpen] = useState(false)
+  const [eventCardClosing, setEventCardClosing] = useState(false)
   const [eventSwipeDirection, setEventSwipeDirection] = useState(0)
   const [loadedEventPreviewImages, setLoadedEventPreviewImages] = useState({})
   const [darkMode, setDarkMode] = useState(() =>
@@ -2214,6 +2215,7 @@ function EventsTab({ events }) {
   // SpotCard-style Lightbox index
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
+  const [imageAspectRatios, setImageAspectRatios] = useState({})
   const [frontPanelTextColor, setFrontPanelTextColor] = useState('#1f2937')
   const [calMonth, setCalMonth] = useState(() => {
     const base = getPrimaryEventDate(initialEvent)
@@ -2232,6 +2234,7 @@ function EventsTab({ events }) {
   const eventPreviewTouchLastY = useRef(null)
   const eventPreviewGestureAxis = useRef(null)
   const eventPreviewSuppressClick = useRef(false)
+  const eventImageBoxRatioRef = useRef(1)
 
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return undefined
@@ -2277,10 +2280,28 @@ function EventsTab({ events }) {
     }))
   }
 
+  const recordEventPreviewImageRatio = (eventId, imageIndex, image) => {
+    if (eventCardClosing) return
+
+    const ratio = image.naturalWidth / image.naturalHeight
+    if (!Number.isFinite(ratio) || ratio <= 0) return
+
+    setImageAspectRatios((prev) => {
+      const ratios = [...(prev[eventId] || [])]
+      if (ratios[imageIndex] === ratio) return prev
+      ratios[imageIndex] = ratio
+      return { ...prev, [eventId]: ratios }
+    })
+  }
+
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
     const shouldFadeToFirst = eventId && (slideIndexes[eventId] || 0) !== 0
 
+    setEventCardClosing(true)
     setEventCardOpen(false)
+    window.setTimeout(() => {
+      setEventCardClosing(false)
+    }, 360)
 
     if (shouldFadeToFirst) {
       window.setTimeout(() => {
@@ -3037,9 +3058,20 @@ function EventsTab({ events }) {
         : '참여하기'
       : '준비 중'
   const hasImages = displayImages.length > 0
+  const displayImageRatios = imageAspectRatios[displayEvent?.id] || []
   const displayImageSlide = displayEvent ? slideIndexes[displayEvent.id] || 0 : 0
+  const liveEventImageBoxRatio = displayImageRatios[0] || 1
+  const eventImageBoxRatio = eventCardClosing
+    ? eventImageBoxRatioRef.current
+    : liveEventImageBoxRatio
   const isCurrentEventImageLoading =
     hasImages && !loadedEventPreviewImages[displayImages[displayImageSlide]]
+
+  useEffect(() => {
+    if (!eventCardClosing) {
+      eventImageBoxRatioRef.current = liveEventImageBoxRatio
+    }
+  }, [eventCardClosing, liveEventImageBoxRatio])
 
   useEffect(() => {
     if (!displayEvent || displayImages.length === 0) return
@@ -3497,7 +3529,7 @@ const effectiveDateColor = isDragging
                   <div
                     className="overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800"
                     style={{
-                      aspectRatio: '1 / 1',
+                      aspectRatio: `${eventImageBoxRatio} / 1`,
                       contain: 'layout paint size',
                       transform: 'translateZ(0)',
                       backfaceVisibility: 'hidden',
@@ -3574,6 +3606,11 @@ const effectiveDateColor = isDragging
                                 fetchPriority={index === displayImageSlide ? 'high' : 'low'}
                                 onLoad={(event) => {
                                   markEventPreviewImageLoaded(url)
+                                  recordEventPreviewImageRatio(
+                                    displayEvent.id,
+                                    index,
+                                    event.currentTarget,
+                                  )
                                 }}
                                 onError={() =>
                                   setLoadedEventPreviewImages((prev) => ({
