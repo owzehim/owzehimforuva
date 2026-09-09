@@ -2572,23 +2572,15 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
 
     if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
-      if (absDx > 16 && absDx >= absDy * 0.6) {
+      if (absDx > 10 && absDx >= absDy * 0.45) {
         eventPreviewGestureAxis.current = 'x'
-      } else if (absDy > absDx * 1.5) {
-        eventPreviewGestureAxis.current = 'y'
       } else {
-        eventPreviewGestureAxis.current = 'blocked'
+        eventPreviewGestureAxis.current = 'y'
       }
       eventCardGestureAxis.current = eventPreviewGestureAxis.current
     }
 
     if (eventPreviewGestureAxis.current === 'x') {
-      e.preventDefault()
-      e.stopPropagation()
-      return
-    }
-
-    if (eventPreviewGestureAxis.current === 'blocked') {
       e.preventDefault()
       e.stopPropagation()
       return
@@ -2613,21 +2605,11 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
     const currentSlide = slideIndexes[displayEvent.id] || 0
 
-    if (eventPreviewGestureAxis.current === 'blocked') {
-      e.preventDefault()
-      e.stopPropagation()
-      eventPreviewTouchStartX.current = null
-      eventPreviewTouchStartY.current = null
-      eventPreviewTouchLastY.current = null
-      eventPreviewGestureAxis.current = null
-      eventCardGestureAxis.current = null
-      return
-    }
-
     if (
       eventPreviewGestureAxis.current === 'x' &&
       displayImages.length > 1 &&
-      absDx > 40
+      absDx > 28 &&
+      absDx >= absDy * 0.45
     ) {
       e.stopPropagation()
       eventPreviewSuppressClick.current = true
@@ -2901,7 +2883,7 @@ function EventsTab({ events }) {
   const handleEventCardTouchMove = (e) => {
     if (!eventCardOpen || eventCardStartY.current == null) return
 
-    if (eventCardGestureAxis.current === 'x' || eventCardGestureAxis.current === 'blocked') {
+    if (eventCardGestureAxis.current === 'x') {
       e.preventDefault()
       e.stopPropagation()
       return
@@ -2920,7 +2902,7 @@ function EventsTab({ events }) {
   const handleEventCardTouchEnd = (e) => {
     if (eventCardStartY.current == null) return
 
-    if (eventCardGestureAxis.current === 'x' || eventCardGestureAxis.current === 'blocked') {
+    if (eventCardGestureAxis.current === 'x') {
       e.preventDefault()
       e.stopPropagation()
       eventCardStartY.current = null
@@ -3658,7 +3640,7 @@ const effectiveDateColor = isDragging
                           width: '100%',
                           overflow: 'hidden',
                           cursor: 'default',
-                          touchAction: 'none',
+                          touchAction: 'pan-y',
                           transform: 'translateZ(0)',
                           backfaceVisibility: 'hidden',
                         }}
