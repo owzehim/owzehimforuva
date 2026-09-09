@@ -2233,8 +2233,10 @@ function EventsTab({ events }) {
   const eventPreviewTouchStartY = useRef(null)
   const eventPreviewTouchLastY = useRef(null)
   const eventPreviewGestureAxis = useRef(null)
+  const eventCardGestureAxis = useRef(null)
   const eventPreviewSuppressClick = useRef(false)
   const eventImageBoxRatioRef = useRef(1)
+  const imageAspectRatiosRef = useRef({})
 
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return undefined
@@ -2251,6 +2253,10 @@ function EventsTab({ events }) {
 
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    imageAspectRatiosRef.current = imageAspectRatios
+  }, [imageAspectRatios])
 
   useEffect(() => {
     if (!initialEvent) return
@@ -2278,6 +2284,47 @@ function EventsTab({ events }) {
       ...prev,
       [url]: true,
     }))
+  }
+
+  const loadEventFirstImageRatio = (event) =>
+    new Promise((resolve) => {
+      const firstImage = event?.image_urls?.[0]
+      if (!event?.id || !firstImage || typeof Image === 'undefined') {
+        resolve(1)
+        return
+      }
+
+      const cachedRatio = imageAspectRatiosRef.current[event.id]?.[0]
+      if (cachedRatio) {
+        resolve(cachedRatio)
+        return
+      }
+
+      const img = new Image()
+      img.decoding = 'async'
+      img.onload = () => {
+        const ratio = img.naturalWidth / img.naturalHeight
+        resolve(Number.isFinite(ratio) && ratio > 0 ? ratio : 1)
+      }
+      img.onerror = () => resolve(1)
+      img.src = firstImage
+    })
+
+  const ensureEventFirstImageRatio = async (event) => {
+    if (!event?.id) return
+    if (imageAspectRatiosRef.current[event.id]?.[0]) return
+
+    const ratio = await loadEventFirstImageRatio(event)
+
+    setImageAspectRatios((previous) => {
+      if (previous[event.id]?.[0]) return previous
+      const next = {
+        ...previous,
+        [event.id]: [ratio],
+      }
+      imageAspectRatiosRef.current = next
+      return next
+    })
   }
 
   const recordEventPreviewImageRatio = (eventId, imageIndex, image) => {
@@ -2315,35 +2362,10 @@ function EventsTab({ events }) {
     setSlide(selectedEvent.id, 0)
   }, [selectedEvent?.id])
 
-  // Load image dimensions to detect aspect ratio
   useEffect(() => {
-    const loadImageDimensions = (url) =>
-      new Promise((resolve) => {
-        const img = new Image()
-        img.onload = () => {
-          const ratio = img.naturalWidth / img.naturalHeight
-          resolve(ratio)
-        }
-        img.onerror = () => resolve(1)
-        img.src = url
-      })
-
-    const event = selectedEvent
-    const firstImage = event?.image_urls?.[0]
-    if (!event?.id || !firstImage) return undefined
-
     let cancelled = false
-    loadImageDimensions(firstImage).then((ratio) => {
+    ensureEventFirstImageRatio(selectedEvent).then(() => {
       if (cancelled) return
-      if (!Number.isFinite(ratio) || ratio <= 0) return
-
-      setImageAspectRatios((previous) => {
-        if (previous[event.id]?.[0]) return previous
-        return {
-          ...previous,
-          [event.id]: [ratio],
-        }
-      })
     })
 
     return () => {
@@ -2528,6 +2550,7 @@ function EventsTab({ events }) {
     eventPreviewTouchStartY.current = e.touches[0].clientY
     eventPreviewTouchLastY.current = e.touches[0].clientY
     eventPreviewGestureAxis.current = null
+    eventCardGestureAxis.current = null
   }
 
   const handleEventPreviewTouchMove = (e) => {
@@ -2550,6 +2573,7 @@ function EventsTab({ events }) {
       } else {
         eventPreviewGestureAxis.current = 'blocked'
       }
+      eventCardGestureAxis.current = eventPreviewGestureAxis.current
     }
 
     if (eventPreviewGestureAxis.current === 'x') {
@@ -2590,6 +2614,7 @@ function EventsTab({ events }) {
       eventPreviewTouchStartY.current = null
       eventPreviewTouchLastY.current = null
       eventPreviewGestureAxis.current = null
+      eventCardGestureAxis.current = null
       return
     }
 
@@ -2787,7 +2812,7 @@ function EventsTab({ events }) {
   ]
   while (cells.length < 42) cells.push(null)
 
-  const handleDayPress = (day) => {
+  const handleDayPress = async (day) => {
     if (!day) return
     const key = `${calYear}-${String(calMonthIdx + 1).padStart(
       2,
@@ -2795,6 +2820,7 @@ function EventsTab({ events }) {
     )}-${String(day).padStart(2, '0')}`
     const dayEvents = eventsByDate[key]
     if (!dayEvents?.length) return
+    await ensureEventFirstImageRatio(dayEvents[0])
     setSelectedEvent(dayEvents[0])
   }
 
@@ -2807,8 +2833,9 @@ function EventsTab({ events }) {
     }, 220)
   }
 
-  const selectEventFromList = (ev) => {
+  const selectEventFromList = async (ev) => {
     window.sessionStorage.removeItem(MEMBER_EVENT_LIST_OPEN_KEY)
+    await ensureEventFirstImageRatio(ev)
     setSelectedEvent(ev)
     setPreviewEvent(ev)
     closeEventCard(ev.id)
@@ -2823,7 +2850,7 @@ function EventsTab({ events }) {
     }, 220)
   }
 
-  const selectAdjacentEvent = (direction) => {
+  const selectAdjacentEvent = async (direction) => {
     if (!allEvents.length) return
     const currentIndex = allEvents.findIndex((ev) => ev.id === selectedEvent?.id)
     const baseIndex = currentIndex >= 0 ? currentIndex : 0
@@ -2832,10 +2859,12 @@ function EventsTab({ events }) {
       Math.min(baseIndex + direction, allEvents.length - 1),
     )
     if (nextIndex === baseIndex) return
+    const nextEvent = allEvents[nextIndex]
+    await ensureEventFirstImageRatio(nextEvent)
     setEventSwipeDirection(direction)
-    setSelectedEvent(allEvents[nextIndex])
-    setPreviewEvent(allEvents[nextIndex])
-    closeEventCard(allEvents[nextIndex].id)
+    setSelectedEvent(nextEvent)
+    setPreviewEvent(nextEvent)
+    closeEventCard(nextEvent.id)
     window.setTimeout(() => setEventSwipeDirection(0), 320)
   }
 
@@ -2855,15 +2884,22 @@ function EventsTab({ events }) {
     eventSwipeStartY.current = null
 
     if (Math.abs(dx) < 54 || Math.abs(dx) < Math.abs(dy) * 1.25) return
-    selectAdjacentEvent(dx < 0 ? 1 : -1)
+    void selectAdjacentEvent(dx < 0 ? 1 : -1)
   }
 
   const handleEventCardTouchStart = (e) => {
     eventCardStartY.current = e.touches[0].clientY
+    eventCardGestureAxis.current = null
   }
 
   const handleEventCardTouchMove = (e) => {
     if (!eventCardOpen || eventCardStartY.current == null) return
+
+    if (eventCardGestureAxis.current === 'x' || eventCardGestureAxis.current === 'blocked') {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
 
     const dy = e.touches[0].clientY - eventCardStartY.current
     const scrollTop = eventCardScrollRef.current?.scrollTop || 0
@@ -2877,8 +2913,18 @@ function EventsTab({ events }) {
 
   const handleEventCardTouchEnd = (e) => {
     if (eventCardStartY.current == null) return
+
+    if (eventCardGestureAxis.current === 'x' || eventCardGestureAxis.current === 'blocked') {
+      e.preventDefault()
+      e.stopPropagation()
+      eventCardStartY.current = null
+      eventCardGestureAxis.current = null
+      return
+    }
+
     const dy = e.changedTouches[0].clientY - eventCardStartY.current
     eventCardStartY.current = null
+    eventCardGestureAxis.current = null
 
     if (dy < -42) setEventCardOpen(true)
     if (dy > 42) {
@@ -3604,7 +3650,7 @@ const effectiveDateColor = isDragging
                           width: '100%',
                           overflow: 'hidden',
                           cursor: 'default',
-                          touchAction: 'pan-y',
+                          touchAction: 'none',
                           transform: 'translateZ(0)',
                           backfaceVisibility: 'hidden',
                         }}
