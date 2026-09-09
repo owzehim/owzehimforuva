@@ -2214,7 +2214,6 @@ function EventsTab({ events }) {
   // SpotCard-style Lightbox index
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
-  const [imageAspectRatios, setImageAspectRatios] = useState({})
   const [frontPanelTextColor, setFrontPanelTextColor] = useState('#1f2937')
   const [calMonth, setCalMonth] = useState(() => {
     const base = getPrimaryEventDate(initialEvent)
@@ -2276,18 +2275,6 @@ function EventsTab({ events }) {
       ...prev,
       [url]: true,
     }))
-  }
-
-  const recordEventPreviewImageRatio = (eventId, imageIndex, image) => {
-    const ratio = image.naturalWidth / image.naturalHeight
-    if (!Number.isFinite(ratio) || ratio <= 0) return
-
-    setImageAspectRatios((prev) => {
-      const ratios = [...(prev[eventId] || [])]
-      if (ratios[imageIndex] === ratio) return prev
-      ratios[imageIndex] = ratio
-      return { ...prev, [eventId]: ratios }
-    })
   }
 
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
@@ -3050,9 +3037,7 @@ function EventsTab({ events }) {
         : '참여하기'
       : '준비 중'
   const hasImages = displayImages.length > 0
-  const displayImageRatios = imageAspectRatios[displayEvent?.id] || []
   const displayImageSlide = displayEvent ? slideIndexes[displayEvent.id] || 0 : 0
-  const eventImageBoxRatio = displayImageRatios[0] || 1
   const isCurrentEventImageLoading =
     hasImages && !loadedEventPreviewImages[displayImages[displayImageSlide]]
 
@@ -3475,6 +3460,7 @@ const effectiveDateColor = isDragging
                 bottom: 0,
                 height: '100%',
                 transform: `translateY(${eventCardTranslateY})`,
+                transformStyle: 'preserve-3d',
                 zIndex: 20,
                 borderTopLeftRadius: eventCardOpen ? 0 : 20,
                 borderTopRightRadius: eventCardOpen ? 0 : 20,
@@ -3483,6 +3469,7 @@ const effectiveDateColor = isDragging
                   'transform 0.35s cubic-bezier(0.4,0,0.2,1), border-radius 0.35s cubic-bezier(0.4,0,0.2,1)',
                 overflow: 'hidden',
                 willChange: 'transform',
+                backfaceVisibility: 'hidden',
               }}
             >
               <div className="flex justify-center pb-3 pt-2.5">
@@ -3510,7 +3497,10 @@ const effectiveDateColor = isDragging
                   <div
                     className="overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800"
                     style={{
-                      aspectRatio: `${eventImageBoxRatio} / 1`,
+                      aspectRatio: '1 / 1',
+                      contain: 'layout paint size',
+                      transform: 'translateZ(0)',
+                      backfaceVisibility: 'hidden',
                     }}
                   >
                     {hasImages && (
@@ -3525,6 +3515,8 @@ const effectiveDateColor = isDragging
                           overflow: 'hidden',
                           cursor: 'default',
                           touchAction: 'pan-y',
+                          transform: 'translateZ(0)',
+                          backfaceVisibility: 'hidden',
                         }}
                       >
                         {isCurrentEventImageLoading && (
@@ -3557,6 +3549,8 @@ const effectiveDateColor = isDragging
                             opacity: 1,
                             transform: `translateX(-${displayImageSlide * 100}%)`,
                             transition: 'transform 0.3s ease, opacity 0.22s ease',
+                            willChange: 'transform',
+                            backfaceVisibility: 'hidden',
                             animation:
                               eventSwipeDirection === 0
                                 ? 'none'
@@ -3580,11 +3574,6 @@ const effectiveDateColor = isDragging
                                 fetchPriority={index === displayImageSlide ? 'high' : 'low'}
                                 onLoad={(event) => {
                                   markEventPreviewImageLoaded(url)
-                                  recordEventPreviewImageRatio(
-                                    displayEvent.id,
-                                    index,
-                                    event.currentTarget,
-                                  )
                                 }}
                                 onError={() =>
                                   setLoadedEventPreviewImages((prev) => ({
