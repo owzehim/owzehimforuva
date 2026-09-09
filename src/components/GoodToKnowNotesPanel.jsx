@@ -345,7 +345,7 @@ export function GoodToKnowNotesPanel({
           return (
             <article key={note.id} className="flex gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm">
               <div
-                className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-gray-600"
+                className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-[rgba(44,42,39,0.55)] dark:text-white/70"
                 style={{ backgroundColor: note.is_anonymous ? '#f3f4f6' : avatarBg }}
               >
                 {!note.is_anonymous && note.profile_image_url ? (
