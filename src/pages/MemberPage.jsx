@@ -2572,7 +2572,7 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
 
     if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
-      if (absDx > 10 && absDx >= absDy * 0.45) {
+      if (absDx > 10 && absDy <= absDx * Math.tan(50 * Math.PI / 180)) {
         eventPreviewGestureAxis.current = 'x'
       } else {
         eventPreviewGestureAxis.current = 'y'
@@ -2609,7 +2609,7 @@ function EventsTab({ events }) {
       eventPreviewGestureAxis.current === 'x' &&
       displayImages.length > 1 &&
       absDx > 28 &&
-      absDx >= absDy * 0.45
+      absDy <= absDx * Math.tan(50 * Math.PI / 180)
     ) {
       e.stopPropagation()
       eventPreviewSuppressClick.current = true
