@@ -2321,7 +2321,7 @@ function EventsTab({ events }) {
       new Promise((resolve) => {
         const img = new Image()
         img.onload = () => {
-          const ratio = img.width / img.height
+          const ratio = img.naturalWidth / img.naturalHeight
           resolve(ratio)
         }
         img.onerror = () => resolve(1)
@@ -2335,16 +2335,54 @@ function EventsTab({ events }) {
     let cancelled = false
     loadImageDimensions(firstImage).then((ratio) => {
       if (cancelled) return
-      setImageAspectRatios((previous) => ({
-        ...previous,
-        [event.id]: [ratio],
-      }))
+      if (!Number.isFinite(ratio) || ratio <= 0) return
+
+      setImageAspectRatios((previous) => {
+        if (previous[event.id]?.[0]) return previous
+        return {
+          ...previous,
+          [event.id]: [ratio],
+        }
+      })
     })
 
     return () => {
       cancelled = true
     }
   }, [selectedEvent?.id])
+
+  useEffect(() => {
+    if (typeof Image === 'undefined' || !allEvents.length) return undefined
+
+    let cancelled = false
+    const missingImageEvents = allEvents.filter((event) => {
+      const firstImage = event?.image_urls?.[0]
+      return event?.id && firstImage && !imageAspectRatios[event.id]?.[0]
+    })
+
+    missingImageEvents.forEach((event) => {
+      const img = new Image()
+      img.decoding = 'async'
+      img.onload = () => {
+        if (cancelled) return
+        const ratio = img.naturalWidth / img.naturalHeight
+        if (!Number.isFinite(ratio) || ratio <= 0) return
+
+        setImageAspectRatios((previous) => {
+          if (previous[event.id]?.[0]) return previous
+          return {
+            ...previous,
+            [event.id]: [ratio],
+          }
+        })
+      }
+      img.src = event.image_urls[0]
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [allEvents, imageAspectRatios])
 
   const isPortrait = (aspectRatio) =>
     aspectRatio >= 0.75 && aspectRatio <= 0.85
@@ -2505,12 +2543,22 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
 
     if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
-      // Treat ambiguous diagonal drags as vertical. An image swipe must be
-      // clearly horizontal, preventing one gesture from moving both views.
-      eventPreviewGestureAxis.current = absDx > absDy * 1.5 ? 'x' : 'y'
+      if (absDx > absDy * 1.5) {
+        eventPreviewGestureAxis.current = 'x'
+      } else if (absDy > absDx * 1.5) {
+        eventPreviewGestureAxis.current = 'y'
+      } else {
+        eventPreviewGestureAxis.current = 'blocked'
+      }
     }
 
     if (eventPreviewGestureAxis.current === 'x') {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+
+    if (eventPreviewGestureAxis.current === 'blocked') {
       e.preventDefault()
       e.stopPropagation()
       return
@@ -2534,6 +2582,16 @@ function EventsTab({ events }) {
     const absDx = Math.abs(dx)
     const absDy = Math.abs(dy)
     const currentSlide = slideIndexes[displayEvent.id] || 0
+
+    if (eventPreviewGestureAxis.current === 'blocked') {
+      e.preventDefault()
+      e.stopPropagation()
+      eventPreviewTouchStartX.current = null
+      eventPreviewTouchStartY.current = null
+      eventPreviewTouchLastY.current = null
+      eventPreviewGestureAxis.current = null
+      return
+    }
 
     if (
       eventPreviewGestureAxis.current === 'x' &&
