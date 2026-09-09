@@ -2207,7 +2207,6 @@ function EventsTab({ events }) {
   const [eventCardOpen, setEventCardOpen] = useState(false)
   const [eventSwipeDirection, setEventSwipeDirection] = useState(0)
   const [loadedEventPreviewImages, setLoadedEventPreviewImages] = useState({})
-  const [eventPreviewFadingToFirst, setEventPreviewFadingToFirst] = useState(false)
   const [darkMode, setDarkMode] = useState(() =>
     typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
   )
@@ -2294,18 +2293,11 @@ function EventsTab({ events }) {
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
     const shouldFadeToFirst = eventId && (slideIndexes[eventId] || 0) !== 0
 
-    if (shouldFadeToFirst) {
-      setEventPreviewFadingToFirst(true)
-      window.setTimeout(() => {
-        setSlide(eventId, 0)
-      }, 140)
-    }
-
     setEventCardOpen(false)
 
     if (shouldFadeToFirst) {
       window.setTimeout(() => {
-        setEventPreviewFadingToFirst(false)
+        setSlide(eventId, 0)
       }, 360)
     }
   }
@@ -2811,6 +2803,8 @@ function EventsTab({ events }) {
     const scrollTop = eventCardScrollRef.current?.scrollTop || 0
 
     if (dy > 42 && scrollTop <= 0) {
+      e.preventDefault()
+      e.stopPropagation()
       if (eventCardScrollRef.current) eventCardScrollRef.current.scrollTop = 0
     }
   }
@@ -3560,11 +3554,9 @@ const effectiveDateColor = isDragging
                             zIndex: 1,
                             display: 'flex',
                             height: '100%',
-                            opacity: eventPreviewFadingToFirst ? 0 : 1,
+                            opacity: 1,
                             transform: `translateX(-${displayImageSlide * 100}%)`,
-                            transition: eventPreviewFadingToFirst
-                              ? 'opacity 0.16s ease'
-                              : 'transform 0.3s ease, opacity 0.22s ease',
+                            transition: 'transform 0.3s ease, opacity 0.22s ease',
                             animation:
                               eventSwipeDirection === 0
                                 ? 'none'
