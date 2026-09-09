@@ -1183,7 +1183,7 @@ function MembershipCard({
   const mutedText = darkMode ? '#6F6F76' : 'rgba(44,42,39,0.4)'
   const faintText = darkMode ? '#5F5F66' : 'rgba(44,42,39,0.25)'
   const scannerLine = darkMode ? '#8E8E93' : 'rgba(44,42,39,0.3)'
-  const avatarIconColor = 'rgba(44,42,39,0.55)'
+  const avatarIconColor = darkMode ? 'rgba(255,255,255,0.68)' : 'rgba(44,42,39,0.55)'
 
   useEffect(() => {
     if (onFlipChange) onFlipChange(flipped)

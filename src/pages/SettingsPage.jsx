@@ -9,6 +9,8 @@ import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 
+const USERNAME_PATTERN = /^[\p{L}\p{N}_]{2,20}$/u
+
 // ─── Image helpers ────────────────────────────────────────────────────────────
 
 async function compressImage(file, maxWidth = 600, maxHeight = 600, quality = 0.7) {
@@ -190,6 +192,21 @@ export default function SettingsPage() {
     }
   }
 
+  const syncRestaurantNotesProfile = async (profile) => {
+    if (!profile?.user_id || !profile.username?.trim()) return
+
+    const { error: notesUpdateError } = await supabase
+      .from('restaurant_notes')
+      .update({
+        username: profile.username.trim(),
+        profile_image_url: profile.profile_image_url || null,
+        avatar_color_seed: getMemberAvatarSeed(profile),
+      })
+      .eq('user_id', profile.user_id)
+
+    if (notesUpdateError) throw notesUpdateError
+  }
+
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -222,6 +239,9 @@ export default function SettingsPage() {
       const { error: updateError } = await supabase
         .from('members').update({ profile_image_url: url }).eq('user_id', member.user_id)
       if (updateError) throw updateError
+
+      const nextMember = { ...member, profile_image_url: url }
+      await syncRestaurantNotesProfile(nextMember)
       setMember((prev) => prev ? { ...prev, profile_image_url: url } : prev)
       setCropModalOpen(false)
       setCropImageSrc(null)
@@ -245,6 +265,9 @@ export default function SettingsPage() {
       const { error: updateError } = await supabase
         .from('members').update({ profile_image_url: null }).eq('id', member.id)
       if (updateError) throw updateError
+
+      const nextMember = { ...member, profile_image_url: null }
+      await syncRestaurantNotesProfile(nextMember)
       setMember((prev) => prev ? { ...prev, profile_image_url: null } : prev)
     } catch (err) {
       console.error(err)
@@ -272,8 +295,8 @@ export default function SettingsPage() {
     const trimmedUsername = usernameDraft.trim()
     setUsernameError('')
 
-    if (trimmedUsername && !/^[A-Za-z0-9_]{2,20}$/.test(trimmedUsername)) {
-      setUsernameError('2-20자의 영문, 숫자, 밑줄만 사용할 수 있습니다.')
+    if (trimmedUsername && !USERNAME_PATTERN.test(trimmedUsername)) {
+      setUsernameError('2-20자의 문자, 숫자, 밑줄만 사용할 수 있습니다.')
       return
     }
 
@@ -286,25 +309,21 @@ export default function SettingsPage() {
 
       if (updateError) throw updateError
 
-      if (trimmedUsername) {
-        const { error: notesUpdateError } = await supabase
-          .from('restaurant_notes')
-          .update({
-            username: trimmedUsername,
-            profile_image_url: member.profile_image_url || null,
-            avatar_color_seed: getMemberAvatarSeed(member),
-          })
-          .eq('user_id', member.user_id)
-
-        if (notesUpdateError) throw notesUpdateError
-      }
+      await syncRestaurantNotesProfile({
+        ...member,
+        username: trimmedUsername,
+      })
 
       setMember((prev) => prev ? { ...prev, username: trimmedUsername || null } : prev)
       setUsernameEditing(false)
       setUsernameDraft('')
     } catch (err) {
       console.error(err)
-      setUsernameError('사용자 이름 저장 중 오류가 발생했습니다.')
+      if (err?.code === '23505' || String(err?.message || '').toLowerCase().includes('duplicate')) {
+        setUsernameError('중복된 닉네임 입니다')
+      } else {
+        setUsernameError('사용자 이름 저장 중 오류가 발생했습니다.')
+      }
     } finally {
       setUsernameSaving(false)
     }
@@ -413,7 +432,7 @@ export default function SettingsPage() {
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />
                 ) : (
-                  <UserCircle size="72%" weight="fill" color="rgba(44,42,39,0.55)" />
+                  <UserCircle size="72%" weight="fill" className="text-[rgba(44,42,39,0.55)] dark:text-white/70" />
                 )}
               </div>
               <span

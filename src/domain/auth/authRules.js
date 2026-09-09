@@ -48,8 +48,8 @@ export function mapAuthError(supabaseMessage) {
 
   const msg = supabaseMessage.toLowerCase()
 
-  if (msg.includes('invalid login credentials'))
-    return 'Incorrect email or password.'
+  if (msg.includes('invalid login credentials') || msg.includes('invalid_credentials'))
+    return '이메일 주소 또는 비밀번호를 다시 확인해 주세요.'
   if (msg.includes('email not confirmed'))
     return 'EMAIL_NOT_CONFIRMED'   // special sentinel — UI handles this case
   if (msg.includes('token has expired') || msg.includes('otp expired'))

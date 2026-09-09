@@ -861,7 +861,7 @@ function ProfileHero({
             {profilePreviewUrl ? (
               <img src={profilePreviewUrl} alt="Profile" draggable={false} style={s.avatarImage} />
             ) : (
-              <UserCircle size="72%" weight="fill" color="rgba(44,42,39,0.55)" />
+              <UserCircle size="72%" weight="fill" className="text-[rgba(44,42,39,0.55)] dark:text-white/70" />
             )}
           </div>
           {allowUpload && (
