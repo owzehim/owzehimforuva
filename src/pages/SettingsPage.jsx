@@ -9,7 +9,10 @@ import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 
-const USERNAME_PATTERN = /^[\p{L}\p{N}_]{2,20}$/u
+function isValidUsername(value) {
+  const trimmed = value.trim()
+  return trimmed.length >= 2 && trimmed.length <= 20 && !/[\s\p{C}]/u.test(trimmed)
+}
 
 // ─── Image helpers ────────────────────────────────────────────────────────────
 
@@ -295,8 +298,8 @@ export default function SettingsPage() {
     const trimmedUsername = usernameDraft.trim()
     setUsernameError('')
 
-    if (trimmedUsername && !USERNAME_PATTERN.test(trimmedUsername)) {
-      setUsernameError('2-20자의 문자, 숫자, 밑줄만 사용할 수 있습니다.')
+    if (trimmedUsername && !isValidUsername(trimmedUsername)) {
+      setUsernameError('2-20자, 공백 없이 입력해 주세요.')
       return
     }
 

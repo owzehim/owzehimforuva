@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChatDots, Flag, PencilSimple, Plus, Trash, Translate, UserCircle, X } from '@phosphor-icons/react'
+import { ChatDots, Flag, PencilSimple, Plus, Trash, UserCircle, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { getPastelColor } from '../lib/avatarColor'
 
@@ -55,7 +55,6 @@ export function GoodToKnowNotesPanel({
   canComment,
   isAdmin,
   mutedAccentColor,
-  targetLanguage = 'en',
 }) {
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -65,7 +64,6 @@ export function GoodToKnowNotesPanel({
   const [editingNote, setEditingNote] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [translations, setTranslations] = useState({})
   const touchStartRef = useRef(null)
   const todayKey = formatAmsterdamDay(Date.now())
   const hasNoteToday = notes.some((note) => (
@@ -103,7 +101,6 @@ export function GoodToKnowNotesPanel({
     setEditingNote(null)
     setBody('')
     setError('')
-    setTranslations({})
     loadNotes()
 
     if (!restaurantId) return undefined
@@ -232,19 +229,6 @@ export function GoodToKnowNotesPanel({
     }
   }
 
-  const translateNote = async (noteId) => {
-    setError('')
-    const { data, error: translateError } = await supabase.functions.invoke('translate-note', {
-      body: { noteId, targetLanguage },
-    })
-
-    if (translateError || !data?.translation) {
-      setError('Could not translate this note.')
-    } else {
-      setTranslations((current) => ({ ...current, [noteId]: data.translation }))
-    }
-  }
-
   const reportNote = async (noteId) => {
     if (!userId || !window.confirm('Report this note?')) return
     const { error: reportError } = await supabase
@@ -332,9 +316,11 @@ export function GoodToKnowNotesPanel({
         {loading ? (
           <p className="py-8 text-center text-xs text-gray-400">Loading notes...</p>
         ) : !userId ? (
-          <p className="py-8 text-center text-xs leading-relaxed text-gray-400">
-            Log in as a member to read and leave notes.
-          </p>
+          <div className="flex h-full min-h-[120px] items-center justify-center px-4">
+            <p className="text-center text-xs leading-relaxed text-gray-400">
+              Log in as a member to read and leave notes.
+            </p>
+          </div>
         ) : notes.length === 0 ? (
           <div className="flex h-full min-h-[120px] items-center justify-center text-gray-300" style={mutedAccentStyle}>
             <ChatDots size={34} weight="regular" />
@@ -381,13 +367,6 @@ export function GoodToKnowNotesPanel({
                   </div>
                 </div>
                 <p className="mt-1 break-words text-xs leading-relaxed text-gray-600">{note.body}</p>
-                {translations[note.id] ? (
-                  <p className="mt-1 break-words border-t border-gray-100 pt-1 text-xs leading-relaxed text-gray-500">{translations[note.id]}</p>
-                ) : (
-                  <button type="button" onClick={() => translateNote(note.id)} className="mt-1 flex items-center gap-1 text-[10px] text-orange-500">
-                    <Translate size={12} /> Translate
-                  </button>
-                )}
               </div>
             </article>
           )

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Flag, PencilSimple, Plus, Trash, Translate } from '@phosphor-icons/react'
+import { Flag, PencilSimple, Plus, Trash } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 
 const MAX_COMMENT_LENGTH = 200
@@ -35,7 +35,6 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
   const [editingComment, setEditingComment] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [translations, setTranslations] = useState({})
 
   const loadComments = async () => {
     if (!restaurantId) return
@@ -123,16 +122,6 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
     else loadComments()
   }
 
-  const translateComment = async (commentId) => {
-    const targetLanguage = (navigator.language || 'en').split('-')[0]
-    setError('')
-    const { data, error: translateError } = await supabase.functions.invoke('translate-comment', {
-      body: { commentId, targetLanguage },
-    })
-    if (translateError || !data?.translation) setError('번역하지 못했어요. 잠시 후 다시 시도해 주세요.')
-    else setTranslations((current) => ({ ...current, [commentId]: data.translation }))
-  }
-
   const reportComment = async (commentId) => {
     if (!userId || !window.confirm('이 리뷰를 신고할까요?')) return
     const { error: reportError } = await supabase
@@ -191,11 +180,6 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
                 </div>
               </div>
               <p className="mt-1 break-words text-xs leading-relaxed text-gray-600">{comment.body}</p>
-              {translations[comment.id] ? (
-                <p className="mt-1 break-words border-t border-gray-100 pt-1 text-xs leading-relaxed text-gray-500">{translations[comment.id]}</p>
-              ) : (
-                <button type="button" onClick={() => translateComment(comment.id)} className="mt-1 flex items-center gap-1 text-[10px] text-orange-500"><Translate size={12} /> 번역하기</button>
-              )}
             </article>
           )
         })}
