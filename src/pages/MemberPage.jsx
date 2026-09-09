@@ -21,6 +21,7 @@ const MEMBER_TABS = ['qr', 'events', 'map']
 const MEMBER_EVENT_LIST_OPEN_KEY = 'uvain_member_event_list_open'
 const MEMBER_BOTTOM_TAB_PADDING = 'clamp(28px, 9.8vw, 42px)'
 const REOPEN_WELCOME_SLIDES_KEY = 'uvain_reopen_welcome_slides'
+const EVENT_IMAGE_HORIZONTAL_ANGLE_TAN = Math.tan(50 * Math.PI / 180)
 
 function getStoredMemberTab() {
   if (typeof window === 'undefined') return 'qr'
@@ -2229,6 +2230,7 @@ function EventsTab({ events }) {
   const eventSwipeStartY = useRef(null)
   const eventCardStartY = useRef(null)
   const eventCardScrollRef = useRef(null)
+  const eventPreviewRef = useRef(null)
   const eventPreviewTouchStartX = useRef(null)
   const eventPreviewTouchStartY = useRef(null)
   const eventPreviewTouchLastY = useRef(null)
@@ -2550,6 +2552,44 @@ function EventsTab({ events }) {
     setLightboxIndex(index)
   }
 
+  useEffect(() => {
+    const previewElement = eventPreviewRef.current
+    if (!previewElement) return undefined
+
+    const preventVerticalScrollDuringHorizontalSwipe = (event) => {
+      if (
+        !eventCardOpen ||
+        event.touches.length !== 1 ||
+        eventPreviewTouchStartX.current == null ||
+        eventPreviewTouchStartY.current == null
+      ) return
+
+      const touch = event.touches[0]
+      const dx = touch.clientX - eventPreviewTouchStartX.current
+      const dy = touch.clientY - eventPreviewTouchStartY.current
+      const absDx = Math.abs(dx)
+      const absDy = Math.abs(dy)
+
+      if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
+        eventPreviewGestureAxis.current =
+          absDx > 10 && absDy <= absDx * EVENT_IMAGE_HORIZONTAL_ANGLE_TAN
+            ? 'x'
+            : 'y'
+        eventCardGestureAxis.current = eventPreviewGestureAxis.current
+      }
+
+      if (eventPreviewGestureAxis.current === 'x') {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }
+
+    previewElement.addEventListener('touchmove', preventVerticalScrollDuringHorizontalSwipe, { passive: false })
+    return () => {
+      previewElement.removeEventListener('touchmove', preventVerticalScrollDuringHorizontalSwipe)
+    }
+  }, [eventCardOpen, displayEvent?.id])
+
   const handleEventPreviewTouchStart = (e) => {
     if (!eventCardOpen) return
     eventPreviewTouchStartX.current = e.touches[0].clientX
@@ -2572,7 +2612,7 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
 
     if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
-      if (absDx > 10 && absDy <= absDx * Math.tan(50 * Math.PI / 180)) {
+      if (absDx > 10 && absDy <= absDx * EVENT_IMAGE_HORIZONTAL_ANGLE_TAN) {
         eventPreviewGestureAxis.current = 'x'
       } else {
         eventPreviewGestureAxis.current = 'y'
@@ -2609,7 +2649,7 @@ function EventsTab({ events }) {
       eventPreviewGestureAxis.current === 'x' &&
       displayImages.length > 1 &&
       absDx > 28 &&
-      absDy <= absDx * Math.tan(50 * Math.PI / 180)
+      absDy <= absDx * EVENT_IMAGE_HORIZONTAL_ANGLE_TAN
     ) {
       e.stopPropagation()
       eventPreviewSuppressClick.current = true
@@ -3631,6 +3671,7 @@ const effectiveDateColor = isDragging
                   >
                     {hasImages && (
                       <div
+                        ref={eventPreviewRef}
                         onTouchStart={handleEventPreviewTouchStart}
                         onTouchMove={handleEventPreviewTouchMove}
                         onTouchEnd={handleEventPreviewTouchEnd}
