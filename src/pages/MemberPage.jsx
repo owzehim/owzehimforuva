@@ -152,6 +152,8 @@ export default function MemberPage() {
   }, [])
 
   const handleTabChange = (key) => {
+    if (key === activeTab) return
+
     window.sessionStorage.setItem(MEMBER_ACTIVE_TAB_KEY, key)
     setActiveTab(key)
     setTabKey((prev) => prev + 1)
