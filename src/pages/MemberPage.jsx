@@ -2237,6 +2237,7 @@ function EventsTab({ events }) {
   const eventPreviewSuppressClick = useRef(false)
   const eventImageBoxRatioRef = useRef(1)
   const imageAspectRatiosRef = useRef({})
+  const eventCardClosingEventIdRef = useRef(null)
 
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return undefined
@@ -2344,10 +2345,15 @@ function EventsTab({ events }) {
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
     const shouldFadeToFirst = eventId && (slideIndexes[eventId] || 0) !== 0
 
+    if (eventId && imageAspectRatiosRef.current[eventId]?.[0]) {
+      eventImageBoxRatioRef.current = imageAspectRatiosRef.current[eventId][0]
+    }
+    eventCardClosingEventIdRef.current = eventId || null
     setEventCardClosing(true)
     setEventCardOpen(false)
     window.setTimeout(() => {
       setEventCardClosing(false)
+      eventCardClosingEventIdRef.current = null
     }, 360)
 
     if (shouldFadeToFirst) {
@@ -2566,7 +2572,7 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
 
     if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
-      if (absDx > absDy * 1.5) {
+      if (absDx > 16 && absDx >= absDy * 0.6) {
         eventPreviewGestureAxis.current = 'x'
       } else if (absDy > absDx * 1.5) {
         eventPreviewGestureAxis.current = 'y'
@@ -3165,17 +3171,19 @@ function EventsTab({ events }) {
   const displayImageRatios = imageAspectRatios[displayEvent?.id] || []
   const displayImageSlide = displayEvent ? slideIndexes[displayEvent.id] || 0 : 0
   const liveEventImageBoxRatio = displayImageRatios[0] || 1
-  const eventImageBoxRatio = eventCardClosing
+  const shouldFreezeEventImageBoxRatio =
+    eventCardClosing && eventCardClosingEventIdRef.current === displayEvent?.id
+  const eventImageBoxRatio = shouldFreezeEventImageBoxRatio
     ? eventImageBoxRatioRef.current
     : liveEventImageBoxRatio
   const isCurrentEventImageLoading =
     hasImages && !loadedEventPreviewImages[displayImages[displayImageSlide]]
 
   useEffect(() => {
-    if (!eventCardClosing) {
+    if (!shouldFreezeEventImageBoxRatio) {
       eventImageBoxRatioRef.current = liveEventImageBoxRatio
     }
-  }, [eventCardClosing, liveEventImageBoxRatio])
+  }, [shouldFreezeEventImageBoxRatio, liveEventImageBoxRatio])
 
   useEffect(() => {
     if (!displayEvent || displayImages.length === 0) return
