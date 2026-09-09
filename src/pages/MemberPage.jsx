@@ -2588,7 +2588,7 @@ function EventsTab({ events }) {
     return () => {
       previewElement.removeEventListener('touchmove', preventVerticalScrollDuringHorizontalSwipe)
     }
-  }, [eventCardOpen, displayEvent?.id])
+  }, [eventCardOpen, selectedEvent?.id])
 
   const handleEventPreviewTouchStart = (e) => {
     if (!eventCardOpen) return
