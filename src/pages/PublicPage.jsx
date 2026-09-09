@@ -168,6 +168,8 @@ export default function PublicPage() {
             <button
               key={tab.key}
               onClick={() => {
+                if (tab.key === activeTab) return
+
                 window.sessionStorage.setItem(PUBLIC_ACTIVE_TAB_KEY, tab.key)
                 setActiveTab(tab.key)
               }}
