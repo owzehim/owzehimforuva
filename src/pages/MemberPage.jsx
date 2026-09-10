@@ -2209,6 +2209,7 @@ function EventsTab({ events }) {
   const [eventCardClosing, setEventCardClosing] = useState(false)
   const [eventSwipeDirection, setEventSwipeDirection] = useState(0)
   const [loadedEventPreviewImages, setLoadedEventPreviewImages] = useState({})
+  const [eventPreviewFadingToFirst, setEventPreviewFadingToFirst] = useState(false)
   const [darkMode, setDarkMode] = useState(() =>
     typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
   )
@@ -2359,8 +2360,12 @@ function EventsTab({ events }) {
     }, 360)
 
     if (shouldFadeToFirst) {
+      setEventPreviewFadingToFirst(true)
       window.setTimeout(() => {
         setSlide(eventId, 0)
+      }, 140)
+      window.setTimeout(() => {
+        setEventPreviewFadingToFirst(false)
       }, 360)
     }
   }
@@ -3713,9 +3718,11 @@ const effectiveDateColor = isDragging
                             zIndex: 1,
                             display: 'flex',
                             height: '100%',
-                            opacity: 1,
+                            opacity: eventPreviewFadingToFirst ? 0 : 1,
                             transform: `translateX(-${displayImageSlide * 100}%)`,
-                            transition: 'transform 0.3s ease, opacity 0.22s ease',
+                            transition: eventPreviewFadingToFirst
+                              ? 'opacity 0.16s ease'
+                              : 'transform 0.3s ease, opacity 0.22s ease',
                             willChange: 'transform',
                             backfaceVisibility: 'hidden',
                             animation:
