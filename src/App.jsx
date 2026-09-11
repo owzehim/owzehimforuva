@@ -248,7 +248,7 @@ function PortraitOrientationBlocker() {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(
-      '(max-width: 767px) and (orientation: landscape)',
+      '(orientation: landscape) and (max-width: 767px), (orientation: landscape) and (max-height: 639px), (orientation: landscape) and (pointer: coarse)',
     )
     let hideTimer
 

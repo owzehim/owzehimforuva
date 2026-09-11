@@ -16,6 +16,17 @@ function createDeviceToken() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function getOrCreateDeviceToken(tokenKey) {
+  if (typeof window === 'undefined') return createDeviceToken()
+
+  const storedToken = window.localStorage.getItem(tokenKey)
+  if (storedToken) return storedToken
+
+  const nextToken = createDeviceToken()
+  window.localStorage.setItem(tokenKey, nextToken)
+  return nextToken
+}
+
 function isAdminUser(user) {
   return user?.user_metadata?.role === 'admin' || user?.email === 'admin@uvain.nl'
 }
@@ -29,14 +40,11 @@ export function useSingleDeviceSession(session) {
 
     const userId = user.id
     const tokenKey = getTokenKey(userId)
-    const deviceToken = createDeviceToken()
+    const deviceToken = getOrCreateDeviceToken(tokenKey)
     let cancelled = false
+    let claimSucceeded = false
 
     activeUserIdRef.current = userId
-
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(tokenKey, deviceToken)
-    }
 
     const signOutStaleDevice = async () => {
       if (cancelled) return
@@ -56,10 +64,16 @@ export function useSingleDeviceSession(session) {
 
       if (error) {
         console.warn('single device session claim failed:', error.message)
+        return false
       }
+
+      claimSucceeded = true
+      return true
     }
 
     const checkCurrentDevice = async () => {
+      if (!claimSucceeded) return
+
       const localToken =
         typeof window !== 'undefined'
           ? window.localStorage.getItem(tokenKey)
@@ -83,7 +97,9 @@ export function useSingleDeviceSession(session) {
       }
     }
 
-    claimThisDevice()
+    claimThisDevice().then((claimed) => {
+      if (claimed) checkCurrentDevice()
+    })
 
     const intervalId = window.setInterval(checkCurrentDevice, CHECK_INTERVAL_MS)
     const visibilityHandler = () => {

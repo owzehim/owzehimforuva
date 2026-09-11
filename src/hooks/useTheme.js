@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 
 const THEME_STORAGE_KEY = 'uvain_theme'
+const THEME_CHANGE_EVENT = 'uvain-theme-change'
 const DARK_QUERY = '(prefers-color-scheme: dark)'
+const DEFAULT_THEME = 'light'
 
 function getStoredTheme() {
-  if (typeof window === 'undefined') return 'system'
-  return window.localStorage.getItem(THEME_STORAGE_KEY) || 'system'
+  if (typeof window === 'undefined') return DEFAULT_THEME
+
+  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+  return ['light', 'dark', 'system'].includes(storedTheme)
+    ? storedTheme
+    : DEFAULT_THEME
 }
 
 function prefersDark() {
@@ -35,14 +41,31 @@ export function useTheme() {
     return () => media.removeEventListener('change', handleChange)
   }, [theme])
 
-  const setTheme = (nextTheme) => {
-    setThemeState(nextTheme)
-    if (nextTheme === 'system') {
-      window.localStorage.removeItem(THEME_STORAGE_KEY)
-    } else {
-      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+  useEffect(() => {
+    const syncStoredTheme = () => {
+      const nextTheme = getStoredTheme()
+      setThemeState(nextTheme)
+      applyTheme(nextTheme)
     }
-    applyTheme(nextTheme)
+
+    window.addEventListener('storage', syncStoredTheme)
+    window.addEventListener(THEME_CHANGE_EVENT, syncStoredTheme)
+
+    return () => {
+      window.removeEventListener('storage', syncStoredTheme)
+      window.removeEventListener(THEME_CHANGE_EVENT, syncStoredTheme)
+    }
+  }, [])
+
+  const setTheme = (nextTheme) => {
+    const normalizedTheme = ['light', 'dark', 'system'].includes(nextTheme)
+      ? nextTheme
+      : DEFAULT_THEME
+
+    setThemeState(normalizedTheme)
+    window.localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme)
+    applyTheme(normalizedTheme)
+    window.dispatchEvent(new Event(THEME_CHANGE_EVENT))
   }
 
   return { theme, setTheme }
