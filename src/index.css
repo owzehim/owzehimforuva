@@ -262,7 +262,7 @@ select {
   }
 }
 
-@media (display-mode: standalone), (max-height: 639px), (pointer: coarse) and (orientation: landscape) {
+@media (display-mode: standalone), (display-mode: fullscreen), (max-height: 639px), (pointer: coarse) and (orientation: landscape) {
   .phone-app-shell,
   .member-app-shell {
     --member-screen-width: min(calc(100vw - 32px), 398px);

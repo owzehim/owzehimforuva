@@ -393,9 +393,9 @@ function WelcomeSlides({ member, onFinish, onBack }) {
   const [benefitsAcknowledged, setBenefitsAcknowledged] = useState(false)
   const [benefitsAcknowledgementVisible, setBenefitsAcknowledgementVisible] = useState(false)
   const tourLayout = {
-    contentTopOffset: '-30px',
-    animationTextGap: '20px',
-    controlsBottomOffset: '90px',
+    contentTopOffset: 'clamp(-30px, calc((760px - 100dvh) * 0.35), 42px)',
+    animationTextGap: 'clamp(14px, 2.4dvh, 20px)',
+    controlsBottomOffset: 'clamp(28px, calc((100dvh - 640px) * 0.45), 90px)',
   }
   const firstName = member?.first_name_korean || member?.first_name_ko || member?.first_name || ''
   const slides = [
@@ -1145,7 +1145,8 @@ function MembershipCard({
 }) {
   const [flipped, setFlipped] = useState(false)
 
-  const W = 'var(--member-screen-width, min(calc(100vw - 32px), 398px))'
+  const W =
+    'min(var(--member-screen-width, min(calc(100vw - 32px), 398px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 260px) / 1.586))'
   const cardW = W
   const cardH = `calc(${W} * 1.586)`
   const fs = {
@@ -1174,6 +1175,7 @@ function MembershipCard({
   const hasProfileImage = !!member?.profile_image_url
   // Keep the membership-card guide proportional to QRScanner's real scan box.
   const qrOutlineSize = `min(220px, calc(${W} * 0.55))`
+  const qrIconSize = `clamp(30px, calc(${W} * 0.1), 42px)`
   const BRACKET = `calc(${qrOutlineSize} * 0.127)`
   const BRACKET_STROKE = `max(2px, calc(${W} * 0.0075))`
   const cardBg = darkMode ? '#1C1C1E' : '#F6F4F1'
@@ -1399,9 +1401,14 @@ function MembershipCard({
             }}
           >
             <QrCode
-              size={`calc(${W} * 0.1)`}
+              size={42}
               weight="bold"
               color={faintText}
+              style={{
+                width: qrIconSize,
+                height: qrIconSize,
+                flexShrink: 0,
+              }}
             />
             <span
               style={{

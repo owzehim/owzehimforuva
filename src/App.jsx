@@ -24,6 +24,7 @@ const OTP_PENDING_EVENT = 'uvain-otp-pending-change'
 function isStandaloneApp() {
   if (typeof window === 'undefined') return false
   return (
+    window.matchMedia?.('(display-mode: fullscreen)').matches ||
     window.matchMedia?.('(display-mode: standalone)').matches ||
     window.navigator.standalone === true
   )
