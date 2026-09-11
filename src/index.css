@@ -71,8 +71,15 @@
 
 html,
 body {
+  width: 100%;
+  min-width: 0;
   overscroll-behavior: none;
   font-family: var(--font-app);
+}
+
+#root {
+  width: 100%;
+  min-height: 100dvh;
 }
 
 /* This is an app-like interface, not a document reader. Keep every screen
@@ -244,7 +251,7 @@ select {
   font-size: max(16px, 1rem);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 768px) and (min-height: 640px) and (display-mode: browser) {
   .phone-app-shell,
   .member-app-shell {
     --member-screen-width: min(calc(100% - 32px), 398px);
@@ -252,6 +259,18 @@ select {
     width: min(100vw, 430px);
     margin: 0 auto;
     box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08);
+  }
+}
+
+@media (display-mode: standalone), (max-height: 639px), (pointer: coarse) and (orientation: landscape) {
+  .phone-app-shell,
+  .member-app-shell {
+    --member-screen-width: min(calc(100vw - 32px), 398px);
+    --app-screen-width: min(calc(100vw - 32px), 398px);
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-shadow: none;
   }
 }
 
