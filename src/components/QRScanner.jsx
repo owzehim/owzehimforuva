@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { VideoCameraSlash } from '@phosphor-icons/react'
 
-const QR_BOX_SIZE = 220
-const QR_BOX_FRAME_RATIO = 0.804
-const QR_BOX_SCAN_RATIO = 0.6875
+const QR_BOX_SIZE = 176
+const QR_BOX_FRAME_RATIO = 0.64
+const QR_BOX_SCAN_RATIO = 0.72
 
 export default function QRScanner({ onScan, darkMode = false }) {
   const scannerRef = useRef(null)

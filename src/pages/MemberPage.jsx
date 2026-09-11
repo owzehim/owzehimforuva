@@ -393,9 +393,9 @@ function WelcomeSlides({ member, onFinish, onBack }) {
   const [benefitsAcknowledged, setBenefitsAcknowledged] = useState(false)
   const [benefitsAcknowledgementVisible, setBenefitsAcknowledgementVisible] = useState(false)
   const tourLayout = {
-    contentTopOffset: 'clamp(-30px, calc((760px - 100dvh) * 0.35), 42px)',
+    contentTopOffset: 'clamp(-20px, calc(12px + (760px - 100dvh) * 0.35), 56px)',
     animationTextGap: 'clamp(14px, 2.4dvh, 20px)',
-    controlsBottomOffset: 'clamp(28px, calc((100dvh - 640px) * 0.45), 90px)',
+    controlsBottomOffset: 'clamp(22px, calc((100dvh - 640px) * 0.42), 82px)',
   }
   const firstName = member?.first_name_korean || member?.first_name_ko || member?.first_name || ''
   const slides = [
