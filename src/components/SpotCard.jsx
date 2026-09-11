@@ -681,6 +681,8 @@ export function SpotCard({
   const isMax = cardHeight >= MAX_HEIGHT * 0.85
   const isCollapsed = cardHeight < MAX_HEIGHT * 0.85
   const isTallCollapsed = isTallSpotCard && isCollapsed
+  const showFixedGoogleMapsButton =
+    spotCardHeightMode !== 'full' || isCollapsed
   const googleMapsReservedSpace = spotCardHeightMode === 'full'
     ? isCollapsed
       ? 86
@@ -1133,12 +1135,14 @@ export function SpotCard({
           style={{
             bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
             zIndex: 1020,
+            opacity: showFixedGoogleMapsButton ? 1 : 0,
             transform:
               closing || !isVisible
                 ? `translateY(${fixedButtonHiddenOffset}px)`
                 : 'translateY(0)',
-            transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
-            willChange: 'transform',
+            transition:
+              'opacity 0.22s ease, transform 0.35s cubic-bezier(0.4,0,0.2,1)',
+            willChange: 'opacity, transform',
           }}
         >
             <a
@@ -1151,6 +1155,7 @@ export function SpotCard({
               target="_blank"
               rel="noopener noreferrer"
               className="pointer-events-auto bg-orange-500 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg flex items-center gap-1.5"
+              style={{ pointerEvents: showFixedGoogleMapsButton ? 'auto' : 'none' }}
               onTouchStart={(e) => e.stopPropagation()}
             >
               <MapPin size={14} weight="fill" />
