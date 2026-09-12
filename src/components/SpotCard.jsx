@@ -1131,17 +1131,17 @@ export function SpotCard({
       {/* Fixed outside the moving sheet so it remains in one place over the SpotCard. */}
       {showGoogleMapsButton && (
         <div
-          className="fixed left-0 right-0 pointer-events-none flex justify-center"
+          className={
+            'fixed left-0 right-0 pointer-events-none flex justify-center transition-opacity duration-200 ' +
+            (showFixedGoogleMapsButton ? 'opacity-100' : 'opacity-0')
+          }
           style={{
             bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
             zIndex: 1020,
-            opacity: showFixedGoogleMapsButton ? 1 : 0,
             transform:
               closing || !isVisible
                 ? `translateY(${fixedButtonHiddenOffset}px)`
                 : 'translateY(0)',
-            transition:
-              'opacity 0.22s ease, transform 0.35s cubic-bezier(0.4,0,0.2,1)',
             willChange: 'opacity, transform',
           }}
         >
@@ -1154,8 +1154,10 @@ export function SpotCard({
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="pointer-events-auto bg-orange-500 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg flex items-center gap-1.5"
-              style={{ pointerEvents: showFixedGoogleMapsButton ? 'auto' : 'none' }}
+              className={
+                'bg-orange-500 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg flex items-center gap-1.5 ' +
+                (showFixedGoogleMapsButton ? 'pointer-events-auto' : 'pointer-events-none')
+              }
               onTouchStart={(e) => e.stopPropagation()}
             >
               <MapPin size={14} weight="fill" />
