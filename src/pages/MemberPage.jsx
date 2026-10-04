@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { hasAdminRole } from '../lib/adminRoles'
 import MapView from '../components/MapView'
 import { SpotCard, RichText } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
@@ -83,8 +84,7 @@ export default function MemberPage() {
         return
       }
 
-      // Admin flag from user metadata (same logic as App.jsx)
-      const isAdminUser = user?.user_metadata?.role === 'admin'
+      const isAdminUser = await hasAdminRole(user.id)
       setAuthUserId(user.id)
 
       // Members: maybeSingle() so we don't get a 406 if the admin has no row

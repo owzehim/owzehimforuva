@@ -19,61 +19,27 @@ export async function fetchPendingReward(userId, restaurantId) {
 }
 
 export async function redeemReward(rewardId, sheetSync = {}) {
-  const { error } = await supabase
-    .from('stamp_card_rewards')
-    .update({
-      redeemed: true,
-      redeemed_at: new Date().toISOString(),
-    })
-    .eq('id', rewardId)
-
-  if (error) throw error
-
-  await syncRewardClaimToSheets(sheetSync)
-}
-
-async function syncRewardClaimToSheets({ redemptionId, storeId } = {}) {
-  if (!redemptionId || !storeId) {
-    console.warn('Skipping reward claim sheet sync: missing redemptionId or storeId')
-    return
-  }
-
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return
-
-  const { data, error } = await supabase.functions.invoke('sync-to-sheets', {
+  const { data, error } = await supabase.functions.invoke('redeem-stamp-card-reward', {
     body: {
-      action: 'stamp_claim',
-      redemption_id: redemptionId,
-      store_id: storeId,
-      stamp_status: 'claimed',
-    },
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
+      rewardId,
+      redemptionId: sheetSync.redemptionId,
+      storeId: sheetSync.storeId,
     },
   })
 
-  if (error) {
-    console.warn('Reward claim sheet sync failed:', error.message || error)
-    throw error
-  }
+  if (error) throw new Error(data?.message || error.message || '리워드 사용 처리에 실패했습니다.')
+  if (!data?.success) throw new Error(data?.message || '리워드 사용 처리에 실패했습니다.')
 
-  if (data?.success === false) {
-    console.warn('Reward claim sheet sync failed:', data)
-    throw new Error('Reward was claimed, but Google Sheets did not update.')
-  }
+  return data
 }
 
 export async function restoreReward(rewardId) {
-  const { error } = await supabase
-    .from('stamp_card_rewards')
-    .update({
-      redeemed: false,
-      redeemed_at: null,
-    })
-    .eq('id', rewardId)
+  const { data, error } = await supabase.functions.invoke('admin-add-stamp', {
+    body: { action: 'restoreReward', rewardId },
+  })
 
-  if (error) throw error
+  if (error) throw new Error(data?.message || error.message || '리워드 복원에 실패했습니다.')
+  if (!data?.success) throw new Error(data?.message || '리워드 복원에 실패했습니다.')
 }
 
 // Admin use only — fetches all members with their stamp state for a given spot

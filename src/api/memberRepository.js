@@ -58,7 +58,7 @@ function isAlreadyRegisteredError(error) {
  *  legalAcceptedAt?: string,
  * }} payload
  *
- * @returns {Promise<{ userId: string, memberId: string }>}
+ * @returns {Promise<{ userId: string, memberId: null }>}
  */
 export async function registerMember(payload) {
   const {
@@ -137,22 +137,8 @@ export async function registerMember(payload) {
     throw new Error(ALREADY_REGISTERED_MESSAGE);
   }
 
-  const { data: existingMember, error: existingMemberError } = await supabase
-    .from('members')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (existingMemberError) {
-    throw new Error(existingMemberError.message);
-  }
-
-  if (existingMember) {
-    throw new Error(ALREADY_REGISTERED_MESSAGE);
-  }
-
   // Step 2: Insert members row linked to the auth user
-  const { data: memberData, error: memberError } = await supabase
+  const { error: memberError } = await supabase
     .from('members')
     .insert([
       {
@@ -172,10 +158,10 @@ export async function registerMember(payload) {
         is_member: false, // starts inactive — you activate manually
         session_token: null,
         profile_image_url: profileImageUrl || null,
+        privacy_policy_version: legalDocumentsVersion || null,
+        privacy_accepted_at: legalAcceptedAt || null,
       },
-    ])
-    .select('id')
-    .single();
+    ]);
 
   if (memberError) {
     // Auth user was created but members insert failed.
@@ -190,27 +176,5 @@ export async function registerMember(payload) {
     throw new Error(memberError.message);
   }
 
-  if (legalDocumentsVersion && legalAcceptedAt) {
-    const legalUpdates = [
-      { legal_documents_version: legalDocumentsVersion },
-      { legal_documents_accepted_at: legalAcceptedAt },
-      { privacy_policy_version: legalDocumentsVersion },
-      { privacy_accepted_at: legalAcceptedAt },
-      { terms_accepted_at: legalAcceptedAt },
-      { community_guidelines_accepted_at: legalAcceptedAt },
-    ];
-
-    for (const update of legalUpdates) {
-      const { error: legalUpdateError } = await supabase
-        .from('members')
-        .update(update)
-        .eq('id', memberData.id);
-
-      if (legalUpdateError) {
-        console.warn('Legal acceptance metadata field was not stored:', update, legalUpdateError);
-      }
-    }
-  }
-
-  return { userId, memberId: memberData.id };
+  return { userId, memberId: null };
 }

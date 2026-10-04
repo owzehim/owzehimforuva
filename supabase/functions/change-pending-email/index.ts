@@ -1,5 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
+import { getSupabasePublishableKey } from '../_shared/publishableKey.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,14 +36,15 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    if (!supabaseUrl || !anonKey || !serviceKey) {
+    const publishableKey = getSupabasePublishableKey()
+    const serviceKey = getSupabaseServiceKey()
+    if (!supabaseUrl || !publishableKey || !serviceKey) {
       return json({ success: false, message: 'Email changes are temporarily unavailable.' }, 500)
     }
 
-    const passwordClient = createClient(supabaseUrl, anonKey, {
+    const passwordClient = createClient(supabaseUrl, publishableKey, {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: apiKeyOnlyFetch(publishableKey) },
     })
     const { error: passwordError } = await passwordClient.auth.signInWithPassword({
       email: oldEmail,
@@ -52,6 +56,7 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
     let existingUser: { id: string; user_metadata?: Record<string, unknown> } | null = null
 

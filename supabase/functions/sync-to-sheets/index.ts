@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,7 +64,7 @@ serve(async (req) => {
     }
 
     // ── Parse body ────────────────────────────────────────────
-    const { action, redemption_id, store_id, rating, tags, comment, stamp_status } = await req.json()
+    const { action, redemption_id, store_id, rating, tags, comment } = await req.json()
 
     if (!redemption_id || !store_id) {
       return new Response(
@@ -73,7 +75,7 @@ serve(async (req) => {
 
     // ── Supabase admin client ─────────────────────────────────
     const supabaseUrl  = Deno.env.get('SUPABASE_URL')!
-    const serviceKey   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const serviceKey   = getSupabaseServiceKey()
 
     if (!serviceKey) {
       return new Response(
@@ -84,6 +86,7 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
+      global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
     // ── Verify user ───────────────────────────────────────────
@@ -92,6 +95,15 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, message: '로그인이 필요합니다.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    // Stamp claims are emitted only by redeem-stamp-card-reward after its
+    // one-time database state transition. Do not accept client-forged claims.
+    if (action === 'stamp_claim') {
+      return new Response(
+        JSON.stringify({ success: false, message: '리워드 사용 기록은 서버 처리로만 등록할 수 있습니다.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
@@ -107,33 +119,6 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, message: '매장 정보를 찾을 수 없습니다.' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
-    }
-
-    if (action === 'stamp_claim') {
-      const claimPayload = {
-        type: 'stamp_claim',
-        partnership_id: store_id,
-        sheet_name: partnership.sheet_name || partnership.name,
-        redemption_id: String(redemption_id),
-        stamp_status: stamp_status || 'claimed',
-      }
-
-      const sheetResults = await Promise.all([
-        postJsonToAppsScript(partnership.master_apps_script_url, claimPayload, 'master'),
-        postJsonToAppsScript(partnership.partner_apps_script_url, claimPayload, 'partner'),
-      ])
-      const failedSheets = sheetResults.filter((result) => !result.ok)
-
-      return new Response(
-        JSON.stringify({
-          success: failedSheets.length === 0,
-          sheet_results: sheetResults,
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
       )
     }
 

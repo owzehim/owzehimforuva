@@ -1,22 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-function getServiceKey() {
-  const direct = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  if (direct) return direct
-
-  try {
-    const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || '{}'
-    const parsed = JSON.parse(raw)
-    return parsed.service_role_key || parsed.service_role || Object.values(parsed)[0] || ''
-  } catch {
-    return ''
-  }
 }
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -88,17 +77,24 @@ serve(async (req) => {
       action = 'addStamp',
       userId,
       restaurantId,
+      rewardId,
       totalStamps,
       visitedAt,
       adminNote,
     } = await req.json().catch(() => ({}))
 
-    if (!restaurantId || (action === 'addStamp' && (!userId || !visitedAt))) {
+    const supportedActions = new Set(['addStamp', 'listMembers', 'restoreReward', 'resetProgress'])
+    if (
+      !supportedActions.has(action) ||
+      ((action === 'addStamp' || action === 'listMembers' || action === 'resetProgress') && !restaurantId) ||
+      (action === 'addStamp' && (!userId || !visitedAt)) ||
+      (action === 'restoreReward' && !rewardId)
+    ) {
       return json({ success: false, message: '잘못된 요청입니다.' }, 400)
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceKey = getServiceKey()
+    const serviceKey = getSupabaseServiceKey()
 
     if (!serviceKey) {
       console.error('No service key found')
@@ -107,6 +103,7 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
+      global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
     const { data: userData, error: userError } = await admin.auth.getUser(token)
@@ -117,13 +114,56 @@ serve(async (req) => {
       return json({ success: false, message: '로그인이 필요합니다.' }, 401)
     }
 
-    const isAdmin =
-      caller.user_metadata?.role === 'admin' ||
-      caller.app_metadata?.role === 'admin' ||
-      caller.email === 'admin@uvain.nl'
+    const { data: adminRole, error: adminRoleError } = await admin
+      .from('admin_roles')
+      .select('user_id')
+      .eq('user_id', caller.id)
+      .maybeSingle()
+
+    if (adminRoleError) {
+      console.error('Admin role lookup failed:', adminRoleError)
+      return json({ success: false, message: '관리자 권한을 확인할 수 없습니다.' }, 500)
+    }
+
+    const isAdmin = Boolean(adminRole)
 
     if (!isAdmin) {
       return json({ success: false, message: '관리자 권한이 필요합니다.' }, 403)
+    }
+
+    if (action === 'restoreReward') {
+      const { data: restoredReward, error: restoreError } = await admin
+        .from('stamp_card_rewards')
+        .update({ redeemed: false, redeemed_at: null })
+        .eq('id', rewardId)
+        .eq('redeemed', true)
+        .select('id')
+        .maybeSingle()
+
+      if (restoreError) throw restoreError
+      if (!restoredReward) {
+        return json({ success: false, message: '이미 미사용 상태이거나 리워드를 찾을 수 없습니다.' }, 404)
+      }
+
+      return json({ success: true })
+    }
+
+    if (action === 'resetProgress') {
+      const { error: rewardsError } = await admin
+        .from('stamp_card_rewards')
+        .delete()
+        .eq('restaurant_id', restaurantId)
+
+      if (rewardsError) throw rewardsError
+
+      const { error: visitsError } = await admin
+        .from('stamp_card_visits')
+        .delete()
+        .eq('restaurant_id', restaurantId)
+
+      if (visitsError) throw visitsError
+
+      return json({ success: true })
     }
 
     const safeTotalStamps = Math.max(1, Number(totalStamps || 10))
@@ -243,7 +283,7 @@ serve(async (req) => {
           redeemed: false,
         })
 
-      if (rewardError) throw rewardError
+      if (rewardError && rewardError.code !== '23505') throw rewardError
     }
 
     return json({

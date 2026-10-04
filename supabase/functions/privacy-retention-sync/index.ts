@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,19 +36,6 @@ async function postJsonToAppsScript(url: string, payload: Record<string, unknown
   }
 }
 
-function getServiceRoleKey() {
-  const direct = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  if (direct) return direct
-
-  try {
-    const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || '{}'
-    const parsed = JSON.parse(raw)
-    return parsed.service_role_key || parsed.service_role || Object.values(parsed)[0] || ''
-  } catch {
-    return ''
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -64,7 +53,7 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const serviceKey = getServiceRoleKey()
+    const serviceKey = getSupabaseServiceKey()
     const masterAppsScriptUrl = Deno.env.get('MASTER_SHEET_APPS_SCRIPT_URL')
 
     if (!supabaseUrl || !serviceKey || !masterAppsScriptUrl) {
@@ -79,6 +68,7 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
+      global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
     const { data: anonymizedUsers, error } = await admin.rpc('anonymize_expired_members_for_sheets')

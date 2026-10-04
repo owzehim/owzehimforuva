@@ -63,10 +63,13 @@ export default function ScanPageStampBox({
 
     setRedeeming(true)
     try {
-      await redeemReward(effectivePendingReward.id, {
+      const result = await redeemReward(effectivePendingReward.id, {
         redemptionId: scanResult?.redemptionId,
         storeId: scanResult?.storeId,
       })
+      if (result?.sheetSync?.success === false) {
+        alert('리워드는 사용 처리됐지만 매장 기록 동기화에 실패했습니다. 관리자에게 알려주세요.')
+      }
       setPendingReward(null)
       setRedeemedThisSession(true)
       await refetch()
