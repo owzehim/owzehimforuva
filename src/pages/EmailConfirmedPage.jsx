@@ -32,10 +32,32 @@ export default function EmailConfirmedPage() {
           return
         }
 
-        const verifiedEmail = result.data.session.user?.email?.trim().toLowerCase()
-        if (verifiedEmail) {
-          window.localStorage.setItem('uvain_skip_otp_once_email', verifiedEmail)
+        const { data: emailChangeResult, error: emailChangeError } =
+          await supabase.functions.invoke('finalize-pending-email')
+        if (emailChangeError || !emailChangeResult?.success) {
+          console.error(
+            'Email was confirmed, but the pending email change could not be finalized:',
+            emailChangeError || emailChangeResult?.message,
+          )
+          if (!cancelled) setStatus('email_change_error')
+          return
         }
+
+        if (result.data.session.user?.user_metadata?.registration) {
+          const { data: registrationResult, error: registrationError } =
+            await supabase.functions.invoke('complete-member-registration')
+
+          if (registrationError || !registrationResult?.success) {
+            console.error(
+              'Email was confirmed, but member registration could not be completed:',
+              registrationError || registrationResult?.message,
+            )
+            if (!cancelled) setStatus('registration_error')
+            await supabase.auth.signOut()
+            return
+          }
+        }
+
         await supabase.auth.signOut()
         if (!cancelled) setStatus('success')
       } catch {
@@ -53,12 +75,20 @@ export default function EmailConfirmedPage() {
     ? copy.verifyingTitle
     : isSuccess
       ? copy.successTitle
-      : copy.errorTitle
+      : status === 'registration_error'
+        ? '이메일 인증은 완료됐지만 회원가입 저장에 실패했습니다.'
+        : status === 'email_change_error'
+          ? '이메일 인증은 완료됐지만 계정 이메일 변경 마무리에 실패했습니다.'
+        : copy.errorTitle
   const message = isVerifying
     ? copy.verifyingMessage
     : isSuccess
       ? copy.successMessage
-      : copy.errorMessage
+      : status === 'registration_error'
+        ? '로그인하면 회원가입 저장을 다시 시도합니다. 문제가 계속되면 지원팀에 문의해주세요.'
+        : status === 'email_change_error'
+          ? '이 페이지를 새로고침해 다시 시도해주세요. 문제가 계속되면 지원팀에 문의해주세요.'
+        : copy.errorMessage
 
   return (
     <div className="phone-app-shell" style={styles.page}>

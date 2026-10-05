@@ -8,56 +8,6 @@
   font-display: block;
 }
 
-@font-face {
-  font-family: "Uvain Helvetica";
-  src: url("./assets/fonts/Helvetica-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0000-00FF, U+0100-024F, U+1E00-1EFF, U+2000-206F,
-    U+20A0-20CF, U+2100-214F, U+2190-21FF;
-}
-
-@font-face {
-  font-family: "Uvain Helvetica";
-  src: url("./assets/fonts/Helvetica-Italic.ttf") format("truetype");
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-  unicode-range: U+0000-00FF, U+0100-024F, U+1E00-1EFF, U+2000-206F,
-    U+20A0-20CF, U+2100-214F, U+2190-21FF;
-}
-
-@font-face {
-  font-family: "Uvain Helvetica";
-  src: url("./assets/fonts/Helvetica-Bold.otf") format("opentype");
-  font-weight: 700 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0000-00FF, U+0100-024F, U+1E00-1EFF, U+2000-206F,
-    U+20A0-20CF, U+2100-214F, U+2190-21FF;
-}
-
-@font-face {
-  font-family: "Uvain Helvetica";
-  src: url("./assets/fonts/Helvetica-BoldItalic.ttf") format("truetype");
-  font-weight: 700 900;
-  font-style: italic;
-  font-display: swap;
-  unicode-range: U+0000-00FF, U+0100-024F, U+1E00-1EFF, U+2000-206F,
-    U+20A0-20CF, U+2100-214F, U+2190-21FF;
-}
-
-@font-face {
-  font-family: "Pretendard";
-  src: url("./assets/fonts/PretendardVariable.woff2") format("woff2-variations");
-  font-weight: 45 920;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+1100-11FF, U+3130-318F, U+A960-A97F, U+AC00-D7AF,
-    U+D7B0-D7FF;
-}
-
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {

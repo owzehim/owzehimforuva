@@ -52,3 +52,16 @@ export function computeStampState(visits, totalStamps, pendingReward = null) {
     currentCycleVisits,
   }
 }
+
+export function getScanResultIdentity(scanResult) {
+  if (!scanResult) return null
+  return scanResult.redemptionId ?? scanResult.id ?? scanResult
+}
+
+export function didRedeemRewardForCurrentScan(scanResult, redeemedScanIdentity) {
+  return Boolean(
+    scanResult &&
+    redeemedScanIdentity !== null &&
+    redeemedScanIdentity === getScanResultIdentity(scanResult),
+  )
+}

@@ -19,3 +19,38 @@ entrypoint = "./functions/privacy-retention-sync/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/change-pending-email/index.ts"
+
+[functions.finalize-pending-email]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/finalize-pending-email/index.ts"
+
+[functions.complete-member-registration]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/complete-member-registration/index.ts"
+
+[functions.admin-create-member]
+enabled = true
+verify_jwt = true
+
+[functions.admin-update-member]
+enabled = true
+verify_jwt = true
+
+[functions.admin-add-stamp]
+enabled = true
+verify_jwt = true
+
+[functions.log-redemption]
+enabled = true
+verify_jwt = true
+
+[functions.redeem-stamp-card-reward]
+enabled = true
+verify_jwt = true
+
+[functions.sync-review-to-sheets]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/sync-review-to-sheets/index.ts"

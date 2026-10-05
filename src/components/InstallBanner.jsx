@@ -3,9 +3,6 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { X, DeviceMobile, Export, PlusSquare } from '@phosphor-icons/react'
 
-const STORAGE_KEY = "uvain_install_banner_dismissed";
-const DISMISS_DAYS = 7;
-
 function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
@@ -22,19 +19,15 @@ function isInStandaloneMode() {
   );
 }
 
-function wasDismissedRecently() {
-  const ts = localStorage.getItem(STORAGE_KEY);
-  if (!ts) return false;
-  const diff = Date.now() - parseInt(ts, 10);
-  return diff < DISMISS_DAYS * 24 * 60 * 60 * 1000;
-}
-
 export default function InstallBanner() {
   const location = useLocation();
-  const [show, setShow] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
   const ios = isIOS();
   const iosChrome = isIOSChrome();
+  const [show, setShow] = useState(() => (
+    ios && !isInStandaloneMode()
+  ));
+  const [dismissed, setDismissed] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   const isEmailConfirmation =
     location.pathname === "/email-confirmed" ||
@@ -42,7 +35,7 @@ export default function InstallBanner() {
     location.hash.includes("access_token");
 
   useEffect(() => {
-    if (isInStandaloneMode() || wasDismissedRecently()) return;
+    if (isInStandaloneMode() || dismissed) return;
 
     if (!ios) {
       const handler = (e) => {
@@ -52,10 +45,8 @@ export default function InstallBanner() {
       };
       window.addEventListener("beforeinstallprompt", handler);
       return () => window.removeEventListener("beforeinstallprompt", handler);
-    } else {
-      setShow(true);
     }
-  }, [ios]);
+  }, [dismissed, ios]);
 
   const handleInstall = async () => {
     if (deferredPrompt) {
@@ -66,11 +57,11 @@ export default function InstallBanner() {
   };
 
   const dismiss = () => {
-    localStorage.setItem(STORAGE_KEY, Date.now().toString());
+    setDismissed(true);
     setShow(false);
   };
 
-  if (!show || isEmailConfirmation) return null;
+  if (isInStandaloneMode() || !show || isEmailConfirmation) return null;
 
   return (
     <div style={styles.overlay}>

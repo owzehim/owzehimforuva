@@ -2,14 +2,21 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CaretLeft } from '@phosphor-icons/react'
 import { updatePassword } from '../api/authRepository'
+import { supabase } from '../lib/supabase'
 
 const copy = {
   back: '\uC124\uC815\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30',
   title: '\uBE44\uBC00\uBC88\uD638 \uBC14\uAFB8\uAE30',
   description: '\uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.',
   newPassword: '\uC0C8 \uBE44\uBC00\uBC88\uD638',
+  currentPassword: '\uD604\uC7AC \uBE44\uBC00\uBC88\uD638',
+  reauthenticationCode: '\uC774\uBA54\uC77C \uD655\uC778 \uCF54\uB4DC',
+  sendCode: '\uD655\uC778 \uCF54\uB4DC \uBC1B\uAE30',
+  resendCode: '\uCF54\uB4DC \uB2E4\uC2DC \uBC1B\uAE30',
+  codeSent: '\uD655\uC778 \uCF54\uB4DC\uB97C \uD68C\uC6D0\uC758 \uC774\uBA54\uC77C\uB85C \uBCF4\uB0C8\uC2B5\uB2C8\uB2E4.',
+  codeRequired: '\uC774\uBA54\uC77C\uB85C \uBC1B\uC740 \uD655\uC778 \uCF54\uB4DC\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.',
   confirmPassword: '\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778',
-  tooShort: '\uBE44\uBC00\uBC88\uD638\uB294 \uCD5C\uC18C 8\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.',
+  tooShort: '\uBE44\uBC00\uBC88\uD638\uB294 \uCD5C\uC18C 12\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.',
   mismatch: '\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
   success: '\uBE44\uBC00\uBC88\uD638\uAC00 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4.',
   error: '\uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.',
@@ -20,6 +27,9 @@ const copy = {
 export default function ChangePasswordPage() {
   const navigate = useNavigate()
   const [newPassword, setNewPassword] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [reauthenticationCode, setReauthenticationCode] = useState('')
+  const [reauthenticationSent, setReauthenticationSent] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -30,7 +40,7 @@ export default function ChangePasswordPage() {
     setError('')
     setSuccess('')
 
-    if (newPassword.length < 8) {
+    if (newPassword.length < 12) {
       setError(copy.tooShort)
       return
     }
@@ -39,12 +49,35 @@ export default function ChangePasswordPage() {
       return
     }
 
+    if (!reauthenticationSent) {
+      setLoading(true)
+      try {
+        const { error: reauthenticationError } = await supabase.auth.reauthenticate()
+        if (reauthenticationError) throw reauthenticationError
+        setReauthenticationSent(true)
+        setSuccess(copy.codeSent)
+      } catch (err) {
+        setError(err.message || copy.error)
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    if (!reauthenticationCode.trim()) {
+      setError(copy.codeRequired)
+      return
+    }
+
     setLoading(true)
     try {
-      await updatePassword(newPassword)
+      await updatePassword(newPassword, currentPassword, reauthenticationCode.trim())
       setSuccess(copy.success)
       setNewPassword('')
+      setCurrentPassword('')
       setConfirmPassword('')
+      setReauthenticationCode('')
+      setReauthenticationSent(false)
     } catch (err) {
       setError(err.message || copy.error)
     } finally {
@@ -72,6 +105,10 @@ export default function ChangePasswordPage() {
           </div>
 
           <div className="relative -translate-y-9 space-y-4">
+            <PasswordField label={copy.currentPassword} value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
+            {reauthenticationSent && (
+              <PasswordField label={copy.reauthenticationCode} value={reauthenticationCode} onChange={setReauthenticationCode} autoComplete="one-time-code" />
+            )}
             <PasswordField label={copy.newPassword} value={newPassword} onChange={setNewPassword} />
             <PasswordField label={copy.confirmPassword} value={confirmPassword} onChange={setConfirmPassword} />
 
@@ -83,8 +120,30 @@ export default function ChangePasswordPage() {
               disabled={loading}
               className="mt-5 w-full rounded-full bg-orange-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
             >
-              {loading ? copy.changing : copy.submit}
+              {loading ? copy.changing : reauthenticationSent ? copy.submit : copy.sendCode}
             </button>
+            {reauthenticationSent && (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={async () => {
+                  setLoading(true)
+                  setError('')
+                  try {
+                    const { error: reauthenticationError } = await supabase.auth.reauthenticate()
+                    if (reauthenticationError) throw reauthenticationError
+                    setSuccess(copy.codeSent)
+                  } catch (err) {
+                    setError(err.message || copy.error)
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+                className="w-full py-2 text-sm text-gray-600 underline dark:text-gray-300"
+              >
+                {copy.resendCode}
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -92,7 +151,7 @@ export default function ChangePasswordPage() {
   )
 }
 
-function PasswordField({ label, value, onChange }) {
+function PasswordField({ label, value, onChange, autoComplete = 'new-password' }) {
   return (
     <label className="flex h-[54px] cursor-text flex-col justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-[#2c2c2e] dark:bg-[#111111]">
       <span className="text-xs font-normal leading-none text-gray-500 dark:text-gray-400">{label}</span>
@@ -101,7 +160,7 @@ function PasswordField({ label, value, onChange }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="w-full border-none bg-white p-0 text-sm text-gray-900 outline-none placeholder:text-transparent focus:outline-none dark:bg-[#111111] dark:text-white"
-        autoComplete="new-password"
+        autoComplete={autoComplete}
         required
       />
     </label>

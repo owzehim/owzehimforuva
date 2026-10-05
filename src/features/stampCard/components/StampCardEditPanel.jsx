@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { sanitizeRichText } from '../../../lib/sanitizeHtml'
 import { ArrowLeft, ClockCounterClockwise, Trash, UploadSimple } from '@phosphor-icons/react'
 import {
   DEFAULT_STAMP_CARD_CONFIG,
@@ -58,8 +59,10 @@ export default function StampCardEditPanel({ restaurantId, spotName, onClose }) 
     if (!window.confirm('이 스팟의 모든 멤버 스탬프와 리워드 기록을 0부터 다시 시작할까요?')) return
     setResetting(true)
     try {
-      await resetStampCardProgress(restaurantId)
-      alert('스탬프 카드가 0부터 다시 시작되도록 초기화되었습니다.')
+      const result = await resetStampCardProgress(restaurantId)
+      alert(result.auditLogged === false
+        ? '스탬프 기록은 초기화됐지만 관리자 작업 기록 저장에 실패했습니다. 작업 기록을 확인해 주세요.'
+        : '스탬프 카드가 0부터 다시 시작되도록 초기화되었습니다.')
     } catch (e) {
       console.error('resetStampCardProgress error:', e)
       alert('초기화 실패: ' + (e?.message || '알 수 없는 오류'))
@@ -335,13 +338,14 @@ function RichTextField({ value, onChange, placeholder }) {
 
   useEffect(() => {
     if (!editorRef.current) return
-    if (editorRef.current.innerHTML !== (value || '')) {
-      editorRef.current.innerHTML = value || ''
+    const safeValue = sanitizeRichText(value || '')
+    if (editorRef.current.innerHTML !== safeValue) {
+      editorRef.current.innerHTML = safeValue
     }
   }, [value])
 
   const emitChange = () => {
-    const html = editorRef.current?.innerHTML || ''
+    const html = sanitizeRichText(editorRef.current?.innerHTML || '')
     onChange(html === '<br>' ? '' : html)
   }
 

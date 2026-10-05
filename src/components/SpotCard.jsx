@@ -1,15 +1,15 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Image as ImageIcon, MapPin, Ticket, Star, StarFour } from '@phosphor-icons/react'
-import { CATEGORY_ICONS } from '../lib/mapCategories'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, getSortedTagsForDisplay, formatAverageRating } from '../domain/reviewDomain'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
 import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
+import { sanitizeRichText } from '../lib/sanitizeHtml'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
-  return <span className={className} dangerouslySetInnerHTML={{ __html: text }} />
+  return <span className={className} dangerouslySetInnerHTML={{ __html: sanitizeRichText(text) }} />
 }
 
 const TAG_ICON_COMPONENTS = {
@@ -149,6 +149,8 @@ function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
 
 // ?? Lightbox ????????????????????????????????????????????????????
 
+const EMPTY_IMAGE_URLS = Object.freeze([])
+
 function Lightbox({ imgs, startIndex, onClose }) {
   const [index, setIndex] = useState(startIndex)
   const [visible, setVisible] = useState(false)
@@ -164,11 +166,11 @@ function Lightbox({ imgs, startIndex, onClose }) {
   const imageWidth = Math.min(lightboxBounds.width, imageMaxHeight * activeImageRatio)
   const imageHeight = imageWidth / activeImageRatio
 
-  const goToIndex = (nextIndex) => {
+  const goToIndex = useCallback((nextIndex) => {
     const clampedIndex = Math.max(0, Math.min(nextIndex, imgs.length - 1))
     if (clampedIndex === index) return
     setIndex(clampedIndex)
-  }
+  }, [imgs.length, index])
 
   // zoom-in + fade-in on open
   useEffect(() => {
@@ -195,6 +197,11 @@ function Lightbox({ imgs, startIndex, onClose }) {
       })
   }, [imgs, index])
 
+  const handleClose = useCallback(() => {
+    setVisible(false)
+    setTimeout(() => onClose(), 250)
+  }, [onClose])
+
   useEffect(() => {
     const handler = (e) => {
       if (e.key === 'Escape') handleClose()
@@ -204,12 +211,7 @@ function Lightbox({ imgs, startIndex, onClose }) {
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [imgs.length, index])
-
-  const handleClose = () => {
-    setVisible(false)
-    setTimeout(() => onClose(), 250)
-  }
+  }, [goToIndex, handleClose, index])
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX
@@ -471,14 +473,15 @@ export function SpotCard({
   canComment,
   isAdmin,
 }) {
-  const [cardHeight, setCardHeight] = useState(0)
+  const [cardHeightValue, setCardHeightValue] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [closing, setClosing] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [isVisible, setIsVisible] = useState(false)
   const [darkMode, setDarkMode] = useState(() => isDarkMode())
   const [sheetMaxHeight, setSheetMaxHeight] = useState(0)
-  const [reviewBoxPanel, setReviewBoxPanel] = useState('guide')
+  const selectedId = selected?.id
+  const [reviewBoxPanelState, setReviewBoxPanelState] = useState(() => ({ selectedId, value: 'guide' }))
   const startYRef = useRef(0)
   const startHeightRef = useRef(0)
   const lastYRef = useRef(0)
@@ -486,7 +489,11 @@ export function SpotCard({
   const previousSpotRef = useRef(null)
   const reviewBoxTouchStartRef = useRef(null)
 
-  const imgs = selected['image_urls'] || []
+  const imgs = selected?.image_urls || EMPTY_IMAGE_URLS
+  const reviewBoxPanel = reviewBoxPanelState.selectedId === selectedId
+    ? reviewBoxPanelState.value
+    : 'guide'
+  const setReviewBoxPanel = (value) => setReviewBoxPanelState({ selectedId, value })
   const imagesKey = imgs.join('|')
   const hasImages = imgs.length > 0
 
@@ -512,6 +519,8 @@ export function SpotCard({
   const FULL_HEIGHT = Math.min(WIN_H * 0.44, 315)
   const MIN_HEIGHT = spotCardHeightMode === 'full' ? FULL_HEIGHT : COMPACT_HEIGHT
   const MAX_HEIGHT = isDesktop ? 460 : Math.max(320, sheetMaxHeight || WIN_H)
+  const cardHeight = Math.min(cardHeightValue, MAX_HEIGHT)
+  const setCardHeight = (height) => setCardHeightValue(Math.min(height, MAX_HEIGHT))
   const SHEET_RADIUS = 20
 
   useEffect(() => {
@@ -553,7 +562,7 @@ export function SpotCard({
 
   // Trigger animation on mount
   useEffect(() => {
-    if (selected) {
+    if (selectedId) {
       const parentHeight = cardRef.current?.parentElement?.clientHeight
       if (parentHeight) setSheetMaxHeight(parentHeight)
 
@@ -562,35 +571,31 @@ export function SpotCard({
         previousSpot?.heightMode === spotCardHeightMode
 
       previousSpotRef.current = {
-        id: selected.id,
+        id: selectedId,
         heightMode: spotCardHeightMode,
       }
 
       // Keep a visible sheet in place when another marker opens the same card
       // type. Re-running the entrance animation here caused a noticeable hitch.
-      if (previousSpot?.id !== selected.id && isSameCardType) {
+      if (previousSpot?.id !== selectedId && isSameCardType) {
         setClosing(false)
         return
       }
 
       // Updating the selected record for the current marker should not restart
       // the card animation either.
-      if (previousSpot?.id === selected.id) return
+      if (previousSpot?.id === selectedId) return
 
       setIsVisible(false)
-      setCardHeight(MIN_HEIGHT)
+      setCardHeightValue(MIN_HEIGHT)
       setClosing(false)
       // Trigger animation on next frame
       requestAnimationFrame(() => setIsVisible(true))
     }
-  }, [selected?.id, MIN_HEIGHT, spotCardHeightMode])
+  }, [selectedId, MIN_HEIGHT, spotCardHeightMode])
 
   useEffect(() => {
-    setReviewBoxPanel('guide')
-  }, [selected?.id])
-
-  useEffect(() => {
-    if (!selected || isDesktop) return undefined
+    if (!selectedId || isDesktop) return undefined
 
     const measureSheet = () => {
       const parentHeight = cardRef.current?.parentElement?.clientHeight
@@ -600,11 +605,7 @@ export function SpotCard({
     measureSheet()
     window.addEventListener('resize', measureSheet)
     return () => window.removeEventListener('resize', measureSheet)
-  }, [selected, isDesktop])
-
-  useEffect(() => {
-    if (cardHeight > MAX_HEIGHT) setCardHeight(MAX_HEIGHT)
-  }, [cardHeight, MAX_HEIGHT])
+  }, [selectedId, isDesktop])
 
   // Watch dark mode changes
   useEffect(() => {
@@ -693,8 +694,6 @@ export function SpotCard({
       ? 8
       : 16
     : 32
-  const iconSvg = CATEGORY_ICONS[selected.category]
-
   // default: show stars unless admin explicitly turned them off
   const showRating = selected.show_rating !== false
   // Keep the action enabled for existing spots until an admin explicitly hides it.
@@ -886,44 +885,6 @@ export function SpotCard({
         <div className="flex-1 px-5" style={{ overflowY: 'hidden' }}>
           {/* ?? Place info ?? */}
           <div className="pt-1 pb-3">
-            {/* Category / price / sponsored (currently hidden with false) */}
-            {false && (
-              <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  {iconSvg && (
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: iconSvg.replace(
-                          'fill="currentColor"',
-                          'fill="#f97316"',
-                        ),
-                      }}
-                      style={{
-                        width: '14px',
-                        height: '14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    />
-                  )}
-                  {selected.category || '기타'}
-                </span>
-
-                {selected.price_range && (
-                  <span className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full">
-                    {selected.price_range}
-                  </span>
-                )}
-
-                {selected.is_sponsored && (
-                  <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">
-                    제휴
-                  </span>
-                )}
-              </div>
-            )}
-
             {/* Store name */}
             <p className="font-semibold text-gray-900 text-lg">
               {selected.name}

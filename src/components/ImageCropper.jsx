@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { Check, Minus, Plus, X } from '@phosphor-icons/react'
 import imageCompression from 'browser-image-compression'
@@ -30,30 +30,12 @@ export function ImageCropper({
   onCancel,
   aspectRatios = ['1:1', '4:5'],
 }) {
-  const [imageSrc, setImageSrc] = useState(imageUrl || null)
+  const imageSrc = imageUrl || null
   const [selectedRatio, setSelectedRatio] = useState(aspectRatios[0])
   const [crop, setCrop] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
   const [isCompressing, setIsCompressing] = useState(false)
-
-  useEffect(() => {
-    if (!file) {
-      setImageSrc(imageUrl || null)
-      return undefined
-    }
-
-    const objectUrl = URL.createObjectURL(file)
-    setImageSrc(objectUrl)
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [file, imageUrl])
-
-  useEffect(() => {
-    setSelectedRatio(aspectRatios[0])
-    setCrop({ x: 0, y: 0 })
-    setZoom(1)
-    setCroppedAreaPixels(null)
-  }, [imageSrc, aspectRatios])
 
   const [ratioWidth, ratioHeight] = selectedRatio.split(':').map(Number)
   const aspect = ratioWidth / ratioHeight

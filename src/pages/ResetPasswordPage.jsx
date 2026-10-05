@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { updatePassword } from '../api/authRepository'
+import { isPasswordRecoveryClaims } from '../domain/auth/recovery'
+import { supabase } from '../lib/supabase'
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -9,13 +11,40 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [recoveryReady, setRecoveryReady] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    const verifyRecoverySession = async () => {
+      const { data, error } = await supabase.auth.getClaims()
+      if (active) setRecoveryReady(!error && isPasswordRecoveryClaims(data?.claims))
+    }
+    void verifyRecoverySession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        void verifyRecoverySession()
+      } else if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+        setRecoveryReady(false)
+      }
+    })
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
-    if (password.length < 8) {
-      setError('비밀번호는 최소 8자 이상이어야 합니다.')
+    if (!recoveryReady) {
+      setError('이 화면은 비밀번호 재설정 이메일의 링크로만 사용할 수 있습니다.')
+      return
+    }
+
+    if (password.length < 12) {
+      setError('비밀번호는 최소 12자 이상이어야 합니다.')
       return
     }
 
@@ -26,7 +55,18 @@ export default function ResetPasswordPage() {
 
     setLoading(true)
     try {
+      const { data, error: claimsError } = await supabase.auth.getClaims()
+      if (claimsError) throw claimsError
+      if (!isPasswordRecoveryClaims(data?.claims)) {
+        setRecoveryReady(false)
+        throw new Error('이 화면은 비밀번호 재설정 이메일의 링크로만 사용할 수 있습니다.')
+      }
+
       await updatePassword(password)
+      const { error: otherSessionsError } = await supabase.auth.signOut({ scope: 'others' })
+      const { error: localSignOutError } = await supabase.auth.signOut({ scope: 'local' })
+      if (localSignOutError) throw localSignOutError
+      if (otherSessionsError) console.error('Could not revoke other sessions after password reset')
       setSuccess(true)
     } catch (err) {
       setError(err.message || '비밀번호 변경 중 오류가 발생했습니다.')
@@ -55,6 +95,15 @@ export default function ResetPasswordPage() {
               onClick={() => navigate('/login')}
               className="w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
             >
+              로그인으로 이동
+            </button>
+          </div>
+        ) : !recoveryReady ? (
+          <div className="space-y-4">
+            <p className="text-center text-sm leading-relaxed text-gray-500">
+              비밀번호 재설정 이메일의 링크로 이 화면을 열어주세요.
+            </p>
+            <button type="button" onClick={() => navigate('/login')} className="w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white">
               로그인으로 이동
             </button>
           </div>
