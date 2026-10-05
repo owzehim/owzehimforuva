@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { CheckCircle, Octagon } from '@phosphor-icons/react'
 import { useStampCardConfig } from '../hooks/useStampCardConfig'
 import { useUserStampVisits } from '../hooks/useUserStampVisits'
-import { fetchPendingReward, redeemReward } from '../api/rewards'
+import { redeemReward } from '../api/rewards'
+import { didRedeemRewardForCurrentScan, getScanResultIdentity } from '../utils'
 
 const CLAIM_ORANGE = '#f97316'
 
@@ -19,24 +20,9 @@ export default function ScanPageStampBox({
     totalStamps: config?.total_stamps,
   })
 
-  const [pendingReward, setPendingReward] = useState(null)
   const [redeeming, setRedeeming] = useState(false)
-  const [redeemedThisSession, setRedeemedThisSession] = useState(false)
-
-  useEffect(() => {
-    setRedeemedThisSession(false)
-  }, [scanResult])
-
-  useEffect(() => {
-    setPendingReward(hookPendingReward)
-  }, [hookPendingReward])
-
-  useEffect(() => {
-    if (!userId || !restaurantId) return
-    fetchPendingReward(userId, restaurantId)
-      .then(setPendingReward)
-      .catch(() => setPendingReward(null))
-  }, [userId, restaurantId, scanResult])
+  const [redeemedScanId, setRedeemedScanId] = useState(null)
+  const currentScanId = getScanResultIdentity(scanResult)
 
   useEffect(() => {
     if (scanResult && !scanResult.alreadyStamped) refetch()
@@ -46,7 +32,8 @@ export default function ScanPageStampBox({
 
   const total = config.total_stamps
   const accentColor = CLAIM_ORANGE
-  const effectivePendingReward = pendingReward || stampState.pendingReward
+  const effectivePendingReward = hookPendingReward || stampState.pendingReward
+  const redeemedThisSession = didRedeemRewardForCurrentScan(scanResult, redeemedScanId)
   const isBenefitReady = !redeemedThisSession &&
     !!(
       effectivePendingReward ||
@@ -70,8 +57,7 @@ export default function ScanPageStampBox({
       if (result?.sheetSync?.success === false) {
         alert('리워드는 사용 처리됐지만 매장 기록 동기화에 실패했습니다. 관리자에게 알려주세요.')
       }
-      setPendingReward(null)
-      setRedeemedThisSession(true)
+      setRedeemedScanId(currentScanId ?? null)
       await refetch()
       onRewardRedeemed?.()
     } catch (e) {

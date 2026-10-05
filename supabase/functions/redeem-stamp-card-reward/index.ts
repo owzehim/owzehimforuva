@@ -1,20 +1,11 @@
+import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
-import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
+import { hasAal2, hasActiveDeviceSession, requireAal2Response } from '../_shared/requireAal2.ts'
+import { sheetText } from '../_shared/sheetText.js'
+import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
 async function syncClaimToAppsScript(
   url: string | null | undefined,
@@ -30,18 +21,19 @@ async function syncClaimToAppsScript(
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(withAppsScriptSecret(payload, Deno.env.get('APPS_SCRIPT_SHARED_SECRET'))),
     })
     const text = await response.text().catch(() => '')
     if (!response.ok) {
-      console.error(`${label} reward claim sync failed:`, response.status, text)
+      // Avoid logging an external response that might contain submitted data.
+      console.error(`${label} reward claim sync failed:`, response.status)
       return { ok: false, status: response.status }
     }
 
     try {
       const result = text ? JSON.parse(text) : null
       if (result && typeof result === 'object' && result.success === false) {
-        console.error(`${label} Apps Script returned failure:`, result)
+        console.error(`${label} Apps Script returned failure`)
         return { ok: false }
       }
     } catch {
@@ -56,6 +48,15 @@ async function syncClaimToAppsScript(
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
+  const corsHeaders = getCorsHeaders(origin, configuredOrigins)
+  const json = (body: Record<string, unknown>, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  if (!isAllowedCorsOrigin(origin, configuredOrigins)) return new Response('Origin not allowed', { status: 403 })
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ success: false, message: '허용되지 않은 요청입니다.' }, 405)
 
@@ -94,6 +95,13 @@ serve(async (req) => {
     const { data: userData, error: userError } = await admin.auth.getUser(token)
     const user = userData?.user
     if (userError || !user) return json({ success: false, message: '로그인이 필요합니다.' }, 401)
+    if (!(await hasAal2(admin, token))) return requireAal2Response(corsHeaders)
+    if (!(await hasActiveDeviceSession(admin, userData.user.id, token))) {
+      return new Response(
+        JSON.stringify({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
 
     const { data: reward, error: rewardError } = await admin
       .from('stamp_card_rewards')
@@ -180,7 +188,7 @@ serve(async (req) => {
 
     const { data: partnership, error: partnershipError } = await admin
       .from('partnerships')
-      .select('name, sheet_name, master_apps_script_url, partner_apps_script_url')
+      .select('name, sheet_name')
       .eq('id', storeId)
       .maybeSingle()
 
@@ -189,16 +197,27 @@ serve(async (req) => {
       return json({ success: true, sheetSync: { success: false } })
     }
 
+    const { data: integrations, error: integrationsError } = await admin
+      .from('partnership_integrations')
+      .select('master_apps_script_url, partner_apps_script_url')
+      .eq('partnership_id', storeId)
+      .maybeSingle()
+
+    if (integrationsError) {
+      console.error('Reward claim integration lookup failed:', integrationsError)
+      return json({ success: true, sheetSync: { success: false } })
+    }
+
     const claimPayload = {
       type: 'stamp_claim',
       partnership_id: storeId,
-      sheet_name: partnership.sheet_name || partnership.name,
+      sheet_name: sheetText(partnership.sheet_name || partnership.name, 160),
       redemption_id: String(redemption.id),
       stamp_status: 'claimed',
     }
     const sheetResults = await Promise.all([
-      syncClaimToAppsScript(partnership.master_apps_script_url, 'master', claimPayload),
-      syncClaimToAppsScript(partnership.partner_apps_script_url, 'partner', claimPayload),
+      syncClaimToAppsScript(integrations?.master_apps_script_url, 'master', claimPayload),
+      syncClaimToAppsScript(integrations?.partner_apps_script_url, 'partner', claimPayload),
     ])
 
     return json({

@@ -307,10 +307,7 @@ function getRegistrationStepComplete(step, formData, yearOptions = []) {
   if (step === 'about') {
     return (
       filled(formData.firstName) &&
-      filled(formData.lastName) &&
-      filled(formData.yearOfBirth) &&
-      filled(formData.gender) &&
-      filled(formData.countryOfOrigin)
+      filled(formData.lastName)
     );
   }
 
@@ -389,8 +386,8 @@ const translations = {
     firstNameKorean: 'First name (Korean) *',
     lastNameKorean: 'Last name (Korean) *',
     yearOfBirth: 'Year of birth (optional)',
-    gender: 'Gender *',
-    nationality: 'Nationality *',
+    gender: 'Gender (optional)',
+    nationality: 'Nationality (optional)',
     university: 'University *',
     major: 'Major *',
     studentNumber: 'Student number *',
@@ -399,7 +396,7 @@ const translations = {
     email: 'Email *',
     password: 'Password *',
     confirmPassword: 'Confirm password *',
-    profilePicture: 'Profile picture (optional)',
+    profilePicture: 'Profile picture (add later in Settings)',
     next: 'Next',
     back: 'Back',
     createAccount: 'Create account',
@@ -412,7 +409,7 @@ const translations = {
     goToLogin: 'Go to login',
     alreadyHaveAccount: 'Already have an account?',
     logIn: 'Log in',
-    minCharacters: 'Min. 6 characters',
+      minCharacters: 'Min. 12 characters',
     selectGender: 'Select gender',
     selectNationality: 'Select nationality',
     selectUniversity: 'Select university',
@@ -435,8 +432,8 @@ const translations = {
     firstNameKorean: '이름 (한글) *',
     lastNameKorean: '성 (한글) *',
     yearOfBirth: '출생 연도 (선택사항)',
-    gender: '성별 *',
-    nationality: '국적 *',
+    gender: '성별 (선택사항)',
+    nationality: '국적 (선택사항)',
     university: '대학교 *',
     major: '전공 *',
     studentNumber: 'Student number *',
@@ -445,7 +442,7 @@ const translations = {
     email: '이메일 *',
     password: '비밀번호 *',
     confirmPassword: '비밀번호 확인 *',
-    profilePicture: '프로필 사진 (선택사항)',
+    profilePicture: '프로필 사진 (가입 후 설정에서 추가)',
     next: '다음',
     back: '뒤로',
     createAccount: '계정 만들기',
@@ -458,7 +455,7 @@ const translations = {
     goToLogin: '로그인으로 이동',
     alreadyHaveAccount: '이미 계정이 있으신가요?',
     logIn: '로그인',
-    minCharacters: '최소 6자',
+    minCharacters: '최소 12자',
     selectGender: '성별 선택',
     selectNationality: '국적 선택',
     selectUniversity: '대학교 선택',
@@ -473,13 +470,9 @@ const translations = {
 };
 // ?? Typeahead select component ????????????????????????????????????????????????
 function TypeaheadSelect({ name, value, onChange, options, placeholder = '', allowCustom = false }) {
-  const [inputValue, setInputValue] = useState(value || '');
+  const [searchText, setSearchText] = useState('');
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
-
-  useEffect(() => {
-    setInputValue(value || '');
-  }, [value]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -493,24 +486,24 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
   }, []);
 
   const filtered = options.filter((opt) =>
-    opt.toLowerCase().includes(inputValue.toLowerCase())
+    opt.toLowerCase().includes(searchText.toLowerCase())
   );
 
   const handleSelect = (val) => {
     if (allowCustom && val === CUSTOM_TYPE_OPTION) {
-      setInputValue('');
+      setSearchText('');
       setOpen(false);
       onChange({ target: { name, value: '' } });
       return;
     }
-    setInputValue(val);
+    setSearchText(val);
     setOpen(false);
     onChange({ target: { name, value: val } });
   };
 
   const handleInputChange = (e) => {
     const val = e.target.value;
-    setInputValue(val);
+    setSearchText(val);
     setOpen(true);
     if (allowCustom || val === '') {
       onChange({ target: { name, value: val } });
@@ -521,9 +514,12 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
     <div ref={containerRef} style={s.typeaheadContainer}>
       <input
         name={name}
-        value={inputValue}
+        value={open ? searchText : value || ''}
         onChange={handleInputChange}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setSearchText(value || '');
+          setOpen(true);
+        }}
         placeholder={placeholder}
         style={{ ...s.input, ...s.typeaheadInputSpacer }}
         autoComplete="off"
@@ -591,7 +587,6 @@ export default function RegistrationPage() {
     goNext,
     goBack,
     editEmail,
-    setProfileFile,
   } = useRegisterMember();
 
   const yearOptions = getYearOptions(formData.educationLevel);
@@ -628,7 +623,6 @@ export default function RegistrationPage() {
   const handleCropConfirm = async () => {
     if (!cropImageSrc || !croppedAreaPixels) return;
     const croppedFile = await getCroppedImgAsFile(cropImageSrc, croppedAreaPixels, cropFileName);
-    setProfileFile(croppedFile);
     setProfilePreviewUrl((current) => {
       if (current) URL.revokeObjectURL(current);
       return URL.createObjectURL(croppedFile);
@@ -836,7 +830,7 @@ function ProfileHero({
   variant = 'large',
   firstLine,
   secondLine,
-  allowUpload = true,
+  allowUpload = false,
   equalIntroTextSize = false,
 }) {
   const { profilePreviewUrl, pastelBg, onProfileClick, t } = profileHeroProps;
@@ -946,7 +940,7 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
                 style={s.input}
                 placeholder=""
                 min="1950"
-                max="2015"
+                max={new Date().getFullYear()}
               />
             </Field>
             <Field label={t.gender}>
@@ -981,63 +975,6 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
   );
 }
 
-function PersonalStep({ formData, handleChange, goNext, language, t, greetingName, profileHeroProps, isComplete }) {
-  const greetingFirstLine = language === 'ko' ? '안녕하세요,' : 'Greetings,';
-  const greetingSecondLine = language === 'ko' ? `${greetingName}님` : greetingName;
-  return (
-    <div style={s.form}>
-      <div style={s.formContent}>
-        <ProfileHero
-          profileHeroProps={profileHeroProps}
-          firstLine={greetingFirstLine}
-          secondLine={greetingSecondLine}
-        />
-
-        <div style={s.fieldStack}>
-          <Row>
-            <Field label={t.yearOfBirth}>
-              <input
-                type="number"
-                name="yearOfBirth"
-                value={formData.yearOfBirth}
-                onChange={handleChange}
-                style={s.input}
-                placeholder=""
-                min="1950"
-                max="2015"
-              />
-            </Field>
-            <Field label={t.gender}>
-              <TypeaheadSelect
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                options={language === 'en' ? SORTED_GENDERS : SORTED_GENDERS_KO}
-                placeholder=""
-              />
-            </Field>
-          </Row>
-
-          <Field label={t.nationality}>
-            <TypeaheadSelect
-              name="countryOfOrigin"
-              value={formData.countryOfOrigin}
-              onChange={handleChange}
-              options={SORTED_COUNTRIES}
-              placeholder=""
-            />
-          </Field>
-        </div>
-      </div>
-
-      <div style={s.bottomAction}>
-        <button type="button" onClick={goNext} disabled={!isComplete} style={getNextButtonStyle(isComplete)}>
-          {t.next}
-        </button>
-      </div>
-    </div>
-  );
-}
 function ProfileCropModal({
   imageSrc,
   crop,
@@ -1223,7 +1160,7 @@ function AccountStep({
     formData.password &&
     formData.confirmPassword &&
     formData.password === formData.confirmPassword &&
-    formData.password.length >= 6 &&
+    formData.password.length >= 12 &&
     allLegalAccepted;
 
   return (
@@ -1263,8 +1200,9 @@ function AccountStep({
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                minLength={12}
                 style={s.input}
-                placeholder=""
+                placeholder={t.minCharacters}
               />
             </Field>
             <Field label={t.confirmPassword}>
@@ -1273,6 +1211,7 @@ function AccountStep({
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                minLength={12}
                 style={s.input}
               />
             </Field>

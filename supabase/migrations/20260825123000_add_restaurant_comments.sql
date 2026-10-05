@@ -41,7 +41,7 @@ begin
   end if;
 
   normalized_body := btrim(new.body);
-  compact_body := lower(regexp_replace(normalized_body, '\\s+', '', 'g'));
+  compact_body := lower(regexp_replace(normalized_body, '[[:space:]]+', '', 'g'));
   if compact_body ~ '(fuck|shit|bitch|asshole|cunt|klootzak|tering|hoer|개새끼|병신|씨발|시발|좆)' then
     raise exception 'inappropriate language is not allowed';
   end if;

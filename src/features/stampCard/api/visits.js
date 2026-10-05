@@ -19,6 +19,7 @@ export async function resetStampCardProgress(restaurantId) {
 
   if (error) throw new Error(data?.message || error.message || '스탬프 기록 초기화에 실패했습니다.')
   if (!data?.success) throw new Error(data?.message || '스탬프 기록 초기화에 실패했습니다.')
+  return data
 }
 
 export async function adminInsertVisit(userId, restaurantId, totalStamps, visitedAt, adminNote) {

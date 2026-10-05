@@ -78,7 +78,20 @@ export function useReviewPrompt() {
     setErrors((prev) => ({ ...prev, rating: undefined }))
   }, [])
 
-  // ── 4. Submit review ──────────────────────────────────────
+  // ── 4. Close and reset ────────────────────────────────────
+  const closeModal = useCallback(() => {
+    setOpen(false)
+    setTimeout(() => {
+      setPrompt(null)
+      setRating(null)
+      setTags([])
+      setComment('')
+      setErrors({})
+      setSubmitError(null)
+    }, 350)
+  }, [])
+
+  // ── 5. Submit review ──────────────────────────────────────
   const submitReview = useCallback(async () => {
     if (!prompt) return
 
@@ -108,29 +121,16 @@ export function useReviewPrompt() {
     await markPromptSubmitted(prompt.id)
     setSubmitting(false)
     closeModal()
-  }, [prompt, rating, tags, comment])
+  }, [prompt, rating, tags, comment, closeModal])
 
-  // ── 5. Skip / dismiss ─────────────────────────────────────
+  // ── 6. Skip / dismiss ─────────────────────────────────────
   const skipReview = useCallback(async () => {
     if (!prompt) return
     markPromptDismissed(prompt.id).catch((err) =>
       console.warn('markPromptDismissed failed:', err?.message)
     )
     closeModal()
-  }, [prompt])
-
-  // ── 6. Close and reset ────────────────────────────────────
-  function closeModal() {
-    setOpen(false)
-    setTimeout(() => {
-      setPrompt(null)
-      setRating(null)
-      setTags([])
-      setComment('')
-      setErrors({})
-      setSubmitError(null)
-    }, 350)
-  }
+  }, [prompt, closeModal])
 
   const storeName = prompt?.partnerships?.name ?? prompt?.store_id ?? '매장'
 

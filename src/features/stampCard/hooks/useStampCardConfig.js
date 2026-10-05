@@ -2,29 +2,38 @@ import { useState, useEffect } from 'react'
 import { DEFAULT_STAMP_CARD_CONFIG, fetchConfigBySpot } from '../api/config'
 
 export function useStampCardConfig(restaurantId, { useDefault = false } = {}) {
-  const [config, setConfig] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState(null)
 
   useEffect(() => {
-    if (!restaurantId) {
-      setConfig(null)
-      return
-    }
+    if (!restaurantId) return undefined
 
     let cancelled = false
-    setLoading(true)
 
     fetchConfigBySpot(restaurantId)
       .then((data) => {
-        if (!cancelled) setConfig(data ?? (useDefault ? DEFAULT_STAMP_CARD_CONFIG : null))
+        if (!cancelled) {
+          setResult({
+            key: `${restaurantId}:${useDefault}`,
+            config: data ?? (useDefault ? DEFAULT_STAMP_CARD_CONFIG : null),
+          })
+        }
       })
       .catch(() => {
-        if (!cancelled) setConfig(useDefault ? DEFAULT_STAMP_CARD_CONFIG : null)
+        if (!cancelled) {
+          setResult({
+            key: `${restaurantId}:${useDefault}`,
+            config: useDefault ? DEFAULT_STAMP_CARD_CONFIG : null,
+          })
+        }
       })
-      .finally(() => { if (!cancelled) setLoading(false) })
 
     return () => { cancelled = true }
   }, [restaurantId, useDefault])
 
-  return { config, loading }
+  if (!restaurantId) return { config: null, loading: false }
+
+  const resultKey = `${restaurantId}:${useDefault}`
+  if (result?.key !== resultKey) return { config: null, loading: true }
+
+  return { config: result.config, loading: false }
 }

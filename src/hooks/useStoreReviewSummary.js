@@ -27,53 +27,54 @@ export async function primeStoreReviewSummaries(storeIds) {
 }
 
 export function useStoreReviewSummary(storeId) {
-  const cachedSummary = storeId ? summaryCache.get(storeId) ?? null : null
-  const [summary, setSummary]   = useState(cachedSummary)
-  const [loading, setLoading]   = useState(Boolean(storeId && !cachedSummary))
-  const [error, setError]       = useState(null)
+  const hasCachedSummary = Boolean(storeId && summaryCache.has(storeId))
+  const cachedSummary = hasCachedSummary ? summaryCache.get(storeId) : null
+  const [state, setState] = useState({
+    storeId: null,
+    summary: null,
+    loading: false,
+    error: null,
+  })
 
   useEffect(() => {
-    // Don't fetch if no store is selected
-    if (!storeId) {
-      setSummary(null)
-      setLoading(false)
-      return
-    }
+    if (!storeId || summaryCache.has(storeId)) return undefined
 
     let cancelled = false
-    const cached = summaryCache.get(storeId)
-
-    if (cached) {
-      setSummary(cached)
-      setLoading(false)
-    } else {
-      setSummary(null)
-      setLoading(true)
-    }
 
     async function fetchSummary() {
-      setError(null)
-
       const { data, error: fetchError } = await getStoreReviewSummary(storeId)
 
       if (cancelled) return
 
       if (fetchError) {
-        setError(fetchError.message ?? '리뷰를 불러오지 못했습니다.')
-        if (!cached) setSummary(null)
+        setState({
+          storeId,
+          summary: null,
+          loading: false,
+          error: fetchError.message ?? '리뷰를 불러오지 못했습니다.',
+        })
       } else {
         summaryCache.set(storeId, data)
-        setSummary(data)
+        setState({ storeId, summary: data, loading: false, error: null })
       }
-
-      setLoading(false)
     }
 
-    fetchSummary()
+    void fetchSummary()
 
     // Cleanup: if storeId changes before fetch completes, ignore stale result
     return () => { cancelled = true }
   }, [storeId])
 
-  return { summary, loading, error }
+  const stateMatchesStore = state.storeId === storeId
+  return {
+    summary: hasCachedSummary ? cachedSummary : stateMatchesStore ? state.summary : null,
+    loading: !storeId
+      ? false
+      : hasCachedSummary
+        ? false
+        : stateMatchesStore
+          ? state.loading
+          : true,
+    error: stateMatchesStore ? state.error : null,
+  }
 }

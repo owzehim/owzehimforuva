@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { hasAdminRole } from '../lib/adminRoles'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { useNavigate } from 'react-router-dom'
 import { ImageCropper } from '../components/ImageCropper'
@@ -43,17 +42,6 @@ function toLocalTimeString(isoString) {
     return `${hh}:${mm}`
   }
   return s.length >= 16 ? s.slice(11, 16) : ''
-}
-
-async function updateMemberAsAdmin(memberId, updates) {
-  const { data, error } = await supabase.functions.invoke('admin-update-member', {
-    body: { memberId, updates },
-  })
-
-  if (error) throw new Error(error.message || '관리자 회원 수정에 실패했습니다.')
-  if (!data?.success) {
-    throw new Error(data?.message || '관리자 회원 수정에 실패했습니다.')
-  }
 }
 
 function toEventEndTimeInput(event) {
@@ -201,7 +189,7 @@ export default function AdminPage() {
         return
       }
 
-      const isAdmin = await hasAdminRole(user.id)
+      const isAdmin = user.user_metadata?.role === 'admin'
 
       if (!isAdmin) {
         navigate('/member')
@@ -606,10 +594,6 @@ function MembersTab() {
   stamp_card_enabled: false,
 })
 
-  const [passwordStrength, setPasswordStrength] = useState(0)
-  const [showPassword, setShowPassword] = useState(false)
-  const [createdCredentials, setCreatedCredentials] = useState(null)
-
   const fetchMembers = async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -629,125 +613,10 @@ function MembersTab() {
     fetchMembers()
   }, [])
 
-  const checkPasswordStrength = (pwd) => {
-    let s = 0
-    if (pwd.length >= 8) s++
-    if (pwd.match(/[a-z]/) && pwd.match(/[A-Z]/)) s++
-    if (pwd.match(/[0-9]/)) s++
-    if (pwd.match(/[^a-zA-Z0-9]/)) s++
-    setPasswordStrength(s)
-  }
-
-  const generateRandomPassword = () => {
-    const charset =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%'
-    let password = ''
-    for (let i = 0; i < 12; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length))
-    }
-    setForm((prev) => ({ ...prev, password, confirmPassword: password }))
-    checkPasswordStrength(password)
-  }
-
-  const validateForm = () => {
-    if (
-      !form.email ||
-      !form.password ||
-      !form.first_name ||
-      !form.last_name ||
-      !form.student_number ||
-      !form.major
-    ) {
-      alert('모든 필수 항목을 입력해주세요.')
-      return false
-    }
-    if (form.password !== form.confirmPassword) {
-      alert('비밀번호가 일치하지 않습니다.')
-      return false
-    }
-    if (form.password.length < 8) {
-      alert('비밀번호는 최소 8자 이상이어야 합니다.')
-      return false
-    }
-    if (!form.email.includes('@')) {
-      alert('유효한 이메일을 입력해주세요.')
-      return false
-    }
-    return true
-  }
-
-  const handleAdd = async () => {
-    if (!validateForm()) return
-
-    try {
-      const { data: authData, error: authError } =
-        await supabase.auth.signUp({
-          email: form.email,
-          password: form.password,
-        })
-
-      if (authError) {
-        alert('계정 생성 실패: ' + authError.message)
-        return
-      }
-
-      const userId = authData.user?.id
-      if (!userId) {
-        alert('유저 ID를 가져오지 못했습니다.')
-        return
-      }
-
-      const { error: memberError } = await supabase.from('members').insert({
-        user_id: userId,
-        first_name: form.first_name,
-        last_name: form.last_name,
-        student_number: form.student_number,
-        major: form.major,
-        is_member: form.is_member,
-        membership_valid_until: form.membership_valid_until || null,
-      })
-
-      if (memberError) {
-        alert('멤버 추가 실패: ' + memberError.message)
-        return
-      }
-
-      setCreatedCredentials({
-        email: form.email,
-        password: form.password,
-        name: `${form.first_name} ${form.last_name}`,
-      })
-
-      setShowForm(false)
-      setForm({
-        email: '',
-        password: '',
-        confirmPassword: '',
-        first_name: '',
-        last_name: '',
-        student_number: '',
-        major: '',
-        year_of_birth: '',
-        gender: '',
-        country_of_origin: '',
-        University: '',
-        education_level: '',
-        year_number: '',
-        is_member: true,
-        membership_valid_until: '',
-      })
-      setPasswordStrength(0)
-      fetchMembers()
-
-      setTimeout(() => setCreatedCredentials(null), 10000)
-    } catch (error) {
-      alert('오류 발생: ' + error.message)
-    }
-  }
-
   const handleEdit = async () => {
-    try {
-      await updateMemberAsAdmin(editTarget.id, {
+    const { error } = await supabase
+      .from('members')
+      .update({
         first_name: form.first_name,
         last_name: form.last_name,
         student_number: form.student_number,
@@ -761,7 +630,9 @@ function MembersTab() {
         is_member: form.is_member,
         membership_valid_until: form.membership_valid_until || null,
       })
-    } catch (error) {
+      .eq('id', editTarget.id)
+
+    if (error) {
       alert('수정 실패: ' + error.message)
       return
     }
@@ -790,12 +661,15 @@ function MembersTab() {
             .slice(0, 10)
         : member.membership_valid_until
 
-    try {
-      await updateMemberAsAdmin(member.id, {
+    const { error } = await supabase
+      .from('members')
+      .update({
         is_member: nextIsMember,
         membership_valid_until: nextValidUntil || null,
       })
-    } catch (error) {
+      .eq('id', member.id)
+
+    if (error) {
       alert('멤버십 상태 변경 실패: ' + error.message)
       return
     }
@@ -827,46 +701,6 @@ function MembersTab() {
     setShowForm(true)
   }
 
-  const openAdd = () => {
-    setEditTarget(null)
-    setForm({
-      email: '',
-      password: '',
-      confirmPassword: '',
-      first_name: '',
-      last_name: '',
-      student_number: '',
-      major: '',
-      year_of_birth: '',
-      gender: '',
-      country_of_origin: '',
-      University: '',
-      education_level: '',
-      year_number: '',
-      is_member: true,
-      membership_valid_until: '',
-    })
-    setPasswordStrength(0)
-    setShowForm(true)
-  }
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    alert('복사되었습니다!')
-  }
-
-  const strengthColor = () =>
-    [
-      'bg-red-200',
-      'bg-orange-200',
-      'bg-yellow-200',
-      'bg-lime-200',
-      'bg-green-200',
-    ][passwordStrength] || 'bg-gray-200'
-
-  const strengthText = () =>
-    ['매우 약함', '약함', '보통', '강함', '매우 강함'][passwordStrength] || ''
-
   const sorted = koreanSort(members, 'last_name')
 
   return (
@@ -875,276 +709,7 @@ function MembersTab() {
         <h2 className="font-semibold text-gray-900">
           멤버 목록 ({members.length}명)
         </h2>
-        {!showForm && (
-          <button
-            onClick={openAdd}
-            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-1 whitespace-nowrap"
-          >
-            <Plus size={16} weight="bold" />
-            멤버 추가
-          </button>
-        )}
       </div>
-
-      {createdCredentials && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-5 space-y-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-semibold text-green-900">✓ 계정 생성 완료!</h3>
-              <p className="text-sm text-green-700 mt-1">
-                아래 정보를 멤버에게 전달해주세요.
-              </p>
-            </div>
-            <button
-              onClick={() => setCreatedCredentials(null)}
-              className="text-green-600 text-xl"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="bg-white rounded-lg p-4 space-y-3 border border-green-100">
-            <div>
-              <p className="text-xs text-gray-500 mb-1">이름</p>
-              <p className="text-sm font-medium">{createdCredentials.name}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500 mb-1">이메일</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 bg-gray-50 px-3 py-2 rounded text-sm font-mono">
-                  {createdCredentials.email}
-                </code>
-                <button
-                  onClick={() => copyToClipboard(createdCredentials.email)}
-                  className="text-blue-600 text-sm px-3 py-2 bg-blue-50 rounded whitespace-nowrap"
-                >
-                  복사
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-500 mb-1">비밀번호</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 bg-gray-50 px-3 py-2 rounded text-sm font-mono">
-                  {createdCredentials.password}
-                </code>
-                <button
-                  onClick={() => copyToClipboard(createdCredentials.password)}
-                  className="text-blue-600 text-sm px-3 py-2 bg-blue-50 rounded whitespace-nowrap"
-                >
-                  복사
-                </button>
-              </div>
-            </div>
-
-            <p className="text-xs text-gray-500 bg-yellow-50 p-2 rounded">
-              ℹ️ 이 정보는 10초 후 자동으로 사라집니다.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 새 멤버 추가 폼 */}
-      {showForm && !editTarget && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-          <h3 className="font-medium text-gray-900">새 멤버 추가</h3>
-
-          <div className="bg-blue-50 rounded-lg p-4 space-y-3 border border-blue-200">
-            <p className="font-medium text-blue-900 text-sm">🔐 로그인 정보</p>
-
-            <div>
-              <label className="text-sm text-gray-700 block mb-1">이메일</label>
-              <input
-                placeholder="이메일"
-                value={form.email}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    email: e.target.value,
-                  })
-                }
-                type="email"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-sm text-gray-700">비밀번호</label>
-                <button
-                  type="button"
-                  onClick={generateRandomPassword}
-                  className="text-xs text-blue-600 bg-white px-2 py-1 rounded border border-blue-200"
-                >
-                  🎲 자동 생성
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  placeholder="최소 8자 이상"
-                  value={form.password}
-                  onChange={(e) => {
-                    setForm({ ...form, password: e.target.value })
-                    checkPasswordStrength(e.target.value)
-                  }}
-                  type={showPassword ? 'text' : 'password'}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-gray-500"
-                >
-                  {showPassword ? <Eye size={16} /> : <EyeSlash size={16} />}
-                </button>
-              </div>
-              {form.password && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className={`h-2 flex-1 rounded-full ${strengthColor()}`} />
-                  <span className="text-xs text-gray-600 whitespace-nowrap">
-                    {strengthText()}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-700 block mb-1">
-                비밀번호 확인
-              </label>
-              <input
-                placeholder="비밀번호 재입력"
-                value={form.confirmPassword}
-                onChange={(e) =>
-                  setForm({ ...form, confirmPassword: e.target.value })
-                }
-                type={showPassword ? 'text' : 'password'}
-                className={`w-full border rounded-lg px-3 py-2 text-sm ${
-                  form.confirmPassword && form.password !== form.confirmPassword
-                    ? 'border-red-300 bg-red-50'
-                    : 'border-gray-200'
-                }`}
-              />
-              {form.confirmPassword &&
-                form.password !== form.confirmPassword && (
-                  <p className="text-xs text-red-600 mt-1">
-                    비밀번호가 일치하지 않습니다
-                  </p>
-                )}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <p className="font-medium text-gray-900 text-sm">👤 멤버 정보</p>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-sm text-gray-700 block mb-1">
-                  First Name *
-                </label>
-                <input
-                  placeholder="John"
-                  value={form.first_name}
-                  onChange={(e) =>
-                    setForm({ ...form, first_name: e.target.value })
-                  }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-700 block mb-1">
-                  Last Name *
-                </label>
-                <input
-                  placeholder="Doe"
-                  value={form.last_name}
-                  onChange={(e) =>
-                    setForm({ ...form, last_name: e.target.value })
-                  }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-sm text-gray-700 block mb-1">
-                  학번 *
-                </label>
-                <input
-                  placeholder="2024001"
-                  value={form.student_number}
-                  onChange={(e) =>
-                    setForm({ ...form, student_number: e.target.value })
-                  }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-700 block mb-1">
-                  전공 *
-                </label>
-                <input
-                  placeholder="컴퓨터과학"
-                  value={form.major}
-                  onChange={(e) =>
-                    setForm({ ...form, major: e.target.value })
-                  }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_member"
-                checked={form.is_member}
-                onChange={(e) =>
-                  setForm({ ...form, is_member: e.target.checked })
-                }
-              />
-              <label htmlFor="is_member" className="text-sm text-gray-700">
-                멤버십 활성화
-              </label>
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-500 block mb-1">
-                유효기간
-              </label>
-              <input
-                type="date"
-                value={form.membership_valid_until}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    membership_valid_until: e.target.value,
-                  })
-                }
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={handleAdd}
-              className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm hover:bg-blue-700 font-medium"
-            >
-              멤버 추가
-            </button>
-            <button
-              onClick={() => setShowForm(false)}
-              className="flex-1 bg-gray-100 text-gray-700 rounded-lg py-2 text-sm"
-            >
-              취소
-            </button>
-          </div>
-        </div>
-      )}
 
       {loading ? (
         <LoadingIndicator />

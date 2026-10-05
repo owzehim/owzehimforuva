@@ -1,13 +1,10 @@
+import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
-import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
+import { hasAal2, hasActiveDeviceSession } from '../_shared/requireAal2.ts'
+import { recordAdminAction } from '../_shared/adminAudit.ts'
 
 const allowedFields = new Set([
   'first_name',
@@ -23,13 +20,6 @@ const allowedFields = new Set([
   'is_member',
   'membership_valid_until',
 ])
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
 
 function isValidDate(value: unknown) {
   if (value === null) return true
@@ -47,6 +37,11 @@ function validateUpdates(value: unknown): value is Record<string, unknown> {
 
   if ('is_member' in updates && typeof updates.is_member !== 'boolean') return false
   if ('membership_valid_until' in updates && !isValidDate(updates.membership_valid_until)) return false
+  if (
+    'gender' in updates &&
+    updates.gender !== null &&
+    !['male', 'female', 'non_binary', 'prefer_not_to_say'].includes(String(updates.gender))
+  ) return false
 
   for (const field of ['year_of_birth', 'year_number']) {
     if (!(field in updates)) continue
@@ -77,6 +72,15 @@ function validateUpdates(value: unknown): value is Record<string, unknown> {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
+  const corsHeaders = getCorsHeaders(origin, configuredOrigins)
+  const json = (body: Record<string, unknown>, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  if (!isAllowedCorsOrigin(origin, configuredOrigins)) return new Response('Origin not allowed', { status: 403 })
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -119,6 +123,12 @@ serve(async (req) => {
     if (userError || !caller) {
       return json({ success: false, message: '로그인이 필요합니다.' }, 401)
     }
+    if (!(await hasAal2(admin, token))) {
+      return json({ success: false, message: '계속하려면 2단계 인증을 완료해 주세요.' }, 403)
+    }
+    if (!(await hasActiveDeviceSession(admin, caller.id, token))) {
+      return json({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }, 403)
+    }
 
     const { data: adminRole, error: adminRoleError } = await admin
       .from('admin_roles')
@@ -134,9 +144,39 @@ serve(async (req) => {
       return json({ success: false, message: '관리자 권한이 필요합니다.' }, 403)
     }
 
+    const safeUpdates = { ...updates }
+    if ('student_number' in safeUpdates) {
+      const claimedValue = safeUpdates.student_number
+      safeUpdates.student_number = typeof claimedValue === 'string' && claimedValue.trim()
+        ? claimedValue.trim()
+        : null
+      // Only this admin-authorized path can promote the claim to the unique,
+      // verified field, and promotion consumes the pending value.
+      safeUpdates.pending_student_number = null
+    }
+
+    if (safeUpdates.is_member === true) {
+      let verifiedStudentNumber = safeUpdates.student_number
+      if (!('student_number' in safeUpdates)) {
+        const { data: currentMember, error: memberLookupError } = await admin
+          .from('members')
+          .select('student_number')
+          .eq('id', memberId)
+          .maybeSingle()
+        if (memberLookupError) {
+          console.error('Membership activation lookup failed:', memberLookupError)
+          return json({ success: false, message: '회원 상태를 확인할 수 없습니다.' }, 500)
+        }
+        verifiedStudentNumber = currentMember?.student_number
+      }
+      if (typeof verifiedStudentNumber !== 'string' || !verifiedStudentNumber.trim()) {
+        return json({ success: false, message: '학번을 확인하고 저장한 뒤 멤버십을 활성화해 주세요.' }, 400)
+      }
+    }
+
     const { data: updatedMember, error: updateError } = await admin
       .from('members')
-      .update(updates)
+      .update(safeUpdates)
       .eq('id', memberId)
       .select('id')
       .maybeSingle()
@@ -149,7 +189,15 @@ serve(async (req) => {
       return json({ success: false, message: '회원을 찾을 수 없습니다.' }, 404)
     }
 
-    return json({ success: true })
+    const auditLogged = await recordAdminAction(admin, {
+      actorId: caller.id,
+      action: 'member.update',
+      resourceType: 'members',
+      resourceId: memberId,
+      changedFields: Object.keys(safeUpdates),
+    })
+
+    return json({ success: true, auditLogged })
   } catch (error) {
     console.error('Unexpected admin member update error:', error)
     return json({ success: false, message: '회원 정보를 수정하지 못했습니다.' }, 500)

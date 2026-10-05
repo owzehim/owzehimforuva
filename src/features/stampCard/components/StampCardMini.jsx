@@ -22,7 +22,6 @@ export default function StampCardMini({ restaurantId, userId, open = true, onOpe
     if (!loading && config && open) {
       timerRef.current = setTimeout(() => setVisible(true), 30)
     } else {
-      setVisible(false)
       if (!open) {
         timerRef.current = setTimeout(() => onExited?.(), 350)
       }
@@ -61,9 +60,9 @@ export default function StampCardMini({ restaurantId, userId, open = true, onOpe
         padding: 0,
         cursor: 'pointer',
         borderRadius: 0,
-        transform: visible ? 'translateX(0)' : 'translateX(130%)',
+        transform: visible && open ? 'translateX(0)' : 'translateX(130%)',
         transition: 'transform 0.35s cubic-bezier(0.4,0,0.2,1)',
-        pointerEvents: visible ? 'auto' : 'none',
+        pointerEvents: visible && open ? 'auto' : 'none',
         textAlign: 'left',
       }}
     >

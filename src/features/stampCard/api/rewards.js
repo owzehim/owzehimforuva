@@ -40,6 +40,7 @@ export async function restoreReward(rewardId) {
 
   if (error) throw new Error(data?.message || error.message || '리워드 복원에 실패했습니다.')
   if (!data?.success) throw new Error(data?.message || '리워드 복원에 실패했습니다.')
+  return data
 }
 
 // Admin use only — fetches all members with their stamp state for a given spot

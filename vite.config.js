@@ -55,9 +55,6 @@ export default defineConfig({
           if (id.includes('node_modules/@supabase')) {
             return 'vendor-supabase'
           }
-          if (id.includes('node_modules/leaflet') || id.includes('node_modules/react-leaflet')) {
-            return 'vendor-map'
-          }
           if (id.includes('node_modules/qrcode')) {
             return 'vendor-qr'
           }

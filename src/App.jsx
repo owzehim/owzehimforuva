@@ -72,6 +72,25 @@ function App() {
     }
   }, [])
 
+  const userId = session?.user?.id ?? null
+  const adminRoleLoaded = !userId || adminRoleState?.userId === userId
+  const isAdmin = adminRoleLoaded && adminRoleState?.isAdmin === true
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!userId) {
+      setAdminRoleState(null)
+      return () => { cancelled = true }
+    }
+
+    hasAdminRole(userId).then((result) => {
+      if (!cancelled) setAdminRoleState({ userId, isAdmin: result })
+    })
+
+    return () => { cancelled = true }
+  }, [userId, session?.access_token])
+
   useEffect(() => {
     const loadSession = () => {
       supabase.auth.getSession().then(({ data: { session } }) => {
@@ -115,37 +134,7 @@ function App() {
     }
   }, [])
 
-  const userId = session?.user?.id ?? null
-  const adminRoleLoaded = !userId || adminRoleState?.userId === userId
-  const isAdmin =
-    Boolean(userId) &&
-    adminRoleLoaded &&
-    adminRoleState?.isAdmin === true
-
-  useEffect(() => {
-    let cancelled = false
-
-    if (!userId) {
-      setAdminRoleState({ userId: null, isAdmin: false })
-      return () => {
-        cancelled = true
-      }
-    }
-
-    setAdminRoleState(null)
-    hasAdminRole(userId).then((result) => {
-      if (!cancelled) setAdminRoleState({ userId, isAdmin: result })
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [userId])
-
-  useSingleDeviceSession(
-    isOtpPending || !adminRoleLoaded ? null : session,
-    isAdmin,
-  )
+  useSingleDeviceSession(isOtpPending ? null : session)
 
   useEffect(() => {
     if (!isStandaloneApp()) return undefined
@@ -234,13 +223,11 @@ function App() {
         <Route
           path="/admin"
           element={
-            !session || isOtpPending
-              ? <Navigate to={session ? '/member' : '/login'} />
-              : !adminRoleLoaded
-                ? <div className="min-h-screen flex items-center justify-center"><LoadingIndicator /></div>
-                : isAdmin
-                  ? <AdminPage />
-                  : <Navigate to="/member" />
+            adminRoleLoaded && isAdmin && !isOtpPending
+              ? <AdminPage />
+              : adminRoleLoaded
+                ? <Navigate to={session ? '/member' : '/login'} />
+                : <LoadingIndicator />
           }
         />
 
