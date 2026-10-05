@@ -1,5 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
+import { getSupabasePublishableKey } from '../_shared/publishableKey.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,19 +24,27 @@ serve(async (req) => {
     if (!noteId) return json({ message: 'Missing noteId.' }, 400)
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const supabasePublishableKey = getSupabasePublishableKey()
+    const supabaseSecretKey = getSupabaseServiceKey()
     const googleTranslateKey = Deno.env.get('GOOGLE_TRANSLATE_API_KEY') || ''
+    if (!supabaseUrl || !supabasePublishableKey || !supabaseSecretKey) {
+      return json({ message: 'Translation service is not configured.' }, 503)
+    }
 
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: req.headers.get('Authorization') || '' } },
+    const userClient = createClient(supabaseUrl, supabasePublishableKey, {
+      global: {
+        headers: { Authorization: req.headers.get('Authorization') || '' },
+        fetch: apiKeyOnlyFetch(supabasePublishableKey),
+      },
     })
 
     const { data: { user } } = await userClient.auth.getUser()
     if (!user) return json({ message: 'Unauthorized.' }, 401)
     if (!googleTranslateKey) return json({ message: 'Translation is not configured.' }, 503)
 
-    const admin = createClient(supabaseUrl, supabaseServiceRoleKey)
+    const admin = createClient(supabaseUrl, supabaseSecretKey, {
+      global: { fetch: apiKeyOnlyFetch(supabaseSecretKey) },
+    })
 
     const { data: cached } = await admin
       .from('restaurant_note_translations')

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { hasAdminRole } from '../lib/adminRoles'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { useNavigate } from 'react-router-dom'
 import { ImageCropper } from '../components/ImageCropper'
@@ -42,6 +43,17 @@ function toLocalTimeString(isoString) {
     return `${hh}:${mm}`
   }
   return s.length >= 16 ? s.slice(11, 16) : ''
+}
+
+async function updateMemberAsAdmin(memberId, updates) {
+  const { data, error } = await supabase.functions.invoke('admin-update-member', {
+    body: { memberId, updates },
+  })
+
+  if (error) throw new Error(error.message || '관리자 회원 수정에 실패했습니다.')
+  if (!data?.success) {
+    throw new Error(data?.message || '관리자 회원 수정에 실패했습니다.')
+  }
 }
 
 function toEventEndTimeInput(event) {
@@ -189,7 +201,7 @@ export default function AdminPage() {
         return
       }
 
-      const isAdmin = user.user_metadata?.role === 'admin'
+      const isAdmin = await hasAdminRole(user.id)
 
       if (!isAdmin) {
         navigate('/member')
@@ -637,13 +649,6 @@ function MembersTab() {
     checkPasswordStrength(password)
   }
 
-  const generateSecret = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-    return Array.from(crypto.getRandomValues(new Uint8Array(20)))
-      .map((b) => chars[b % 32])
-      .join('')
-  }
-
   const validateForm = () => {
     if (
       !form.email ||
@@ -700,7 +705,6 @@ function MembersTab() {
         major: form.major,
         is_member: form.is_member,
         membership_valid_until: form.membership_valid_until || null,
-        totp_secret: generateSecret(),
       })
 
       if (memberError) {
@@ -742,9 +746,8 @@ function MembersTab() {
   }
 
   const handleEdit = async () => {
-    const { error } = await supabase
-      .from('members')
-      .update({
+    try {
+      await updateMemberAsAdmin(editTarget.id, {
         first_name: form.first_name,
         last_name: form.last_name,
         student_number: form.student_number,
@@ -758,9 +761,7 @@ function MembersTab() {
         is_member: form.is_member,
         membership_valid_until: form.membership_valid_until || null,
       })
-      .eq('id', editTarget.id)
-
-    if (error) {
+    } catch (error) {
       alert('수정 실패: ' + error.message)
       return
     }
@@ -789,15 +790,12 @@ function MembersTab() {
             .slice(0, 10)
         : member.membership_valid_until
 
-    const { error } = await supabase
-      .from('members')
-      .update({
+    try {
+      await updateMemberAsAdmin(member.id, {
         is_member: nextIsMember,
         membership_valid_until: nextValidUntil || null,
       })
-      .eq('id', member.id)
-
-    if (error) {
+    } catch (error) {
       alert('멤버십 상태 변경 실패: ' + error.message)
       return
     }

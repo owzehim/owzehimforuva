@@ -27,16 +27,12 @@ function getOrCreateDeviceToken(tokenKey) {
   return nextToken
 }
 
-function isAdminUser(user) {
-  return user?.user_metadata?.role === 'admin' || user?.email === 'admin@uvain.nl'
-}
-
-export function useSingleDeviceSession(session) {
+export function useSingleDeviceSession(session, isAdmin = false) {
   const activeUserIdRef = useRef(null)
 
   useEffect(() => {
     const user = session?.user
-    if (!user || isAdminUser(user)) return undefined
+    if (!user || isAdmin) return undefined
 
     const userId = user.id
     const tokenKey = getTokenKey(userId)
@@ -119,5 +115,5 @@ export function useSingleDeviceSession(session) {
         activeUserIdRef.current = null
       }
     }
-  }, [session?.user?.id])
+  }, [session?.user?.id, isAdmin])
 }

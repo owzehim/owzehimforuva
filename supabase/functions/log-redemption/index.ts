@@ -1,7 +1,56 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
 
-const FIVE_MINUTES_MS = 5 * 60 * 1000
+const STAMP_DAY_TIME_ZONE = 'Europe/Amsterdam'
+
+function getDateParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+
+  return Object.fromEntries(parts.map(({ type, value }) => [type, value])) as Record<string, string>
+}
+
+function getLocalDateKey(date: Date, timeZone: string) {
+  const parts = getDateParts(date, timeZone)
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+
+function getLocalMidnightUtc(dateKey: string, timeZone: string) {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  const utcMidnightGuess = Date.UTC(year, month - 1, day)
+  const localPartsAtGuess = getDateParts(new Date(utcMidnightGuess), timeZone)
+  const localTimeAsUtc = Date.UTC(
+    Number(localPartsAtGuess.year),
+    Number(localPartsAtGuess.month) - 1,
+    Number(localPartsAtGuess.day),
+    Number(localPartsAtGuess.hour),
+    Number(localPartsAtGuess.minute),
+    Number(localPartsAtGuess.second),
+  )
+  const offsetAtGuess = localTimeAsUtc - utcMidnightGuess
+  return new Date(utcMidnightGuess - offsetAtGuess)
+}
+
+function getLocalDayUtcRange(date: Date, timeZone: string) {
+  const dateKey = getLocalDateKey(date, timeZone)
+  const [year, month, day] = dateKey.split('-').map(Number)
+  const nextDateKey = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10)
+
+  return {
+    start: getLocalMidnightUtc(dateKey, timeZone).toISOString(),
+    endExclusive: getLocalMidnightUtc(nextDateKey, timeZone).toISOString(),
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -89,6 +138,62 @@ async function findStampRestaurant(admin: any, storeId: string) {
   return byPartnership ?? null
 }
 
+async function ensureCompletedCycleReward(
+  admin: any,
+  userId: string,
+  restaurantId: string,
+  cardCycle: number | null,
+  totalStamps: number,
+) {
+  if (cardCycle == null) return false
+
+  const { data: existingReward, error: existingRewardError } = await admin
+    .from('stamp_card_rewards')
+    .select('id, redeemed')
+    .eq('user_id', userId)
+    .eq('restaurant_id', restaurantId)
+    .eq('card_cycle', cardCycle)
+    .maybeSingle()
+
+  if (existingRewardError) throw existingRewardError
+  if (existingReward) return existingReward.redeemed === false
+
+  const { data: cycleVisits, error: cycleVisitsError } = await admin
+    .from('stamp_card_visits')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('restaurant_id', restaurantId)
+    .eq('card_cycle', cardCycle)
+
+  if (cycleVisitsError) throw cycleVisitsError
+  if ((cycleVisits?.length ?? 0) < totalStamps) return false
+
+  const { error: rewardError } = await admin
+    .from('stamp_card_rewards')
+    .insert({
+      user_id: userId,
+      restaurant_id: restaurantId,
+      card_cycle: cardCycle,
+      redeemed: false,
+    })
+
+  if (rewardError?.code === '23505') {
+    // A concurrent request may have created the same cycle's reward.
+    const { data: concurrentReward, error: concurrentRewardError } = await admin
+      .from('stamp_card_rewards')
+      .select('id, redeemed')
+      .eq('user_id', userId)
+      .eq('restaurant_id', restaurantId)
+      .eq('card_cycle', cardCycle)
+      .maybeSingle()
+
+    if (concurrentRewardError) throw concurrentRewardError
+    return concurrentReward?.redeemed === false
+  }
+  if (rewardError) throw rewardError
+  return true
+}
+
 async function recordStampCardVisit(admin: any, userId: string, storeId: string, now: Date) {
   const restaurant = await findStampRestaurant(admin, storeId)
   if (!restaurant?.stamp_card_enabled) return { enabled: false }
@@ -104,7 +209,7 @@ async function recordStampCardVisit(admin: any, userId: string, storeId: string,
   if (configError) console.error('Stamp config fetch error:', configError)
 
   const totalStamps = Math.max(1, Number(config?.total_stamps || 10))
-  const today = now.toISOString().slice(0, 10)
+  const localDay = getLocalDayUtcRange(now, STAMP_DAY_TIME_ZONE)
 
   const { data: pendingReward, error: pendingRewardError } = await admin
     .from('stamp_card_rewards')
@@ -131,17 +236,36 @@ async function recordStampCardVisit(admin: any, userId: string, storeId: string,
 
   const { data: todayVisit, error: todayVisitError } = await admin
     .from('stamp_card_visits')
-    .select('id')
+    .select('id, card_cycle')
     .eq('user_id', userId)
     .eq('restaurant_id', restaurantId)
-    .gte('visited_at', `${today}T00:00:00.000Z`)
-    .lte('visited_at', `${today}T23:59:59.999Z`)
+    .gte('visited_at', localDay.start)
+    .lt('visited_at', localDay.endExclusive)
     .limit(1)
     .maybeSingle()
 
   if (todayVisitError) throw todayVisitError
 
   if (todayVisit) {
+    const rewardPending = await ensureCompletedCycleReward(
+      admin,
+      userId,
+      restaurantId,
+      todayVisit.card_cycle,
+      totalStamps,
+    )
+
+    if (rewardPending) {
+      return {
+        enabled: true,
+        restaurantId,
+        rewardPending: true,
+        cycleCompleted: true,
+        cardCycle: todayVisit.card_cycle,
+        totalStamps,
+      }
+    }
+
     const { data: currentVisits, error: currentVisitsError } = await admin
       .from('stamp_card_visits')
       .select('id')
@@ -150,7 +274,7 @@ async function recordStampCardVisit(admin: any, userId: string, storeId: string,
 
     if (currentVisitsError) throw currentVisitsError
 
-    const currentCount = (currentVisits?.length ?? 0) % totalStamps || totalStamps
+    const currentCount = (currentVisits?.length ?? 0) % totalStamps
     return { enabled: true, restaurantId, alreadyStamped: true, currentCount, totalStamps }
   }
 
@@ -175,7 +299,50 @@ async function recordStampCardVisit(admin: any, userId: string, storeId: string,
       added_by_admin: false,
     })
 
-  if (insertError) throw insertError
+  if (insertError?.code === '23505') {
+    // A unique daily-visit index closes the race between concurrent scans.
+    const { data: duplicateVisit, error: duplicateCheckError } = await admin
+      .from('stamp_card_visits')
+      .select('id, card_cycle')
+      .eq('user_id', userId)
+      .eq('restaurant_id', restaurantId)
+      .gte('visited_at', localDay.start)
+      .lt('visited_at', localDay.endExclusive)
+      .limit(1)
+      .maybeSingle()
+
+    if (duplicateCheckError) throw duplicateCheckError
+    if (duplicateVisit) {
+      const rewardPending = await ensureCompletedCycleReward(
+        admin,
+        userId,
+        restaurantId,
+        duplicateVisit.card_cycle,
+        totalStamps,
+      )
+
+      if (rewardPending) {
+        return {
+          enabled: true,
+          restaurantId,
+          rewardPending: true,
+          cycleCompleted: true,
+          cardCycle: duplicateVisit.card_cycle,
+          totalStamps,
+        }
+      }
+
+      return {
+        enabled: true,
+        restaurantId,
+        alreadyStamped: true,
+        currentCount: (priorCount + 1) % totalStamps,
+        totalStamps,
+      }
+    }
+
+    throw insertError
+  }
 
   const newCount = priorCount + 1
   const cycleCompleted = newCount % totalStamps === 0
@@ -190,7 +357,7 @@ async function recordStampCardVisit(admin: any, userId: string, storeId: string,
         redeemed: false,
       })
 
-    if (rewardError) throw rewardError
+    if (rewardError && rewardError.code !== '23505') throw rewardError
   }
 
   return {
@@ -223,15 +390,7 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || (() => {
-      try {
-        const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || '{}'
-        const parsed = JSON.parse(raw)
-        return parsed.service_role_key || parsed.service_role || Object.values(parsed)[0] || ''
-      } catch {
-        return ''
-      }
-    })()
+    const serviceKey = getSupabaseServiceKey()
 
     if (!serviceKey) {
       console.error('No service key found')
@@ -243,6 +402,7 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
+      global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
     const { data: userData, error: userError } = await admin.auth.getUser(token)
@@ -333,40 +493,46 @@ serve(async (req) => {
     // ── Safe field helpers ─────────────────────────────────────────────────
     const safe = (v: unknown) => (v != null && v !== '' ? String(v) : '')
 
-    // ── Check for recent redemption (5 minutes window) ─────────────────────
-    const { data: recentRedemption, error: recentError } = await admin
-      .from('redemptions')
-      .select('id, redeemed_at')
-      .eq('user_id', user.id)
-      .eq('store_id', storeId)
-      .order('redeemed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (recentError) {
-      console.error('Recent redemption fetch error:', recentError)
-    }
-
-    let reuseRecent = false
-    if (recentRedemption?.redeemed_at) {
-      const last = new Date(recentRedemption.redeemed_at)
-      const diffMs = now.getTime() - last.getTime()
-      if (diffMs >= 0 && diffMs < FIVE_MINUTES_MS) {
-        // Within 5 minutes: treat as already logged, do NOT create a new record
-        reuseRecent = true
-      }
-    }
-
-    let stampResult = null
+    // Record (or safely recognize) today's visit before claiming the 15-minute
+    // redemption window. If stamp persistence fails, return an error without
+    // consuming the retry window; the unique daily index handles scan races.
+    let stampResult
     try {
       stampResult = await recordStampCardVisit(admin, user.id, storeId, now)
     } catch (stampError) {
       console.error('Stamp card record error:', stampError)
-      stampResult = {
-        enabled: false,
-        error: stampError instanceof Error ? stampError.message : 'Stamp card record failed',
-      }
+      return new Response(
+        JSON.stringify({ success: false, message: '스탬프 기록을 처리하지 못했습니다. 다시 시도해 주세요.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
     }
+
+    // Atomically claim this user's 15-minute window. The database lock
+    // ensures only one scan creates a redemption/Sheets event in that window.
+    const { data: redemptionClaims, error: claimError } = await admin.rpc(
+      'claim_redemption_window',
+      { p_user_id: user.id, p_store_id: storeId },
+    )
+
+    if (claimError) {
+      console.error('Redemption window claim failed:', claimError)
+      return new Response(
+        JSON.stringify({ success: false, message: '매장 이용 기록을 처리하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const redemptionClaim = Array.isArray(redemptionClaims) ? redemptionClaims[0] : null
+    if (!redemptionClaim?.redemption_id) {
+      console.error('Redemption window claim returned no record')
+      return new Response(
+        JSON.stringify({ success: false, message: '매장 이용 기록을 처리하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const reuseRecent = redemptionClaim.created !== true
+    const redemptionId = String(redemptionClaim.redemption_id)
 
     if (reuseRecent) {
       // No new DB row, no Google Sheets POST — just return success
@@ -374,30 +540,12 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           storeName: partnership.name,
-          redemptionId: recentRedemption.id,
+          redemptionId,
           stampResult,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
-
-    // ── Log to redemptions table first so we have the ID ──────────────────
-    const { data: redemptionRow, error: redemptionError } = await admin
-      .from('redemptions')
-      .insert({
-        user_id: user.id,
-        store_id: storeId,
-        redeemed_at: now.toISOString(),
-      })
-      .select('id')
-      .single()
-
-    if (redemptionError) {
-      console.error('Redemption insert error:', redemptionError)
-      // Non-fatal for the user — continue
-    }
-
-    const redemptionId = redemptionRow?.id ?? ''
 
     // ── Master sheet payload ───────────────────────────────────────────────
     const masterPayload = {

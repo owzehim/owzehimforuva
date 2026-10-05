@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
+import { hasAdminRole } from './lib/adminRoles'
 import LoginPage from './pages/LoginPage'
 import MemberPage from './pages/MemberPage'
 import AdminPage from './pages/AdminPage'
-import VerifyPage from './pages/VerifyPage'
 import PublicPage from './pages/PublicPage'
 import ScanPage from './pages/ScanPage'
 import InstallBanner from './components/InstallBanner'
@@ -39,6 +39,7 @@ function hasAlienBlockFont() {
 function App() {
   useTheme()
   const [session, setSession] = useState(undefined)
+  const [adminRoleState, setAdminRoleState] = useState(null)
   const [isOffline, setIsOffline] = useState(() =>
     typeof navigator !== 'undefined' && !navigator.onLine,
   )
@@ -114,7 +115,37 @@ function App() {
     }
   }, [])
 
-  useSingleDeviceSession(isOtpPending ? null : session)
+  const userId = session?.user?.id ?? null
+  const adminRoleLoaded = !userId || adminRoleState?.userId === userId
+  const isAdmin =
+    Boolean(userId) &&
+    adminRoleLoaded &&
+    adminRoleState?.isAdmin === true
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!userId) {
+      setAdminRoleState({ userId: null, isAdmin: false })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setAdminRoleState(null)
+    hasAdminRole(userId).then((result) => {
+      if (!cancelled) setAdminRoleState({ userId, isAdmin: result })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  useSingleDeviceSession(
+    isOtpPending || !adminRoleLoaded ? null : session,
+    isAdmin,
+  )
 
   useEffect(() => {
     if (!isStandaloneApp()) return undefined
@@ -172,12 +203,6 @@ function App() {
     )
   }
 
-  const user = session?.user
-
-  // More robust admin detection:
-  const isAdmin =
-    user?.user_metadata?.role === 'admin' ||
-    user?.email === 'admin@uvain.nl' // fallback, just in case
   const isEmailConfirmationLink =
     typeof window !== 'undefined' &&
     (new URLSearchParams(window.location.search).has('code') ||
@@ -209,9 +234,13 @@ function App() {
         <Route
           path="/admin"
           element={
-            isAdmin && !isOtpPending
-              ? <AdminPage />
-              : <Navigate to={session ? '/member' : '/login'} />
+            !session || isOtpPending
+              ? <Navigate to={session ? '/member' : '/login'} />
+              : !adminRoleLoaded
+                ? <div className="min-h-screen flex items-center justify-center"><LoadingIndicator /></div>
+                : isAdmin
+                  ? <AdminPage />
+                  : <Navigate to="/member" />
           }
         />
 
@@ -220,7 +249,6 @@ function App() {
           element={session && !isOtpPending ? <ScanPage /> : <Navigate to="/login" />}
         />
 
-        <Route path="/verify/:token" element={<VerifyPage />} />
         <Route path="/public" element={<PublicPage />} />
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/email-confirmed" element={<EmailConfirmedPage />} />

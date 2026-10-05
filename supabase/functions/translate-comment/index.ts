@@ -1,5 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
+import { getSupabasePublishableKey } from '../_shared/publishableKey.ts'
 
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
@@ -9,14 +12,22 @@ serve(async (req) => {
   try {
     const { commentId, targetLanguage } = await req.json()
     const url = Deno.env.get('SUPABASE_URL') || ''
-    const anon = Deno.env.get('SUPABASE_ANON_KEY') || ''
-    const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    const publishableKey = getSupabasePublishableKey()
+    const service = getSupabaseServiceKey()
     const googleKey = Deno.env.get('GOOGLE_TRANSLATE_API_KEY') || ''
-    const userClient = createClient(url, anon, { global: { headers: { Authorization: req.headers.get('Authorization') || '' } } })
+    if (!url || !publishableKey || !service) {
+      return json({ message: 'Translation service is not configured.' }, 503)
+    }
+    const userClient = createClient(url, publishableKey, {
+      global: {
+        headers: { Authorization: req.headers.get('Authorization') || '' },
+        fetch: apiKeyOnlyFetch(publishableKey),
+      },
+    })
     const { data: { user } } = await userClient.auth.getUser()
     if (!user) return json({ message: 'Unauthorized' }, 401)
     if (!googleKey) return json({ message: 'Translation is not configured.' }, 503)
-    const admin = createClient(url, service)
+    const admin = createClient(url, service, { global: { fetch: apiKeyOnlyFetch(service) } })
     const { data: cached } = await admin.from('restaurant_comment_translations').select('translated_body').eq('comment_id', commentId).eq('target_language', targetLanguage).maybeSingle()
     if (cached) return json({ translation: cached.translated_body })
     const { data: comment, error } = await admin.from('restaurant_comments').select('body').eq('id', commentId).single()
