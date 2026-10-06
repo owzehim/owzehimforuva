@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { supabase } from '../lib/supabase';
+import { resendConfirmationEmail } from './authRepository';
 
 export const ALREADY_REGISTERED_MESSAGE =
   '\uC774\uBBF8 \uAC00\uC785\uB41C \uD68C\uC6D0\uC785\uB2C8\uB2E4. \uB85C\uADF8\uC778\uD558\uAC70\uB098 \uC774\uBA54\uC77C \uC778\uC99D\uC744 \uD655\uC778\uD574\uC8FC\uC138\uC694.';
@@ -34,6 +35,12 @@ function isAlreadyRegisteredError(error) {
   );
 }
 
+function isEmailNotConfirmedError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  const code = String(error?.code || error?.error_code || '').toLowerCase();
+  return code === 'email_not_confirmed' || message.includes('email not confirmed');
+}
+
 /**
  * Creates a Supabase Auth account and stores only pending profile metadata.
  * The members row is created server-side after the email is confirmed.
@@ -56,7 +63,7 @@ function isAlreadyRegisteredError(error) {
  *  legalDocumentsVersion?: string,
  * }} payload
  *
- * @returns {Promise<{ userId: string }>}
+ * @returns {Promise<{ userId: string | null, confirmationEmailResent?: boolean }>}
  */
 export async function registerMember(payload) {
   const {
@@ -79,8 +86,9 @@ export async function registerMember(payload) {
 
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Preflight with the submitted password. If this succeeds, or Supabase says
-  // the email exists but is not confirmed, stop before sending another signup email.
+  // Preflight with the submitted password. A confirmed account with valid
+  // credentials is already registered. An unconfirmed account should receive
+  // another confirmation link and remain on the confirmation screen.
   const { data: existingLogin, error: existingLoginError } =
     await supabase.auth.signInWithPassword({
       email: normalizedEmail,
@@ -92,11 +100,9 @@ export async function registerMember(payload) {
     throw new Error(ALREADY_REGISTERED_MESSAGE);
   }
 
-  if (
-    existingLoginError &&
-    String(existingLoginError.message || '').toLowerCase().includes('email not confirmed')
-  ) {
-    throw new Error(ALREADY_REGISTERED_MESSAGE);
+  if (isEmailNotConfirmedError(existingLoginError)) {
+    await resendConfirmationEmail(normalizedEmail);
+    return { userId: null, confirmationEmailResent: true };
   }
 
   // Create the Auth user. The requested profile is untrusted pending data;
@@ -137,7 +143,11 @@ export async function registerMember(payload) {
 
   if (authError) {
     if (isAlreadyRegisteredError(authError)) {
-      throw new Error(ALREADY_REGISTERED_MESSAGE);
+      // Supabase intentionally makes duplicate signup responses ambiguous.
+      // Resend the confirmation; if the address is already confirmed, Supabase
+      // will not create another account, and the client avoids disclosing state.
+      await resendConfirmationEmail(normalizedEmail);
+      return { userId: null, confirmationEmailResent: true };
     }
     throw new Error(authError.message);
   }
@@ -151,7 +161,8 @@ export async function registerMember(payload) {
 
   const identities = authData.user?.identities;
   if (Array.isArray(identities) && identities.length === 0) {
-    throw new Error(ALREADY_REGISTERED_MESSAGE);
+    await resendConfirmationEmail(normalizedEmail);
+    return { userId: null, confirmationEmailResent: true };
   }
 
   return { userId };
