@@ -1,77 +1,171 @@
 // src/api/authRepository.js
-//
-// All Supabase auth calls — no React, no UI.
-// ✅ Copy as-is to React Native (Supabase JS works in RN).
+// Owns the password + email OTP login attempt. Temporary Auth clients keep
+// either proof out of the app's persisted Supabase session until both pass.
 
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { apiKeyOnlyFetch } from '../lib/apiKeyOnlyFetch'
 
-/**
- * Step 1 of login: verify email + password.
- * Returns the session if exempt from OTP, or signals that OTP is needed.
- *
- * NOTE: We call signInWithPassword first to verify credentials.
- * If the user is NOT exempt, we then trigger an OTP via signInWithOtp.
- * Supabase does not natively chain password + email OTP in one call,
- * so we use password auth to verify credentials, then sign out and
- * send an OTP — the OTP verify step completes the actual session.
- *
- * @param {string} email
- * @param {string} password
- * @returns {Promise<{ session: object|null, needsOtp: boolean, emailNotConfirmed: boolean }>}
- */
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+const PASSWORD_PROOF_MAX_AGE_SECONDS = 10 * 60
+
+let passwordAuthClient = null
+let passwordProofSession = null
+let otpAuthClient = null
+let pendingLoginEmail = ''
+
+function createEphemeralAuthClient() {
+  return createClient(supabaseUrl, supabasePublishableKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+    global: { fetch: apiKeyOnlyFetch(supabasePublishableKey) },
+  })
+}
+
+function decodeAccessToken(accessToken) {
+  try {
+    const payload = accessToken.split('.')[1]
+    if (!payload) return null
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    return JSON.parse(atob(padded))
+  } catch {
+    return null
+  }
+}
+
+function ensureAppAccess(session) {
+  const claims = session?.access_token ? decodeAccessToken(session.access_token) : null
+  if (claims?.app_access !== true) {
+    throw new Error('서버 로그인 보안 설정을 확인할 수 없습니다. 잠시 후 다시 시도해주세요.')
+  }
+}
+
+export function hasPendingLogin(email) {
+  if (
+    !passwordProofSession?.access_token ||
+    pendingLoginEmail !== String(email || '').trim().toLowerCase()
+  ) return false
+
+  const claims = decodeAccessToken(passwordProofSession.access_token)
+  const now = Math.floor(Date.now() / 1000)
+  return Boolean(
+    claims &&
+    Number.isFinite(Number(claims.iat)) &&
+    Number.isFinite(Number(claims.exp)) &&
+    now - Number(claims.iat) <= PASSWORD_PROOF_MAX_AGE_SECONDS &&
+    Number(claims.exp) > now,
+  )
+}
+
+export async function clearLoginAttempt() {
+  const clients = [passwordAuthClient, otpAuthClient].filter(Boolean)
+  passwordAuthClient = null
+  passwordProofSession = null
+  otpAuthClient = null
+  pendingLoginEmail = ''
+  await Promise.all(clients.map((client) => client.auth.signOut({ scope: 'local' })))
+}
+
+/** Verify credentials in a non-persistent client and keep the proof in memory. */
 export async function signInWithPassword(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  await clearLoginAttempt()
+  passwordAuthClient = createEphemeralAuthClient()
+
+  const normalizedEmail = email.trim().toLowerCase()
+  const { data, error } = await passwordAuthClient.auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  })
 
   if (error) {
+    await clearLoginAttempt()
     throw new Error(error.message)
   }
 
-  return { session: data.session, user: data.user }
+  passwordProofSession = data.session
+  pendingLoginEmail = normalizedEmail
+  return { user: data.user, session: data.session }
 }
 
-/**
- * Sends a 6-digit OTP to the user's email for login verification.
- * Call this AFTER verifying credentials with signInWithPassword.
- *
- * @param {string} email
- * @returns {Promise<void>}
- */
+/** Persist an allowlisted test/admin password session after the Auth Hook grants it. */
+export async function completePasswordOnlyLogin() {
+  if (!passwordProofSession || !passwordAuthClient) {
+    throw new Error('로그인 정보가 만료되었습니다. 비밀번호를 다시 입력해주세요.')
+  }
+
+  ensureAppAccess(passwordProofSession)
+  const { error } = await supabase.auth.setSession({
+    access_token: passwordProofSession.access_token,
+    refresh_token: passwordProofSession.refresh_token,
+  })
+  if (error) throw new Error(error.message)
+
+  await clearLoginAttempt()
+}
+
+/** Send the built-in Supabase email OTP after password proof has been checked. */
 export async function sendLoginOtp(email) {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: false, // never create a new account here
-    },
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!hasPendingLogin(normalizedEmail)) {
+    throw new Error('비밀번호 확인이 만료되었습니다. 다시 로그인해주세요.')
+  }
+
+  if (!otpAuthClient) otpAuthClient = createEphemeralAuthClient()
+  const { error } = await otpAuthClient.auth.signInWithOtp({
+    email: normalizedEmail,
+    options: { shouldCreateUser: false },
   })
 
   if (error) throw new Error(error.message)
 }
 
-/**
- * Verifies the 6-digit OTP the user entered.
- * On success, Supabase sets the session automatically.
- *
- * @param {string} email
- * @param {string} otp  - the 6-digit code
- * @returns {Promise<{ session: object }>}
- */
+/** Verify the OTP, prove the separate password session to the server, then persist only the granted session. */
 export async function verifyLoginOtp(email, otp) {
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!hasPendingLogin(normalizedEmail) || !otpAuthClient) {
+    throw new Error('비밀번호 확인이 만료되었습니다. 다시 로그인해주세요.')
+  }
+
+  const { data, error } = await otpAuthClient.auth.verifyOtp({
+    email: normalizedEmail,
     token: otp.trim(),
     type: 'email',
   })
-
   if (error) throw new Error(error.message)
-  return { session: data.session }
+  if (!data.session) throw new Error('인증 세션을 만들지 못했습니다. 다시 시도해주세요.')
+
+  const { error: completionError } = await otpAuthClient.functions.invoke('complete-login', {
+    body: { passwordAccessToken: passwordProofSession.access_token },
+  })
+  if (completionError) throw new Error(completionError.message)
+
+  // The Auth Hook adds app_access only after the server records this exact OTP
+  // session. Refresh to receive the signed claim before installing it in-app.
+  const { data: refreshedData, error: refreshError } = await otpAuthClient.auth.refreshSession()
+  if (refreshError) throw new Error(refreshError.message)
+  ensureAppAccess(refreshedData.session)
+
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: refreshedData.session.access_token,
+    refresh_token: refreshedData.session.refresh_token,
+  })
+  if (sessionError) throw new Error(sessionError.message)
+
+  await clearLoginAttempt()
+  return { session: refreshedData.session }
 }
 
-/**
- * Resends the email confirmation link for unconfirmed accounts.
- *
- * @param {string} email
- * @returns {Promise<void>}
- */
+/** Resend only while the same in-memory password proof is still pending. */
+export async function resendLoginOtp(email) {
+  return sendLoginOtp(email)
+}
+
+/** Resend the email confirmation link for an unconfirmed account. */
 export async function resendConfirmationEmail(email) {
   const { error } = await supabase.auth.resend({
     type: 'signup',
@@ -81,41 +175,24 @@ export async function resendConfirmationEmail(email) {
   if (error) throw new Error(error.message)
 }
 
-/**
- * Sends a password reset link to the user's email.
- *
- * @param {string} email
- * @returns {Promise<void>}
- */
+/** Send a password reset link. */
 export async function sendPasswordResetEmail(email) {
   const redirectTo =
     typeof window !== 'undefined'
       ? `${window.location.origin}/reset-password`
       : undefined
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo,
-  })
-
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
   if (error) throw new Error(error.message)
 }
 
-/**
- * Updates the password for the active password recovery session.
- *
- * @param {string} password
- * @returns {Promise<void>}
- */
+/** Update the password for the active password recovery session. */
 export async function updatePassword(password) {
   const { error } = await supabase.auth.updateUser({ password })
   if (error) throw new Error(error.message)
 }
 
-/**
- * Signs the current user out.
- *
- * @returns {Promise<void>}
- */
+/** Sign the current persisted app session out. */
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
   if (error) throw new Error(error.message)

@@ -1,7 +1,29 @@
 export async function hasAal2(admin: any, accessToken: string): Promise<boolean> {
   if (!accessToken) return false
   const { data, error } = await admin.auth.mfa.getAuthenticatorAssuranceLevel(accessToken)
-  return !error && data?.currentLevel === 'aal2'
+  if (!error && data?.currentLevel === 'aal2') return true
+
+  // The app's password + email OTP flow uses a server-issued session claim,
+  // not Supabase's native AAL2. Permit it for member actions, but keep admin
+  // actions behind native AAL2 even when the admin account skips email OTP.
+  try {
+    const encodedPayload = accessToken.split('.')[1]
+    if (!encodedPayload) return false
+    const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    const claims = JSON.parse(atob(padded))
+    if (claims?.app_access !== true || typeof claims?.sub !== 'string') return false
+
+    const { data: adminRole, error: roleError } = await admin
+      .from('admin_roles')
+      .select('user_id')
+      .eq('user_id', claims.sub)
+      .maybeSingle()
+
+    return !roleError && !adminRole
+  } catch {
+    return false
+  }
 }
 
 export function requireAal2Response(corsHeaders: Record<string, string>) {

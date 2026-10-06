@@ -17,6 +17,7 @@ import { useSingleDeviceSession } from './hooks/useSingleDeviceSession'
 import { useTheme } from './hooks/useTheme'
 import { DeviceRotate, WifiX } from '@phosphor-icons/react'
 import LoadingIndicator from './components/LoadingIndicator'
+import { hasAppAccessClaim } from './domain/auth/authRules'
 
 const OTP_PENDING_KEY = 'uvain_otp_pending_email'
 const OTP_PENDING_EVENT = 'uvain-otp-pending-change'
@@ -72,7 +73,8 @@ function App() {
     }
   }, [])
 
-  const userId = session?.user?.id ?? null
+  const appSession = hasAppAccessClaim(session?.access_token) ? session : null
+  const userId = appSession?.user?.id ?? null
   const adminRoleLoaded = !userId || adminRoleState?.userId === userId
   const isAdmin = adminRoleLoaded && adminRoleState?.isAdmin === true
 
@@ -80,7 +82,6 @@ function App() {
     let cancelled = false
 
     if (!userId) {
-      setAdminRoleState(null)
       return () => { cancelled = true }
     }
 
@@ -89,7 +90,7 @@ function App() {
     })
 
     return () => { cancelled = true }
-  }, [userId, session?.access_token])
+  }, [userId, appSession?.access_token])
 
   useEffect(() => {
     const loadSession = () => {
@@ -134,7 +135,7 @@ function App() {
     }
   }, [])
 
-  useSingleDeviceSession(isOtpPending ? null : session)
+  useSingleDeviceSession(isOtpPending ? null : appSession)
 
   useEffect(() => {
     if (!isStandaloneApp()) return undefined
@@ -204,20 +205,20 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={!session || isOtpPending ? <LoginPage /> : <Navigate to="/member" />}
+          element={!appSession || isOtpPending ? <LoginPage /> : <Navigate to="/member" />}
         />
 
         <Route
           path="/member"
-          element={session && !isOtpPending ? <MemberPage /> : <Navigate to={isOtpPending ? '/login' : '/public'} />}
+          element={appSession && !isOtpPending ? <MemberPage /> : <Navigate to={isOtpPending || session ? '/login' : '/public'} />}
         />
         <Route
           path="/settings"
-          element={session && !isOtpPending ? <SettingsPage /> : <Navigate to="/login" />}
+          element={appSession && !isOtpPending ? <SettingsPage /> : <Navigate to="/login" />}
         />
         <Route
           path="/settings/password"
-          element={session && !isOtpPending ? <ChangePasswordPage /> : <Navigate to="/login" />}
+          element={appSession && !isOtpPending ? <ChangePasswordPage /> : <Navigate to="/login" />}
         />
 
         <Route
@@ -226,14 +227,14 @@ function App() {
             adminRoleLoaded && isAdmin && !isOtpPending
               ? <AdminPage />
               : adminRoleLoaded
-                ? <Navigate to={session ? '/member' : '/login'} />
+                ? <Navigate to={appSession ? '/member' : '/login'} />
                 : <LoadingIndicator />
           }
         />
 
         <Route
           path="/scan"
-          element={session && !isOtpPending ? <ScanPage /> : <Navigate to="/login" />}
+          element={appSession && !isOtpPending ? <ScanPage /> : <Navigate to="/login" />}
         />
 
         <Route path="/public" element={<PublicPage />} />
@@ -245,13 +246,13 @@ function App() {
           element={
             isEmailConfirmationLink
               ? <EmailConfirmedPage />
-              : <Navigate to={session && !isOtpPending ? '/member' : '/public'} />
+              : <Navigate to={appSession && !isOtpPending ? '/member' : (session ? '/login' : '/public')} />
           }
         />
 
         <Route
           path="*"
-          element={<Navigate to={session && !isOtpPending ? '/member' : '/public'} />}
+          element={<Navigate to={appSession && !isOtpPending ? '/member' : (session ? '/login' : '/public')} />}
         />
       </Routes>
     </BrowserRouter>
