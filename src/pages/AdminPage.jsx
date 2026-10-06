@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { hasAdminRole } from '../lib/adminRoles'
+import { sanitizeRichText } from '../lib/sanitizeHtml'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { useNavigate } from 'react-router-dom'
 import { ImageCropper } from '../components/ImageCropper'
@@ -189,7 +191,7 @@ export default function AdminPage() {
         return
       }
 
-      const isAdmin = user.user_metadata?.role === 'admin'
+      const isAdmin = await hasAdminRole(user.id)
 
       if (!isAdmin) {
         navigate('/member')
@@ -295,7 +297,7 @@ function RichEditor({ value, onChange, placeholder, rows = 3 }) {
 
   useEffect(() => {
     if (ref.current && !isInitialized.current) {
-      ref.current.innerHTML = value || ''
+      ref.current.innerHTML = sanitizeRichText(value || '')
       isInitialized.current = true
     }
   }, [])
@@ -308,12 +310,16 @@ function RichEditor({ value, onChange, placeholder, rows = 3 }) {
     if (!ref.current) return
     ref.current.focus()
     document.execCommand(cmd, false, val)
-    onChange(ref.current.innerHTML)
+    const safeValue = sanitizeRichText(ref.current.innerHTML)
+    if (ref.current.innerHTML !== safeValue) ref.current.innerHTML = safeValue
+    onChange(safeValue)
   }
 
   const handleInput = () => {
     if (!ref.current) return
-    onChange(ref.current.innerHTML)
+    const safeValue = sanitizeRichText(ref.current.innerHTML)
+    if (ref.current.innerHTML !== safeValue) ref.current.innerHTML = safeValue
+    onChange(safeValue)
   }
 
   const applyColor = (color) => {
@@ -1392,9 +1398,7 @@ function EventsTab() {
         await supabase.storage.from('event-images').remove([oldFileName])
       }
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}_${Math.random()
-        .toString(36)
-        .slice(2)}.${fileExt}`
+      const fileName = `${crypto.randomUUID()}.${fileExt}`
       const { error } = await supabase.storage
         .from('event-images')
         .upload(fileName, file)
@@ -1411,9 +1415,7 @@ function EventsTab() {
 
     for (const file of imageFiles) {
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}_${Math.random()
-        .toString(36)
-        .slice(2)}.${fileExt}`
+      const fileName = `${crypto.randomUUID()}.${fileExt}`
       const { error: uploadError } = await supabase.storage
         .from('event-images')
         .upload(fileName, file)
@@ -2281,9 +2283,7 @@ function RestaurantsTab() {
         await supabase.storage.from('place-images').remove([oldFileName])
       }
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}_${Math.random()
-        .toString(36)
-        .slice(2)}.${fileExt}`
+      const fileName = `${crypto.randomUUID()}.${fileExt}`
       const { error } = await supabase.storage
         .from('place-images')
         .upload(fileName, file)
@@ -2301,9 +2301,7 @@ function RestaurantsTab() {
     // New images
     for (const file of imageFiles) {
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}_${Math.random()
-        .toString(36)
-        .slice(2)}.${fileExt}`
+      const fileName = `${crypto.randomUUID()}.${fileExt}`
       const { error: uploadError } = await supabase.storage
         .from('place-images')
         .upload(fileName, file)

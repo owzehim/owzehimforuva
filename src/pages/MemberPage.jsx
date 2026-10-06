@@ -1,6 +1,8 @@
 ﻿import { useEffect, useState, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { hasAdminRole } from '../lib/adminRoles'
+import { getSafeHttpsUrl, richTextToPlainText } from '../lib/sanitizeHtml'
 import MapView from '../components/MapView'
 import { SpotCard, RichText } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
@@ -83,8 +85,7 @@ export default function MemberPage() {
         return
       }
 
-      // Admin flag from user metadata (same logic as App.jsx)
-      const isAdminUser = user?.user_metadata?.role === 'admin'
+      const isAdminUser = await hasAdminRole(user.id)
       setAuthUserId(user.id)
 
       // Members: maybeSingle() so we don't get a 406 if the admin has no row
@@ -2736,10 +2737,7 @@ function EventsTab({ events }) {
   }
 
   const plainText = (value) => {
-    if (!value) return ''
-    const el = document.createElement('div')
-    el.innerHTML = value
-    return (el.textContent || el.innerText || '').trim()
+    return richTextToPlainText(value)
   }
 
   const getEventStatus = (ev) => {
@@ -2793,7 +2791,8 @@ function EventsTab({ events }) {
 
   const openParticipationForm = (ev) => {
     if (!ev?.participation_url || ev?.is_registration_closed) return
-    window.open(ev.participation_url, '_blank', 'noopener,noreferrer')
+    const safeUrl = getSafeHttpsUrl(ev.participation_url)
+    if (safeUrl) window.open(safeUrl, '_blank', 'noopener,noreferrer')
   }
 
   const W = 'var(--member-screen-width, min(calc(100vw - 32px), 398px))'

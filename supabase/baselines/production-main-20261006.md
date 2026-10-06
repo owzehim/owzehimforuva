@@ -6,11 +6,11 @@ Scope: `public` and `storage` schemas; schema only, no table data.
 
 ## Baseline artifacts
 
-- [`../live_main_schema_20261006.sql`](../live_main_schema_20261006.sql) is the production schema-only dump captured at 16:03 CEST on 2026-10-06, before the Step 4 migration below. It is 213,452 bytes.
-- [`../migrations/20261006142424_restrict_comment_note_reads_and_translation_quota.sql`](../migrations/20261006142424_restrict_comment_note_reads_and_translation_quota.sql) is the exact follow-up migration applied to production and recorded in the remote migration ledger. Applying this delta to the dump gives the reviewed baseline after Step 4.
+- A production schema-only dump was captured at 16:03 CEST on 2026-10-06, before the Step 4 migration below. The dump has since been removed from the repository because publishing internal schema details is unnecessary; this file records the review and migration ledger instead.
+- [`../migrations/20261006142424_restrict_comment_note_reads_and_translation_quota.sql`](../migrations/20261006142424_restrict_comment_note_reads_and_translation_quota.sql) is the exact follow-up migration applied to production and recorded in the remote migration ledger; it was included in the reviewed baseline after Step 4.
 - The current production view definitions were read directly after that migration. The two comment/note safe views still require `app_access=true` and a current device session; they mask anonymous usernames and private note fields as designed.
 
-The CLI could not refresh the dump from this shell because its Supabase access token is not configured here. The existing dump and the exact applied migration are retained together as the baseline artifacts; the live migration ledger and view definitions were independently rechecked through the connected Supabase project.
+The CLI could not refresh the dump from this shell because its Supabase access token is not configured here. The exact applied migration, live migration ledger, and view definitions were independently rechecked through the connected Supabase project.
 
 ## Migration ledger comparison
 

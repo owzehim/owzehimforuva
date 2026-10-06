@@ -63,3 +63,16 @@ entrypoint = "./functions/sync-review-to-sheets/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/complete-login/index.ts"
+
+[functions.verify-member-qr]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/verify-member-qr/index.ts"
+
+[functions.moderate-comment]
+enabled = true
+verify_jwt = true
+
+[functions.translate-note]
+enabled = true
+verify_jwt = true
