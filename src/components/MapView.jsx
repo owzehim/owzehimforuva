@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import * as maptilersdk from '@maptiler/sdk'
-import '@maptiler/sdk/dist/maptiler-sdk.css'
+import * as maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 
 import { getMapIconSvg } from '../lib/mapCategories'
 import { MapPinSimple } from '@phosphor-icons/react'
@@ -38,8 +38,6 @@ if (typeof window !== 'undefined' && !document.getElementById('map-view-performa
 const API_KEY = import.meta.env.VITE_MAPTILER_API_KEY
 const LIGHT_MAP_STYLE_ID = '019eb88d-92dc-70b4-b9c2-008b7e4a977d'
 const DARK_MAP_STYLE_ID = '019e33af-3185-79df-9f26-1bc6d896eeee'
-maptilersdk.config.apiKey = API_KEY
-
 function getMapStyleUrl(isDark) {
   const styleId = isDark ? DARK_MAP_STYLE_ID : LIGHT_MAP_STYLE_ID
   return `https://api.maptiler.com/maps/${styleId}/style.json?key=${API_KEY}`
@@ -174,7 +172,7 @@ export default function MapView({ restaurants, selected, onSelect }) {
     sorted.forEach((r) => {
       const isSelected = r.id === selectedId
       const el = createMarkerElement(r, isSelected)
-      const marker = new maptilersdk.Marker({ element: el })
+      const marker = new maplibregl.Marker({ element: el })
         .setLngLat([r.longitude, r.latitude])
         .addTo(map.current)
 
@@ -194,7 +192,7 @@ export default function MapView({ restaurants, selected, onSelect }) {
     } else if (valid.length > 1) {
       const bounds = valid.reduce(
         (b, r) => b.extend([r.longitude, r.latitude]),
-        new maptilersdk.LngLatBounds(
+        new maplibregl.LngLatBounds(
           [valid[0].longitude, valid[0].latitude],
           [valid[0].longitude, valid[0].latitude],
         ),
@@ -207,7 +205,7 @@ export default function MapView({ restaurants, selected, onSelect }) {
     if (initializedRef.current || !mapContainer.current) return
     initializedRef.current = true
 
-    map.current = new maptilersdk.Map({
+    map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: getMapStyleUrl(isDarkMode()),
       center: [4.9041, 52.3676],
@@ -393,7 +391,7 @@ export default function MapView({ restaurants, selected, onSelect }) {
         border-radius: 50%;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       `
-      userLocationMarkerRef.current = new maptilersdk.Marker({ element: el })
+      userLocationMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([longitude, latitude])
         .addTo(map.current)
     } else {

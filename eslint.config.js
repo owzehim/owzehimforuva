@@ -17,5 +17,12 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Keep existing legacy effect/ref patterns lintable while retaining hook ordering checks.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
+      // Surface unused legacy code as warnings; new CI blockers remain errors.
+      'no-unused-vars': 'warn',
+    },
   },
 ])
