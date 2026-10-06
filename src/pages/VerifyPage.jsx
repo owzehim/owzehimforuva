@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { verifyTOTP } from '../lib/totp'
 import LoadingIndicator from '../components/LoadingIndicator'
 
 export default function VerifyPage() {
@@ -11,59 +10,19 @@ export default function VerifyPage() {
   const [timeLeft, setTimeLeft] = useState(15)
   const scanTimeRef = useRef(null)
 
-  // Parse QR token into OTP and student number
-  const parseToken = (qrToken) => {
-    const parts = qrToken?.split('_')
-    if (!parts || parts.length < 2) return null
-    return { otpToken: parts[0], studentNumber: parts[1] }
-  }
-
-  // Verify the QR code against the database
+  // Verify QR codes server-side so the public scanner page never reads the
+  // members table or receives the stored TOTP secret.
   const verifyQRCode = async (qrToken) => {
-    const parsed = parseToken(qrToken)
-    if (!parsed) {
+    if (typeof qrToken !== 'string' || qrToken.length > 100) {
       setResult({ valid: false, reason: 'Invalid QR code.' })
       return
     }
-
-    const { otpToken, studentNumber } = parsed
     try {
-      // Fetch member data from database
-      const { data: member, error: memberError } = await supabase
-        .from('members')
-        .select('*')
-        .eq('student_number', studentNumber)
-        .single()
-
-      if (memberError || !member) {
-        setResult({ valid: false, reason: 'Member not found.' })
-        return
-      }
-
-      // Verify TOTP token
-      const isValidToken = await verifyTOTP(otpToken, member.totp_secret)
-
-      // Check if membership is active
-      const isActiveMember =
-        member.is_member &&
-        member.membership_valid_until &&
-        new Date(member.membership_valid_until) >= new Date()
-
-      // Set result based on verification
-      if (!isValidToken) {
-        setResult({
-          valid: false,
-          reason: 'QR code has expired. Please ask the member to refresh.',
-        })
-      } else if (!isActiveMember) {
-        setResult({
-          valid: false,
-          reason: 'Membership is not active.',
-          member,
-        })
-      } else {
-        setResult({ valid: true, member })
-      }
+      const { data, error } = await supabase.functions.invoke('verify-member-qr', {
+        body: { token: qrToken },
+      })
+      if (error) throw error
+      setResult(data || { valid: false, reason: 'Unable to verify QR code.' })
     } catch (error) {
       console.error('Verification error:', error)
       setResult({

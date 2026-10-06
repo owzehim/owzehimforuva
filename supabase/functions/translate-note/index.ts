@@ -1,90 +1,16 @@
+import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
-import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.ts'
-import { getSupabasePublishableKey } from '../_shared/publishableKey.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
-
-serve(async (req) => {
+// Retired: translation is not called by the current app. Keep future deploys
+// from restoring the old service-role IDOR and unmetered translation path.
+serve((req) => {
+  const origin = req.headers.get('origin')
+  const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
+  const corsHeaders = getCorsHeaders(origin, configuredOrigins)
+  if (!isAllowedCorsOrigin(origin, configuredOrigins)) return new Response('Origin not allowed', { status: 403 })
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-
-  try {
-    const { noteId, targetLanguage = 'en' } = await req.json()
-    if (!noteId) return json({ message: 'Missing noteId.' }, 400)
-
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-    const supabasePublishableKey = getSupabasePublishableKey()
-    const supabaseSecretKey = getSupabaseServiceKey()
-    const googleTranslateKey = Deno.env.get('GOOGLE_TRANSLATE_API_KEY') || ''
-    if (!supabaseUrl || !supabasePublishableKey || !supabaseSecretKey) {
-      return json({ message: 'Translation service is not configured.' }, 503)
-    }
-
-    const userClient = createClient(supabaseUrl, supabasePublishableKey, {
-      global: {
-        headers: { Authorization: req.headers.get('Authorization') || '' },
-        fetch: apiKeyOnlyFetch(supabasePublishableKey),
-      },
-    })
-
-    const { data: { user } } = await userClient.auth.getUser()
-    if (!user) return json({ message: 'Unauthorized.' }, 401)
-    if (!googleTranslateKey) return json({ message: 'Translation is not configured.' }, 503)
-
-    const admin = createClient(supabaseUrl, supabaseSecretKey, {
-      global: { fetch: apiKeyOnlyFetch(supabaseSecretKey) },
-    })
-
-    const { data: cached } = await admin
-      .from('restaurant_note_translations')
-      .select('translated_body')
-      .eq('note_id', noteId)
-      .eq('target_language', targetLanguage)
-      .maybeSingle()
-
-    if (cached) return json({ translation: cached.translated_body })
-
-    const { data: note, error: noteError } = await admin
-      .from('restaurant_notes')
-      .select('body')
-      .eq('id', noteId)
-      .single()
-
-    if (noteError || !note) return json({ message: 'Note not found.' }, 404)
-
-    const response = await fetch(
-      `https://translation.googleapis.com/language/translate/v2?key=${googleTranslateKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: note.body, target: targetLanguage, format: 'text' }),
-      },
-    )
-
-    const result = await response.json()
-    const translation = result?.data?.translations?.[0]?.translatedText
-    if (!response.ok || !translation) return json({ message: 'Translation failed.' }, 502)
-
-    await admin
-      .from('restaurant_note_translations')
-      .upsert(
-        { note_id: noteId, target_language: targetLanguage, translated_body: translation },
-        { onConflict: 'note_id,target_language' },
-      )
-
-    return json({ translation })
-  } catch {
-    return json({ message: 'Translation failed.' }, 500)
-  }
+  return new Response(JSON.stringify({ message: 'This translation endpoint is no longer available.' }), {
+    status: 410,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+  })
 })

@@ -4,8 +4,8 @@
 // ✅ Copy as-is to React Native — zero React/web dependencies.
 
 /**
- * Accounts whose login UI skips email OTP. This is only a UI hint; the
- * server-side Auth Hook independently allowlists the corresponding user IDs.
+ * These two explicitly allowlisted accounts skip email OTP. The server-side
+ * Auth Hook independently grants the corresponding account IDs.
  */
 const OTP_EXEMPT_EMAILS = [
   'test@uvain.nl',
