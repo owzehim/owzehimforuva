@@ -333,6 +333,7 @@ function getNextButtonStyle(isComplete) {
 }
 
 const AUTH_BOX_WIDTH = 'min(var(--app-screen-width, min(calc(100vw - 32px), 398px)), 368px)';
+const CONFIRMATION_EVENT_KEY = 'uvain-email-confirmation-result';
 
 async function getCroppedImgAsFile(imageSrc, pixelCrop, fileName = 'profile.jpg') {
   const img = new Image();
@@ -589,6 +590,19 @@ export default function RegistrationPage() {
     editEmail,
   } = useRegisterMember();
 
+  useEffect(() => {
+    if (step !== 'email') return undefined;
+
+    const handleConfirmationFinished = (event) => {
+      if (event.key === CONFIRMATION_EVENT_KEY && event.newValue) {
+        navigate('/public', { replace: true });
+      }
+    };
+
+    window.addEventListener('storage', handleConfirmationFinished);
+    return () => window.removeEventListener('storage', handleConfirmationFinished);
+  }, [step, navigate]);
+
   const yearOptions = getYearOptions(formData.educationLevel);
   const t = translations[language];
   const displayName =
@@ -702,8 +716,8 @@ export default function RegistrationPage() {
               {t.verifyEmail}
             </p>
           </div>
-          <button type="button" onClick={() => navigate('/login')} style={s.submitBtn}>
-            {t.goToLogin}
+          <button type="button" onClick={() => navigate('/public')} style={s.submitBtn}>
+            {language === 'ko' ? '\uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30' : 'Return to public page'}
           </button>
           <button
             type="button"
