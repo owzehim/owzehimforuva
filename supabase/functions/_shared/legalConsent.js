@@ -1,4 +1,8 @@
-export const CURRENT_LEGAL_DOCUMENT_VERSION = '2026-06-29'
+export const CURRENT_LEGAL_DOCUMENT_VERSION = '2026-10-07'
+const SUPPORTED_LEGAL_DOCUMENT_VERSIONS = new Set([
+  CURRENT_LEGAL_DOCUMENT_VERSION,
+  '2026-06-29',
+])
 
 const DOCUMENT_KEYS = ['terms', 'privacy', 'community']
 
@@ -26,7 +30,7 @@ export function getConsentReceiptRows(userId, registration, acceptedAt) {
   }
 
   if (!versions || typeof versions !== 'object' || Array.isArray(versions)) return null
-  if (!DOCUMENT_KEYS.every((key) => versions[key] === CURRENT_LEGAL_DOCUMENT_VERSION)) return null
+  if (!DOCUMENT_KEYS.every((key) => SUPPORTED_LEGAL_DOCUMENT_VERSIONS.has(versions[key]))) return null
   if (registration.privacy_policy_version !== versions.privacy) return null
 
   return DOCUMENT_KEYS.map((documentKey) => ({

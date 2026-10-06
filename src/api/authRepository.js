@@ -142,6 +142,22 @@ export async function verifyLoginOtp(email, otp) {
   if (error) throw new Error(error.message)
   if (!data.session) throw new Error('인증 세션을 만들지 못했습니다. 다시 시도해주세요.')
 
+  // A previous confirmation attempt may have confirmed the email but failed
+  // to create the member row. Retry that idempotent server-side completion
+  // after the user proves both password and email OTP again.
+  if (data.user?.user_metadata?.registration) {
+    const { data: registrationResult, error: registrationError } =
+      await otpAuthClient.functions.invoke('complete-member-registration')
+    if (registrationError || !registrationResult?.success) {
+      await otpAuthClient.auth.signOut({ scope: 'local' })
+      throw new Error(
+        registrationResult?.message ||
+          registrationError?.message ||
+          '이메일 인증은 완료되었지만 회원가입 정보를 저장하지 못했습니다. 코드를 다시 받아 로그인해주세요.',
+      )
+    }
+  }
+
   const { error: completionError } = await otpAuthClient.functions.invoke('complete-login', {
     body: { passwordAccessToken: passwordProofSession.access_token },
   })
