@@ -75,13 +75,15 @@ function App() {
 
   const appSession = hasAppAccessClaim(session?.access_token) ? session : null
   const userId = appSession?.user?.id ?? null
+  const sessionClaimed = useSingleDeviceSession(isOtpPending ? null : appSession)
+  const protectedSession = Boolean(appSession && !isOtpPending && sessionClaimed)
   const adminRoleLoaded = !userId || adminRoleState?.userId === userId
   const isAdmin = adminRoleLoaded && adminRoleState?.isAdmin === true
 
   useEffect(() => {
     let cancelled = false
 
-    if (!userId) {
+    if (!userId || !sessionClaimed) {
       return () => { cancelled = true }
     }
 
@@ -90,7 +92,7 @@ function App() {
     })
 
     return () => { cancelled = true }
-  }, [userId, appSession?.access_token])
+  }, [userId, appSession?.access_token, sessionClaimed])
 
   useEffect(() => {
     const loadSession = () => {
@@ -134,8 +136,6 @@ function App() {
       window.removeEventListener('storage', updateOtpPending)
     }
   }, [])
-
-  useSingleDeviceSession(isOtpPending ? null : appSession)
 
   useEffect(() => {
     if (!isStandaloneApp()) return undefined
@@ -210,21 +210,23 @@ function App() {
 
         <Route
           path="/member"
-          element={appSession && !isOtpPending ? <MemberPage /> : <Navigate to={isOtpPending || session ? '/login' : '/public'} />}
+          element={protectedSession ? <MemberPage /> : (appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to={isOtpPending || session ? '/login' : '/public'} />)}
         />
         <Route
           path="/settings"
-          element={appSession && !isOtpPending ? <SettingsPage /> : <Navigate to="/login" />}
+          element={protectedSession ? <SettingsPage /> : (appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to="/login" />)}
         />
         <Route
           path="/settings/password"
-          element={appSession && !isOtpPending ? <ChangePasswordPage /> : <Navigate to="/login" />}
+          element={protectedSession ? <ChangePasswordPage /> : (appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to="/login" />)}
         />
 
         <Route
           path="/admin"
           element={
-            adminRoleLoaded && isAdmin && !isOtpPending
+            appSession && !isOtpPending && !sessionClaimed
+              ? <LoadingIndicator />
+              : adminRoleLoaded && isAdmin && !isOtpPending && sessionClaimed
               ? <AdminPage />
               : adminRoleLoaded
                 ? <Navigate to={appSession ? '/member' : '/login'} />
@@ -234,7 +236,7 @@ function App() {
 
         <Route
           path="/scan"
-          element={appSession && !isOtpPending ? <ScanPage /> : <Navigate to="/login" />}
+          element={protectedSession ? <ScanPage /> : (appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to="/login" />)}
         />
 
         <Route path="/public" element={<PublicPage />} />
