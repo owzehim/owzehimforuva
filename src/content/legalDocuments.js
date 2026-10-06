@@ -1,4 +1,4 @@
-export const LEGAL_DOCUMENT_VERSION = '2026-06-29';
+export const LEGAL_DOCUMENT_VERSION = '2026-10-07';
 
 export const legalDocuments = {
   terms: {
@@ -100,10 +100,10 @@ By creating an account, you confirm that you have read, understood, and agree to
   },
   privacy: {
     title: 'Privacy Policy',
-    effectiveDate: '29 June 2026',
+    effectiveDate: '7 October 2026',
     body: `UvA-IN Privacy Policy
 
-Effective Date: 29 June 2026
+Effective Date: 7 October 2026
 
 UvA-IN is committed to protecting your privacy and handling your personal information responsibly. This Privacy Policy explains how we collect, use, store, share, protect, and retain your personal data when you use the UvA-IN mobile application.
 
@@ -115,8 +115,10 @@ UvA-IN is an independent student membership platform that connects verified stud
 
 UvA-IN is not affiliated with, endorsed by, or operated by the University of Amsterdam or any other educational institution.
 
+Data controller: Woojay Lim
 Website: www.uva-in.nl
-Email: uvaksa16@gmail.com
+Privacy contact: woojay.lim@gmail.com
+Additional UvA-IN contact: uvaksa16@gmail.com
 
 2. Information We Collect
 
@@ -138,9 +140,9 @@ We do not sell your personal information.
 
 4. Information Shared with Partner Businesses
 
-Participating partner businesses receive only information reasonably necessary to operate the membership programme, such as visit records, reward progress, and redemption status.
+For their own restaurant, participating partners may receive a redemption identifier, visit date, reward or stamp progress, redemption status, and review rating or selected tags. Exact visit times and free-text review comments are not sent to partner trackers. The app integration does not send partners a member's full registration profile, student number, or Supabase account identifier.
 
-Partners do not receive your full registration profile, student number, account identifier, or unrestricted access to your personal information.
+Partner trackers are intended to contain only that partner's records. A partner's own copy may retain limited transaction records under its own applicable retention rules; contact us if you want us to pass a deletion request to a partner.
 
 5. Analytics and Reporting
 
@@ -178,7 +180,7 @@ We implement appropriate technical and organisational safeguards designed to pro
 
 Under the GDPR, you may have the right to access your personal information, correct inaccurate information, request deletion of your account, request restriction of processing, object to processing, request a copy of your personal information where applicable, and lodge a complaint with the relevant supervisory authority.
 
-Requests may be submitted using the contact information below.
+You can request account deletion in Settings. This deletes your Supabase account and linked profile, comments, notes, and visit/reward data, removes your profile photo, and anonymizes direct identifiers in the master operational sheet. Limited partner transaction records may remain without direct account identifiers where they are needed for the partner's own operational records. For access, correction, restriction, objection, or other privacy requests, contact the controller using the information below.
 
 11. Children's Privacy
 
@@ -190,9 +192,10 @@ We may update this Privacy Policy from time to time. The latest version will be 
 
 13. Contact
 
-UvA-IN
+Data controller: Woojay Lim (UvA-IN)
 Website: www.uva-in.nl
-Email: uvaksa16@gmail.com`,
+Privacy contact: woojay.lim@gmail.com
+Additional UvA-IN contact: uvaksa16@gmail.com`,
   },
   community: {
     title: 'Community Guidelines',

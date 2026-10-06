@@ -364,7 +364,6 @@ serve(async (req) => {
       partnership_id: storeId,
       sheet_name: sheetText(partnership.sheet_name || partnership.name, 160),
       date,
-      time,
       redemption_id: redemptionId,
       place_name: sheetText(partnership.name, 160),
       stamp_status: formatStampStatus(stampResult),
