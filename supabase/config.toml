@@ -1,4 +1,8 @@
 
+[auth.hook.custom_access_token]
+enabled = true
+uri = "pg-functions://postgres/public/custom_access_token_hook"
+
 [functions.sync-to-sheets]
 enabled = true
 verify_jwt = true
@@ -54,3 +58,8 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/sync-review-to-sheets/index.ts"
+
+[functions.complete-login]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/complete-login/index.ts"
