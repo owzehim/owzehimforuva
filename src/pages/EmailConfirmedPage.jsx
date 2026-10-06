@@ -137,7 +137,7 @@ export default function EmailConfirmedPage() {
             onClick={() => navigate('/public', { replace: true })}
             style={styles.returnButton}
           >
-            \uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30
+            {'공개 페이지로 돌아가기'}
           </button>
         )}
       </div>
