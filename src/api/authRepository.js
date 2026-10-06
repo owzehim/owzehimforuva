@@ -174,7 +174,10 @@ export async function resendLoginOtp(email) {
 export async function resendConfirmationEmail(email) {
   const { error } = await supabase.auth.resend({
     type: 'signup',
-    email,
+    email: email.trim().toLowerCase(),
+    options: {
+      emailRedirectTo: 'https://app.uva-in.nl/email-confirmed',
+    },
   })
 
   if (error) throw new Error(error.message)
