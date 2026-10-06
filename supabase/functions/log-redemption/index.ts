@@ -1,12 +1,12 @@
+import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const FIVE_MINUTES_MS = 5 * 60 * 1000
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
+import { hasAal2, hasActiveDeviceSession, requireAal2Response } from '../_shared/requireAal2.ts'
+import { sheetText } from '../_shared/sheetText.js'
+import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
+import { isMembershipActive } from '../_shared/membershipStatus.js'
 
 async function postJsonToAppsScript(url: string | null | undefined, payload: Record<string, unknown>, label: string) {
   if (!url) {
@@ -18,13 +18,15 @@ async function postJsonToAppsScript(url: string | null | undefined, payload: Rec
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(withAppsScriptSecret(payload, Deno.env.get('APPS_SCRIPT_SHARED_SECRET'))),
     })
     const text = await res.text().catch(() => '')
 
     if (!res.ok) {
-      console.error(`${label} sheet sync failed:`, res.status, text)
-      return { ok: false, status: res.status, text, label }
+      // Apps Script error bodies can echo submitted member data; keep them out
+      // of Edge Function logs and client-visible response objects.
+      console.error(`${label} sheet sync failed:`, res.status)
+      return { ok: false, status: res.status, label }
     }
 
     let body: unknown = text
@@ -35,8 +37,8 @@ async function postJsonToAppsScript(url: string | null | undefined, payload: Rec
     }
 
     if (body && typeof body === 'object' && 'success' in body && !(body as { success?: boolean }).success) {
-      console.error(`${label} Apps Script returned failure:`, body)
-      return { ok: false, body, label }
+      console.error(`${label} Apps Script returned failure`)
+      return { ok: false, label }
     }
 
     return { ok: true, body, label }
@@ -89,123 +91,38 @@ async function findStampRestaurant(admin: any, storeId: string) {
   return byPartnership ?? null
 }
 
-async function recordStampCardVisit(admin: any, userId: string, storeId: string, now: Date) {
+async function recordStampCardVisit(admin: any, userId: string, storeId: string) {
   const restaurant = await findStampRestaurant(admin, storeId)
   if (!restaurant?.stamp_card_enabled) return { enabled: false }
 
-  const restaurantId = restaurant.id
+  const { data, error } = await admin.rpc('record_member_stamp_visit', {
+    p_user_id: userId,
+    p_restaurant_id: restaurant.id,
+  })
+  if (error) throw error
 
-  const { data: config, error: configError } = await admin
-    .from('stamp_card_config')
-    .select('total_stamps')
-    .eq('restaurant_id', restaurantId)
-    .maybeSingle()
-
-  if (configError) console.error('Stamp config fetch error:', configError)
-
-  const totalStamps = Math.max(1, Number(config?.total_stamps || 10))
-  const today = now.toISOString().slice(0, 10)
-
-  const { data: pendingReward, error: pendingRewardError } = await admin
-    .from('stamp_card_rewards')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('restaurant_id', restaurantId)
-    .eq('redeemed', false)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (pendingRewardError) throw pendingRewardError
-
-  if (pendingReward) {
-    return {
-      enabled: true,
-      restaurantId,
-      rewardPending: true,
-      cycleCompleted: true,
-      cardCycle: pendingReward.card_cycle,
-      totalStamps,
-    }
-  }
-
-  const { data: todayVisit, error: todayVisitError } = await admin
-    .from('stamp_card_visits')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('restaurant_id', restaurantId)
-    .gte('visited_at', `${today}T00:00:00.000Z`)
-    .lte('visited_at', `${today}T23:59:59.999Z`)
-    .limit(1)
-    .maybeSingle()
-
-  if (todayVisitError) throw todayVisitError
-
-  if (todayVisit) {
-    const { data: currentVisits, error: currentVisitsError } = await admin
-      .from('stamp_card_visits')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('restaurant_id', restaurantId)
-
-    if (currentVisitsError) throw currentVisitsError
-
-    const currentCount = (currentVisits?.length ?? 0) % totalStamps || totalStamps
-    return { enabled: true, restaurantId, alreadyStamped: true, currentCount, totalStamps }
-  }
-
-  const { data: priorVisits, error: priorVisitsError } = await admin
-    .from('stamp_card_visits')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('restaurant_id', restaurantId)
-
-  if (priorVisitsError) throw priorVisitsError
-
-  const priorCount = priorVisits?.length ?? 0
-  const cardCycle = Math.floor(priorCount / totalStamps) + 1
-
-  const { error: insertError } = await admin
-    .from('stamp_card_visits')
-    .insert({
-      user_id: userId,
-      restaurant_id: restaurantId,
-      visited_at: now.toISOString(),
-      card_cycle: cardCycle,
-      added_by_admin: false,
-    })
-
-  if (insertError) throw insertError
-
-  const newCount = priorCount + 1
-  const cycleCompleted = newCount % totalStamps === 0
-
-  if (cycleCompleted) {
-    const { error: rewardError } = await admin
-      .from('stamp_card_rewards')
-      .insert({
-        user_id: userId,
-        restaurant_id: restaurantId,
-        card_cycle: cardCycle,
-        redeemed: false,
-      })
-
-    if (rewardError) throw rewardError
-  }
+  const result = Array.isArray(data) ? data[0] : data
+  if (!result) throw new Error('Stamp recording returned no result')
 
   return {
-    enabled: true,
-    restaurantId,
-    alreadyStamped: false,
-    success: true,
-    newCount,
-    cardCycle,
-    cycleCompleted,
-    totalStamps,
+    enabled: result.enabled,
+    restaurantId: restaurant.id,
+    alreadyStamped: result.already_stamped,
+    rewardPending: result.reward_pending,
+    success: !result.already_stamped && !result.reward_pending && result.enabled,
+    currentCount: result.current_count,
+    newCount: result.new_count,
+    cardCycle: result.card_cycle,
+    cycleCompleted: result.cycle_completed,
+    totalStamps: result.total_stamps,
   }
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
+  const corsHeaders = getCorsHeaders(origin, configuredOrigins)
+  if (!isAllowedCorsOrigin(origin, configuredOrigins)) return new Response('Origin not allowed', { status: 403 })
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -223,15 +140,7 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || (() => {
-      try {
-        const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || '{}'
-        const parsed = JSON.parse(raw)
-        return parsed.service_role_key || parsed.service_role || Object.values(parsed)[0] || ''
-      } catch {
-        return ''
-      }
-    })()
+    const serviceKey = getSupabaseServiceKey()
 
     if (!serviceKey) {
       console.error('No service key found')
@@ -243,6 +152,7 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
+      global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
     const { data: userData, error: userError } = await admin.auth.getUser(token)
@@ -253,6 +163,16 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, message: '로그인이 필요합니다.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    // Verify the full assurance level and the server-recorded device session
+    // before any service-role query or write can grant member functionality.
+    if (!(await hasAal2(admin, token))) return requireAal2Response(corsHeaders)
+    if (!(await hasActiveDeviceSession(admin, user.id, token))) {
+      return new Response(
+        JSON.stringify({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
@@ -275,10 +195,6 @@ serve(async (req) => {
 
     // ── Membership validity check ──────────────────────────────────────────
     const now = new Date()
-    const validUntil = member.membership_valid_until
-      ? new Date(member.membership_valid_until)
-      : null
-
     if (!member.is_member) {
       return new Response(
         JSON.stringify({ success: false, message: '멤버십이 활성화되어 있지 않습니다.' }),
@@ -286,7 +202,7 @@ serve(async (req) => {
       )
     }
 
-    if (!validUntil || validUntil < now) {
+    if (!isMembershipActive(member, now)) {
       return new Response(
         JSON.stringify({ success: false, message: '멤버십이 만료되었습니다.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -296,7 +212,7 @@ serve(async (req) => {
     // ── Fetch partnership ──────────────────────────────────────────────────
     const { data: partnership, error: partnershipError } = await admin
       .from('partnerships')
-      .select('name, sheet_name, master_apps_script_url, partner_apps_script_url')
+      .select('name, sheet_name')
       .eq('id', storeId)
       .single()
 
@@ -331,42 +247,61 @@ serve(async (req) => {
     })
 
     // ── Safe field helpers ─────────────────────────────────────────────────
-    const safe = (v: unknown) => (v != null && v !== '' ? String(v) : '')
+    const safe = (v: unknown) => (v != null && v !== '' ? sheetText(v) : '')
 
-    // ── Check for recent redemption (5 minutes window) ─────────────────────
-    const { data: recentRedemption, error: recentError } = await admin
-      .from('redemptions')
-      .select('id, redeemed_at')
-      .eq('user_id', user.id)
-      .eq('store_id', storeId)
-      .order('redeemed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (recentError) {
-      console.error('Recent redemption fetch error:', recentError)
-    }
-
-    let reuseRecent = false
-    if (recentRedemption?.redeemed_at) {
-      const last = new Date(recentRedemption.redeemed_at)
-      const diffMs = now.getTime() - last.getTime()
-      if (diffMs >= 0 && diffMs < FIVE_MINUTES_MS) {
-        // Within 5 minutes: treat as already logged, do NOT create a new record
-        reuseRecent = true
-      }
-    }
-
-    let stampResult = null
+    // Record (or safely recognize) today's visit before claiming the 15-minute
+    // redemption window. If stamp persistence fails, return an error without
+    // consuming the retry window; the unique daily index handles scan races.
+    let stampResult
     try {
-      stampResult = await recordStampCardVisit(admin, user.id, storeId, now)
+      stampResult = await recordStampCardVisit(admin, user.id, storeId)
     } catch (stampError) {
       console.error('Stamp card record error:', stampError)
-      stampResult = {
-        enabled: false,
-        error: stampError instanceof Error ? stampError.message : 'Stamp card record failed',
-      }
+      return new Response(
+        JSON.stringify({ success: false, message: '스탬프 기록을 처리하지 못했습니다. 다시 시도해 주세요.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
     }
+    const { data: integrations, error: integrationsError } = await admin
+      .from('partnership_integrations')
+      .select('master_apps_script_url, partner_apps_script_url')
+      .eq('partnership_id', storeId)
+      .maybeSingle()
+
+    if (integrationsError) {
+      console.error('Partnership integration lookup failed:', integrationsError)
+      return new Response(
+        JSON.stringify({ success: false, message: '매장 연동 설정을 확인하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    // Atomically claim this user's 15-minute window. The database lock
+    // ensures only one scan creates a redemption/Sheets event in that window.
+    const { data: redemptionClaims, error: claimError } = await admin.rpc(
+      'claim_redemption_window',
+      { p_user_id: user.id, p_store_id: storeId },
+    )
+
+    if (claimError) {
+      console.error('Redemption window claim failed:', claimError)
+      return new Response(
+        JSON.stringify({ success: false, message: '매장 이용 기록을 처리하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const redemptionClaim = Array.isArray(redemptionClaims) ? redemptionClaims[0] : null
+    if (!redemptionClaim?.redemption_id) {
+      console.error('Redemption window claim returned no record')
+      return new Response(
+        JSON.stringify({ success: false, message: '매장 이용 기록을 처리하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const reuseRecent = redemptionClaim.created !== true
+    const redemptionId = String(redemptionClaim.redemption_id)
 
     if (reuseRecent) {
       // No new DB row, no Google Sheets POST — just return success
@@ -374,30 +309,12 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           storeName: partnership.name,
-          redemptionId: recentRedemption.id,
+          redemptionId,
           stampResult,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
-
-    // ── Log to redemptions table first so we have the ID ──────────────────
-    const { data: redemptionRow, error: redemptionError } = await admin
-      .from('redemptions')
-      .insert({
-        user_id: user.id,
-        store_id: storeId,
-        redeemed_at: now.toISOString(),
-      })
-      .select('id')
-      .single()
-
-    if (redemptionError) {
-      console.error('Redemption insert error:', redemptionError)
-      // Non-fatal for the user — continue
-    }
-
-    const redemptionId = redemptionRow?.id ?? ''
 
     // ── Master sheet payload ───────────────────────────────────────────────
     const masterPayload = {
@@ -407,7 +324,7 @@ serve(async (req) => {
 
   redemption_id: redemptionId,
   restaurant_id: storeId,
-  place_name: partnership.name,
+  place_name: sheetText(partnership.name, 160),
 
   user_id: user.id,
   first_name: safe(member.first_name),
@@ -445,11 +362,11 @@ serve(async (req) => {
     const storePayload = {
       type: 'store',
       partnership_id: storeId,
-      sheet_name: partnership.sheet_name || partnership.name,
+      sheet_name: sheetText(partnership.sheet_name || partnership.name, 160),
       date,
       time,
       redemption_id: redemptionId,
-      place_name: partnership.name,
+      place_name: sheetText(partnership.name, 160),
       stamp_status: formatStampStatus(stampResult),
       stamp_progress: formatStampProgress(stampResult),
       stamp_card_progress: formatStampProgress(stampResult),
@@ -457,9 +374,10 @@ serve(async (req) => {
     }
 
     const sheetResults = await Promise.all([
-      postJsonToAppsScript(partnership.master_apps_script_url, masterPayload, 'master'),
-      postJsonToAppsScript(partnership.partner_apps_script_url, storePayload, 'partner'),
+      postJsonToAppsScript(integrations?.master_apps_script_url, masterPayload, 'master'),
+      postJsonToAppsScript(integrations?.partner_apps_script_url, storePayload, 'partner'),
     ])
+    const safeSheetResults = sheetResults.map(({ ok, skipped, label }) => ({ ok, skipped, label }))
 
     return new Response(
       JSON.stringify({
@@ -467,7 +385,7 @@ serve(async (req) => {
         storeName: partnership.name,
         redemptionId,
         stampResult,
-        sheetResults,
+        sheetResults: safeSheetResults,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

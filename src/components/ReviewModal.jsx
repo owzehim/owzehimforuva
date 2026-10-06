@@ -120,7 +120,6 @@ export default function ReviewModal({
 
   useEffect(() => {
     if (open) {
-      setClosing(false)
       requestAnimationFrame(() => setVisible(true))
     }
   }, [open])

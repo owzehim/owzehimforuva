@@ -5,7 +5,7 @@
 // But the state machine logic (step: 'credentials' → 'otp' → 'unconfirmed')
 // is identical and can be ported directly.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   isOtpExempt,
   validateOtpInput,
@@ -15,12 +15,13 @@ import {
   signInWithPassword,
   sendLoginOtp,
   verifyLoginOtp,
+  completePasswordOnlyLogin,
+  clearLoginAttempt,
+  hasPendingLogin,
   resendConfirmationEmail,
   sendPasswordResetEmail,
 } from '../api/authRepository'
-import { supabase } from '../lib/supabase'
 
-const SKIP_OTP_EMAIL_KEY = 'uvain_skip_otp_once_email'
 const OTP_PENDING_KEY = 'uvain_otp_pending_email'
 const OTP_PENDING_EVENT = 'uvain-otp-pending-change'
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
@@ -55,18 +56,6 @@ function resetMemberEntryState() {
   window.sessionStorage.removeItem(MEMBER_EVENT_LIST_OPEN_KEY)
 }
 
-function shouldSkipOtpOnce(email) {
-  if (typeof window === 'undefined') return false
-
-  const normalizedEmail = email.trim().toLowerCase()
-  const storedEmail = window.localStorage.getItem(SKIP_OTP_EMAIL_KEY)
-
-  if (storedEmail !== normalizedEmail) return false
-
-  window.localStorage.removeItem(SKIP_OTP_EMAIL_KEY)
-  return true
-}
-
 /**
  * Login flow states:
  * 'credentials' — user enters email + password
@@ -75,7 +64,13 @@ function shouldSkipOtpOnce(email) {
  * 'forgot'      — user requests a password reset email
  */
 export function useLogin() {
-  const pendingEmail = getOtpPendingEmail()
+  const [pendingEmail] = useState(() => {
+    const storedEmail = getOtpPendingEmail()
+    return hasPendingLogin(storedEmail) ? storedEmail : ''
+  })
+  useEffect(() => {
+    if (!pendingEmail && getOtpPendingEmail()) clearOtpPendingEmail()
+  }, [pendingEmail])
   const [step, setStep] = useState(pendingEmail ? 'otp' : 'credentials') // 'credentials' | 'otp' | 'unconfirmed'
 
   const [email, setEmail] = useState(pendingEmail)
@@ -98,35 +93,21 @@ export function useLogin() {
       // Always verify credentials first
       await signInWithPassword(email, password)
 
-      // Right after first signup email confirmation, let the user into the app
-      // once without asking for an OTP again.
-      if (shouldSkipOtpOnce(email)) {
-        resetMemberEntryState()
-        clearOtpPendingEmail()
-        return
-      }
-
       // OTP-exempt accounts (e.g. admin/test) are fully logged in now.
-      // App.jsx onAuthStateChange will handle navigation.
+      // The Supabase Auth Hook, not this client-side email check, grants access.
       if (isOtpExempt(email)) {
+        await completePasswordOnlyLogin()
         resetMemberEntryState()
         clearOtpPendingEmail()
         return
       }
 
-      // Non-exempt accounts:
-      // 1) sign out the temp password session
-      // 2) send a 6-digit OTP to the email
-      // 3) move to OTP step; real session will be created after OTP verify
-      // This session exists only to validate the password. Clearing it locally
-      // avoids an unnecessary second Auth network request (and the generic
-      // "Load Failed" error it could surface) before the OTP request.
-      const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' })
-      if (signOutError) throw signOutError
-
+      // Keep the short-lived password proof in memory while a separate
+      // non-persistent client requests the email OTP.
       await sendLoginOtp(email)
       setStep('otp')
     } catch (err) {
+      await clearLoginAttempt()
       clearOtpPendingEmail()
       const mapped = mapAuthError(err.message)
 
@@ -160,7 +141,15 @@ export function useLogin() {
       // On success, Supabase sets the session automatically.
       // App.jsx onAuthStateChange will redirect to /member or /admin.
     } catch (err) {
-      setError(mapAuthError(err.message))
+      if (String(err?.message || '').includes('비밀번호 확인이 만료되었습니다')) {
+        await clearLoginAttempt()
+        clearOtpPendingEmail()
+        setOtp('')
+        setStep('credentials')
+        setError('인증 시간이 지났습니다. 비밀번호를 다시 입력해주세요.')
+      } else {
+        setError(mapAuthError(err.message))
+      }
     } finally {
       setLoading(false)
     }
@@ -177,7 +166,15 @@ export function useLogin() {
       setResendSuccess(true)
       setTimeout(() => setResendSuccess(false), 4000)
     } catch (err) {
-      setError(mapAuthError(err.message))
+      if (String(err?.message || '').includes('비밀번호 확인이 만료되었습니다')) {
+        await clearLoginAttempt()
+        clearOtpPendingEmail()
+        setOtp('')
+        setStep('credentials')
+        setError('인증 시간이 지났습니다. 비밀번호를 다시 입력해주세요.')
+      } else {
+        setError(mapAuthError(err.message))
+      }
     } finally {
       setLoading(false)
     }
@@ -229,6 +226,7 @@ export function useLogin() {
 
   // ── Go back to credentials screen ────────────────────────────────────────
   const handleBack = () => {
+    void clearLoginAttempt()
     clearOtpPendingEmail()
     setStep('credentials')
     setOtp('')

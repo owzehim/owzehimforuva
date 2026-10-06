@@ -14,21 +14,33 @@ export default function StampCardMemberPanel({ restaurantId, spotName, totalStam
     return () => clearTimeout(t)
   }, [])
 
+  useEffect(() => {
+    if (!restaurantId || !totalStamps) return undefined
+    let active = true
+    const load = async () => {
+      try {
+        const data = await fetchAllMemberStampData(restaurantId, totalStamps)
+        if (active) setRows(data)
+      } catch (error) {
+        if (active) console.error('fetchAllMemberStampData error:', error)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+    void load()
+    return () => { active = false }
+  }, [restaurantId, totalStamps])
+
   const load = async () => {
     setLoading(true)
     try {
-      const data = await fetchAllMemberStampData(restaurantId, totalStamps)
-      setRows(data)
-    } catch (e) {
-      console.error('fetchAllMemberStampData error:', e)
+      setRows(await fetchAllMemberStampData(restaurantId, totalStamps))
+    } catch (error) {
+      console.error('fetchAllMemberStampData error:', error)
     } finally {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    if (restaurantId && totalStamps) load()
-  }, [restaurantId, totalStamps]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
@@ -106,6 +118,9 @@ function MemberRow({ member, stampState, latestReward, totalStamps, restaurantId
         `${date}T12:00:00Z`,
         note || null,
       )
+      if (result?.auditLogged === false) {
+        alert('스탬프는 반영됐지만 관리자 작업 기록 저장에 실패했습니다. 작업 기록을 확인해 주세요.')
+      }
       if (result?.rewardPending) {
         alert('이미 적용 가능한 혜택이 있어요. 혜택 적용 완료 후 새 스탬프를 추가할 수 있습니다.')
         return
@@ -127,7 +142,10 @@ function MemberRow({ member, stampState, latestReward, totalStamps, restaurantId
     if (!window.confirm('이 멤버의 리워드를 복원할까요?')) return
     setRestoring(true)
     try {
-      await restoreReward(latestReward.id)
+      const result = await restoreReward(latestReward.id)
+      if (result?.auditLogged === false) {
+        alert('리워드는 복원됐지만 관리자 작업 기록 저장에 실패했습니다. 작업 기록을 확인해 주세요.')
+      }
       await onRefresh()
     } catch (e) {
       console.error('restoreReward error:', e)

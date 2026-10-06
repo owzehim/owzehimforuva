@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CheckCircle, XCircle, SpinnerGap } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 
@@ -6,13 +7,32 @@ const copy = {
   verifyingTitle: '\uC774\uBA54\uC77C \uC778\uC99D \uC911',
   verifyingMessage: '\uC7A0\uC2DC\uB9CC \uAE30\uB2E4\uB824\uC8FC\uC138\uC694.',
   successTitle: '\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.',
-  successMessage: 'UvA-IN \uC571\uC73C\uB85C \uB3CC\uC544\uAC00 \uB85C\uADF8\uC778\uD574 \uC8FC\uC138\uC694.',
+  successMessage: '\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4.',
   errorTitle: '\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC2E4\uD328\uD558\uC600\uC2B5\uB2C8\uB2E4.',
   errorMessage: '\uC778\uC99D \uB9C1\uD06C\uAC00 \uB9CC\uB8CC\uB418\uC5C8\uAC70\uB098 \uC774\uBBF8 \uC0AC\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4.\n\uC0C8 \uC778\uC99D \uB9C1\uD06C\uB97C \uC694\uCCAD\uD55C \uB4A4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.',
 }
 
+const CONFIRMATION_EVENT_KEY = 'uvain-email-confirmation-result'
+
+function announceConfirmationFinished(status) {
+  try {
+    window.localStorage.setItem(
+      CONFIRMATION_EVENT_KEY,
+      JSON.stringify({ status, at: Date.now() }),
+    )
+  } catch {
+    // The callback page still redirects itself if browser storage is disabled.
+  }
+}
+
 export default function EmailConfirmedPage() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState('verifying')
+
+  const finish = useCallback((nextStatus) => {
+    announceConfirmationFinished(nextStatus)
+    setStatus(nextStatus)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -28,24 +48,55 @@ export default function EmailConfirmedPage() {
         if (cancelled) return
 
         if (result.error || !result.data?.session) {
-          setStatus('error')
+          finish('error')
           return
         }
 
-        const verifiedEmail = result.data.session.user?.email?.trim().toLowerCase()
-        if (verifiedEmail) {
-          window.localStorage.setItem('uvain_skip_otp_once_email', verifiedEmail)
+        if (result.data.session.user?.user_metadata?.registration) {
+          const { data: registrationResult, error: registrationError } =
+            await supabase.functions.invoke('complete-member-registration')
+
+          if (registrationError || !registrationResult?.success) {
+            console.error(
+              'Email was confirmed, but member registration could not be completed:',
+              registrationError || registrationResult?.message,
+            )
+            await supabase.auth.signOut()
+            if (!cancelled) finish('registration_error')
+            return
+          }
+        } else {
+          const { data: emailChangeResult, error: emailChangeError } =
+            await supabase.functions.invoke('finalize-pending-email')
+          if (emailChangeError || !emailChangeResult?.success) {
+            console.error(
+              'Email was confirmed, but the pending email change could not be finalized:',
+              emailChangeError || emailChangeResult?.message,
+            )
+            await supabase.auth.signOut()
+            if (!cancelled) finish('email_change_error')
+            return
+          }
         }
+
         await supabase.auth.signOut()
-        if (!cancelled) setStatus('success')
+        if (!cancelled) finish('success')
       } catch {
-        if (!cancelled) setStatus('error')
+        if (!cancelled) finish('error')
       }
     }
 
     verifyEmail()
     return () => { cancelled = true }
-  }, [])
+  }, [finish])
+
+  useEffect(() => {
+    if (status === 'verifying') return undefined
+    const timeout = window.setTimeout(() => {
+      navigate('/public', { replace: true })
+    }, 5000)
+    return () => window.clearTimeout(timeout)
+  }, [status, navigate])
 
   const isVerifying = status === 'verifying'
   const isSuccess = status === 'success'
@@ -53,12 +104,20 @@ export default function EmailConfirmedPage() {
     ? copy.verifyingTitle
     : isSuccess
       ? copy.successTitle
-      : copy.errorTitle
+      : status === 'registration_error'
+        ? '이메일 인증은 완료됐지만 회원가입 저장에 실패했습니다.'
+        : status === 'email_change_error'
+          ? '이메일 인증은 완료됐지만 계정 이메일 변경 마무리에 실패했습니다.'
+        : copy.errorTitle
   const message = isVerifying
     ? copy.verifyingMessage
     : isSuccess
       ? copy.successMessage
-      : copy.errorMessage
+      : status === 'registration_error'
+        ? '로그인하면 회원가입 저장을 다시 시도합니다. 문제가 계속되면 지원팀에 문의해주세요.'
+        : status === 'email_change_error'
+          ? '이 페이지를 새로고침해 다시 시도해주세요. 문제가 계속되면 지원팀에 문의해주세요.'
+        : copy.errorMessage
 
   return (
     <div className="phone-app-shell" style={styles.page}>
@@ -72,6 +131,15 @@ export default function EmailConfirmedPage() {
         )}
         <h1 style={styles.title}>{title}</h1>
         <p style={styles.message}>{message}</p>
+        {!isVerifying && (
+          <button
+            type="button"
+            onClick={() => navigate('/public', { replace: true })}
+            style={styles.returnButton}
+          >
+            \uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30
+          </button>
+        )}
       </div>
     </div>
   )
@@ -113,5 +181,17 @@ const styles = {
   },
   spinnerIcon: {
     animation: 'spin 0.8s linear infinite',
+  },
+  returnButton: {
+    width: '100%',
+    marginTop: '8px',
+    padding: '13px 18px',
+    border: 0,
+    borderRadius: '14px',
+    background: '#f97316',
+    color: '#fff',
+    fontSize: '15px',
+    fontWeight: 700,
+    cursor: 'pointer',
   },
 }

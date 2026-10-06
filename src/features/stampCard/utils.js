@@ -1,11 +1,3 @@
-import { supabase } from '../../lib/supabase'
-
-// Returns which card cycle a new visit belongs to.
-// priorVisitCount = number of visits BEFORE the new one being inserted.
-export function computeCycle(priorVisitCount, totalStamps) {
-  return Math.floor(priorVisitCount / totalStamps) + 1
-}
-
 // Derives the full stamp state from all visits for a user+spot.
 // visits: all rows ordered by visited_at ASC.
 export function computeStampState(visits, totalStamps, pendingReward = null) {
@@ -61,21 +53,15 @@ export function computeStampState(visits, totalStamps, pendingReward = null) {
   }
 }
 
-// Returns true if the user already has a stamp for this spot today (UTC).
-export async function checkAlreadyStampedToday(userId, restaurantId) {
-  const today = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
-  const from = `${today}T00:00:00.000Z`
-  const to   = `${today}T23:59:59.999Z`
+export function getScanResultIdentity(scanResult) {
+  if (!scanResult) return null
+  return scanResult.redemptionId ?? scanResult.id ?? scanResult
+}
 
-  const { data, error } = await supabase
-    .from('stamp_card_visits')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('restaurant_id', restaurantId)
-    .gte('visited_at', from)
-    .lte('visited_at', to)
-    .limit(1)
-
-  if (error) throw error
-  return data.length > 0
+export function didRedeemRewardForCurrentScan(scanResult, redeemedScanIdentity) {
+  return Boolean(
+    scanResult &&
+    redeemedScanIdentity !== null &&
+    redeemedScanIdentity === getScanResultIdentity(scanResult),
+  )
 }

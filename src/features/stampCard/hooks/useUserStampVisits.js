@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useId } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { fetchVisits } from '../api/visits'
 import { fetchPendingReward } from '../api/rewards'
@@ -15,48 +15,79 @@ const EMPTY_STATE = {
 }
 
 export function useUserStampVisits({ userId, restaurantId, totalStamps }) {
-  const channelIdRef = useRef(
-    Math.random().toString(36).slice(2) + Date.now().toString(36),
-  )
-  const [visits, setVisits] = useState([])
-  const [stampState, setStampState] = useState(EMPTY_STATE)
-  const [pendingReward, setPendingReward] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const channelId = useId()
+  const queryKey = userId && restaurantId && totalStamps
+    ? `${userId}:${restaurantId}:${totalStamps}`
+    : null
+  const [snapshot, setSnapshot] = useState({
+    key: null,
+    visits: [],
+    stampState: EMPTY_STATE,
+    pendingReward: null,
+  })
+  const requestSequenceRef = useRef(0)
 
-  const load = useCallback(async () => {
-    if (!userId || !restaurantId || !totalStamps) {
-      setVisits([])
-      setStampState(EMPTY_STATE)
-      setPendingReward(null)
-      return
-    }
+  const fetchSnapshot = useCallback(async () => {
+    if (!queryKey) return null
 
-    setLoading(true)
-    try {
-      const [data, reward] = await Promise.all([
+    const [data, reward] = await Promise.all([
         fetchVisits(userId, restaurantId),
         fetchPendingReward(userId, restaurantId),
-      ])
-      setVisits(data)
-      setPendingReward(reward)
-      setStampState(computeStampState(data, totalStamps, reward))
-    } catch (e) {
-      console.warn('fetchVisits error:', e)
-      setVisits([])
-      setPendingReward(null)
-      setStampState(EMPTY_STATE)
-    } finally {
-      setLoading(false)
+    ])
+    return {
+      key: queryKey,
+      visits: data,
+      pendingReward: reward,
+      stampState: computeStampState(data, totalStamps, reward),
     }
-  }, [userId, restaurantId, totalStamps])
+  }, [userId, restaurantId, totalStamps, queryKey])
 
-  useEffect(() => { load() }, [load])
+  const load = useCallback(async () => {
+    if (!queryKey) return
+
+    const requestSequence = ++requestSequenceRef.current
+    try {
+      const nextSnapshot = await fetchSnapshot()
+      if (requestSequence !== requestSequenceRef.current) return
+      if (nextSnapshot) setSnapshot(nextSnapshot)
+    } catch (e) {
+      if (requestSequence !== requestSequenceRef.current) return
+      console.warn('fetchVisits error:', e)
+      setSnapshot({
+        key: queryKey,
+        visits: [],
+        pendingReward: null,
+        stampState: EMPTY_STATE,
+      })
+    }
+  }, [fetchSnapshot, queryKey])
+
+  useEffect(() => {
+    if (!queryKey) return undefined
+
+    let cancelled = false
+    const requestSequence = ++requestSequenceRef.current
+
+    fetchSnapshot()
+      .then((nextSnapshot) => {
+        if (!cancelled && requestSequence === requestSequenceRef.current && nextSnapshot) {
+          setSnapshot(nextSnapshot)
+        }
+      })
+      .catch((error) => {
+        if (cancelled || requestSequence !== requestSequenceRef.current) return
+        console.warn('fetchVisits error:', error)
+        setSnapshot({ key: queryKey, visits: [], pendingReward: null, stampState: EMPTY_STATE })
+      })
+
+    return () => { cancelled = true }
+  }, [fetchSnapshot, queryKey])
 
   useEffect(() => {
     if (!userId || !restaurantId || !totalStamps) return undefined
 
     const channel = supabase
-      .channel(`stamp-card-visits:${restaurantId}:${userId}:${channelIdRef.current}`)
+      .channel(`stamp-card-visits:${restaurantId}:${userId}:${channelId}`)
       .on(
         'postgres_changes',
         {
@@ -92,7 +123,15 @@ export function useUserStampVisits({ userId, restaurantId, totalStamps }) {
       window.removeEventListener('focus', handleFocus)
       supabase.removeChannel(channel)
     }
-  }, [load, restaurantId, totalStamps, userId])
+  }, [channelId, load, restaurantId, totalStamps, userId])
 
-  return { visits, stampState, pendingReward, loading, refetch: load }
+  const isCurrentSnapshot = snapshot.key === queryKey && queryKey !== null
+
+  return {
+    visits: isCurrentSnapshot ? snapshot.visits : [],
+    stampState: isCurrentSnapshot ? snapshot.stampState : EMPTY_STATE,
+    pendingReward: isCurrentSnapshot ? snapshot.pendingReward : null,
+    loading: Boolean(queryKey && !isCurrentSnapshot),
+    refetch: load,
+  }
 }

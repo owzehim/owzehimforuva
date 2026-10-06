@@ -35,8 +35,8 @@ function isAlreadyRegisteredError(error) {
 }
 
 /**
- * Creates a Supabase Auth account AND inserts a members row.
- * The member starts with is_member = false (pending activation).
+ * Creates a Supabase Auth account and stores only pending profile metadata.
+ * The members row is created server-side after the email is confirmed.
  *
  * @param {{
  *  email: string,
@@ -53,12 +53,10 @@ function isAlreadyRegisteredError(error) {
  *  major: string,
  *  educationLevel: 'foundation' | 'bachelor' | 'master' | 'alumni',
  *  yearNumber: number | null,
- *  profileImageUrl?: string | null,
  *  legalDocumentsVersion?: string,
- *  legalAcceptedAt?: string,
  * }} payload
  *
- * @returns {Promise<{ userId: string, memberId: string }>}
+ * @returns {Promise<{ userId: string }>}
  */
 export async function registerMember(payload) {
   const {
@@ -76,9 +74,7 @@ export async function registerMember(payload) {
     major,
     educationLevel,
     yearNumber,
-    profileImageUrl,
     legalDocumentsVersion,
-    legalAcceptedAt,
   } = payload;
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -103,7 +99,8 @@ export async function registerMember(payload) {
     throw new Error(ALREADY_REGISTERED_MESSAGE);
   }
 
-  // Step 1: Create Supabase Auth user
+  // Create the Auth user. The requested profile is untrusted pending data;
+  // only the server creates the members row after Supabase confirms the email.
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: normalizedEmail,
     password,
@@ -114,6 +111,26 @@ export async function registerMember(payload) {
       data: {
         first_name: firstName,
         last_name: lastName,
+        registration: {
+          first_name: firstName,
+          last_name: lastName,
+          first_name_korean: firstNameKorean || null,
+          last_name_korean: lastNameKorean || null,
+          student_number: studentNumber,
+          year_of_birth: yearOfBirth,
+          gender,
+          country_of_origin: countryOfOrigin,
+          university,
+          major,
+          education_level: educationLevel,
+          year_number: yearNumber,
+          privacy_policy_version: legalDocumentsVersion || null,
+          legal_documents: {
+            terms: legalDocumentsVersion || null,
+            privacy: legalDocumentsVersion || null,
+            community: legalDocumentsVersion || null,
+          },
+        },
       },
     },
   });
@@ -137,80 +154,5 @@ export async function registerMember(payload) {
     throw new Error(ALREADY_REGISTERED_MESSAGE);
   }
 
-  const { data: existingMember, error: existingMemberError } = await supabase
-    .from('members')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (existingMemberError) {
-    throw new Error(existingMemberError.message);
-  }
-
-  if (existingMember) {
-    throw new Error(ALREADY_REGISTERED_MESSAGE);
-  }
-
-  // Step 2: Insert members row linked to the auth user
-  const { data: memberData, error: memberError } = await supabase
-    .from('members')
-    .insert([
-      {
-        user_id: userId,
-        first_name: firstName,
-        last_name: lastName,
-        first_name_korean: firstNameKorean || null,
-        last_name_korean: lastNameKorean || null,
-        student_number: studentNumber,
-        year_of_birth: yearOfBirth || null,
-        gender,
-        country_of_origin: countryOfOrigin,
-        University: university,
-        major,
-        education_level: educationLevel,
-        year_number: educationLevel !== 'alumni' ? yearNumber : null,
-        is_member: false, // starts inactive — you activate manually
-        session_token: null,
-        profile_image_url: profileImageUrl || null,
-      },
-    ])
-    .select('id')
-    .single();
-
-  if (memberError) {
-    // Auth user was created but members insert failed.
-    // Log it — you may want to clean up the auth user or retry.
-    console.error(
-      'Members insert failed after auth signup:',
-      memberError
-    );
-    if (isAlreadyRegisteredError(memberError)) {
-      throw new Error(ALREADY_REGISTERED_MESSAGE);
-    }
-    throw new Error(memberError.message);
-  }
-
-  if (legalDocumentsVersion && legalAcceptedAt) {
-    const legalUpdates = [
-      { legal_documents_version: legalDocumentsVersion },
-      { legal_documents_accepted_at: legalAcceptedAt },
-      { privacy_policy_version: legalDocumentsVersion },
-      { privacy_accepted_at: legalAcceptedAt },
-      { terms_accepted_at: legalAcceptedAt },
-      { community_guidelines_accepted_at: legalAcceptedAt },
-    ];
-
-    for (const update of legalUpdates) {
-      const { error: legalUpdateError } = await supabase
-        .from('members')
-        .update(update)
-        .eq('id', memberData.id);
-
-      if (legalUpdateError) {
-        console.warn('Legal acceptance metadata field was not stored:', update, legalUpdateError);
-      }
-    }
-  }
-
-  return { userId, memberId: memberData.id };
+  return { userId };
 }

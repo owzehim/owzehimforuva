@@ -1,4 +1,5 @@
 import { Octagon } from '@phosphor-icons/react'
+import { sanitizeRichText } from '../../../lib/sanitizeHtml'
 
 const SIZES = {
   mini: {
@@ -37,7 +38,7 @@ function RichText({ value, fallback, style }) {
     return (
       <div
         style={style}
-        dangerouslySetInnerHTML={{ __html: content }}
+        dangerouslySetInnerHTML={{ __html: sanitizeRichText(content) }}
       />
     )
   }

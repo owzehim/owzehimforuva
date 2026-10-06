@@ -4,13 +4,12 @@
 // ✅ Copy as-is to React Native — zero React/web dependencies.
 
 /**
- * Accounts that skip the OTP step entirely.
- * Add any test or admin emails here.
+ * Accounts whose login UI skips email OTP. This is only a UI hint; the
+ * server-side Auth Hook independently allowlists the corresponding user IDs.
  */
 const OTP_EXEMPT_EMAILS = [
   'test@uvain.nl',
   'admin@uvain.nl',
-  'northeastkitchen@uvain.nl',
 ]
 
 /**
@@ -22,6 +21,19 @@ const OTP_EXEMPT_EMAILS = [
  */
 export function isOtpExempt(email) {
   return OTP_EXEMPT_EMAILS.includes(email.trim().toLowerCase())
+}
+
+/** UI routing hint only. RLS and Edge Functions enforce this signed server claim. */
+export function hasAppAccessClaim(accessToken) {
+  try {
+    const payload = accessToken?.split('.')[1]
+    if (!payload) return false
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    return JSON.parse(atob(padded))?.app_access === true
+  } catch {
+    return false
+  }
 }
 
 /**

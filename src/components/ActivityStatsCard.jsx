@@ -253,16 +253,6 @@ function RecentVisitsCard({ visits, loading, theme }) {
             />
           ))}
         </div>
-      ) : false ? (
-        <p
-          style={{
-            fontSize: '13px',
-            color: theme.subText,
-            margin: 0,
-          }}
-        >
-          최근 방문 내역이 없습니다
-        </p>
       ) : (
         <div
           style={{

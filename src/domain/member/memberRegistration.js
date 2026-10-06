@@ -18,8 +18,6 @@ export function validateRegistrationForm(fields) {
     lastName,
     email,
     studentNumber,
-    gender,
-    countryOfOrigin,
     educationLevel,
     yearNumber,
   } = fields;
@@ -29,8 +27,6 @@ export function validateRegistrationForm(fields) {
   if (!email?.trim()) return 'Email is required';
   if (!email.includes('@')) return 'Please enter a valid email';
   if (!studentNumber?.trim()) return 'Student number is required';
-  if (!gender) return 'Gender is required';
-  if (!countryOfOrigin) return 'Nationality is required';
   if (!educationLevel) return 'Programme is required';
 
   // For foundation, bachelor, master we require a year
@@ -72,4 +68,20 @@ export function formatProgrammeLabel(educationLevel, yearNumber) {
   if (educationLevel === 'alumni') return 'Alumni';
   if (yearNumber) return `${level} – Year ${yearNumber}`;
   return level;
+}
+
+/** Normalize optional gender values to the database enum; empty means unknown. */
+export function normalizeGenderForDb(gender) {
+  const normalized = String(gender || '').trim().toLowerCase()
+  const map = {
+    female: 'female',
+    male: 'male',
+    'non-binary': 'non_binary',
+    'prefer not to say': 'prefer_not_to_say',
+    '\uC5EC\uC131': 'female',
+    '\uB0A8\uC131': 'male',
+    '\uB17C\uBC14\uC774\uB108\uB9AC': 'non_binary',
+    '\uC751\uB2F5 \uAC70\uC808': 'prefer_not_to_say',
+  }
+  return map[normalized] || null
 }

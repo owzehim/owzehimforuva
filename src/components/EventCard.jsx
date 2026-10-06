@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Calendar, MapPin } from '@phosphor-icons/react'
 
 export default function EventCard({ event, isExpanded, onToggle }) {

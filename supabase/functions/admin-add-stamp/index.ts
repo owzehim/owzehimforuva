@@ -1,30 +1,10 @@
+import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-function getServiceKey() {
-  const direct = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  if (direct) return direct
-
-  try {
-    const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || '{}'
-    const parsed = JSON.parse(raw)
-    return parsed.service_role_key || parsed.service_role || Object.values(parsed)[0] || ''
-  } catch {
-    return ''
-  }
-}
-
-function json(body: Record<string, unknown>, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  })
-}
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
+import { hasAal2, hasActiveDeviceSession } from '../_shared/requireAal2.ts'
+import { recordAdminAction } from '../_shared/adminAudit.ts'
 
 function computeStampState(visits: any[], totalStamps: number, pendingReward: any = null) {
   const totalVisits = visits.length
@@ -72,6 +52,15 @@ function computeStampState(visits: any[], totalStamps: number, pendingReward: an
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
+  const corsHeaders = getCorsHeaders(origin, configuredOrigins)
+  const json = (body: Record<string, unknown>, status = 200) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  if (!isAllowedCorsOrigin(origin, configuredOrigins)) return new Response('Origin not allowed', { status: 403 })
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -88,17 +77,24 @@ serve(async (req) => {
       action = 'addStamp',
       userId,
       restaurantId,
+      rewardId,
       totalStamps,
       visitedAt,
       adminNote,
     } = await req.json().catch(() => ({}))
 
-    if (!restaurantId || (action === 'addStamp' && (!userId || !visitedAt))) {
+    const supportedActions = new Set(['addStamp', 'listMembers', 'restoreReward', 'resetProgress'])
+    if (
+      !supportedActions.has(action) ||
+      ((action === 'addStamp' || action === 'listMembers' || action === 'resetProgress') && !restaurantId) ||
+      (action === 'addStamp' && (!userId || !visitedAt)) ||
+      (action === 'restoreReward' && !rewardId)
+    ) {
       return json({ success: false, message: '잘못된 요청입니다.' }, 400)
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceKey = getServiceKey()
+    const serviceKey = getSupabaseServiceKey()
 
     if (!serviceKey) {
       console.error('No service key found')
@@ -107,6 +103,7 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
+      global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
     const { data: userData, error: userError } = await admin.auth.getUser(token)
@@ -116,14 +113,77 @@ serve(async (req) => {
       console.error('Auth error:', userError)
       return json({ success: false, message: '로그인이 필요합니다.' }, 401)
     }
+    if (!(await hasAal2(admin, token))) {
+      return json({ success: false, message: '계속하려면 2단계 인증을 완료해 주세요.' }, 403)
+    }
+    if (!(await hasActiveDeviceSession(admin, caller.id, token))) {
+      return json({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }, 403)
+    }
 
-    const isAdmin =
-      caller.user_metadata?.role === 'admin' ||
-      caller.app_metadata?.role === 'admin' ||
-      caller.email === 'admin@uvain.nl'
+    const { data: adminRole, error: adminRoleError } = await admin
+      .from('admin_roles')
+      .select('user_id')
+      .eq('user_id', caller.id)
+      .maybeSingle()
+
+    if (adminRoleError) {
+      console.error('Admin role lookup failed:', adminRoleError)
+      return json({ success: false, message: '관리자 권한을 확인할 수 없습니다.' }, 500)
+    }
+
+    const isAdmin = Boolean(adminRole)
 
     if (!isAdmin) {
       return json({ success: false, message: '관리자 권한이 필요합니다.' }, 403)
+    }
+
+    if (action === 'restoreReward') {
+      const { data: restoredReward, error: restoreError } = await admin
+        .from('stamp_card_rewards')
+        .update({ redeemed: false, redeemed_at: null })
+        .eq('id', rewardId)
+        .eq('redeemed', true)
+        .select('id')
+        .maybeSingle()
+
+      if (restoreError) throw restoreError
+      if (!restoredReward) {
+        return json({ success: false, message: '이미 미사용 상태이거나 리워드를 찾을 수 없습니다.' }, 404)
+      }
+
+      const auditLogged = await recordAdminAction(admin, {
+        actorId: caller.id,
+        action: 'stamp_reward.restore',
+        resourceType: 'stamp_card_rewards',
+        resourceId: rewardId,
+        changedFields: ['redeemed', 'redeemed_at'],
+      })
+      return json({ success: true, auditLogged })
+    }
+
+    if (action === 'resetProgress') {
+      const { error: rewardsError } = await admin
+        .from('stamp_card_rewards')
+        .delete()
+        .eq('restaurant_id', restaurantId)
+
+      if (rewardsError) throw rewardsError
+
+      const { error: visitsError } = await admin
+        .from('stamp_card_visits')
+        .delete()
+        .eq('restaurant_id', restaurantId)
+
+      if (visitsError) throw visitsError
+
+      const auditLogged = await recordAdminAction(admin, {
+        actorId: caller.id,
+        action: 'stamp_progress.reset',
+        resourceType: 'restaurants',
+        resourceId: restaurantId,
+        changedFields: ['stamp_card_rewards', 'stamp_card_visits'],
+      })
+      return json({ success: true, auditLogged })
     }
 
     const safeTotalStamps = Math.max(1, Number(totalStamps || 10))
@@ -185,78 +245,43 @@ serve(async (req) => {
       return json({ success: false, message: '멤버 계정과 연결된 사용자를 찾을 수 없습니다.' }, 404)
     }
 
-    const { data: pendingReward, error: pendingRewardError } = await admin
-      .from('stamp_card_rewards')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('restaurant_id', restaurantId)
-      .eq('redeemed', false)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const { data: stampResultRows, error: stampError } = await admin.rpc(
+      'admin_add_stamp_card_visit',
+      {
+        p_user_id: userId,
+        p_restaurant_id: restaurantId,
+        p_visited_at: visitedAt,
+        p_admin_note: adminNote || null,
+      },
+    )
+    if (stampError) throw stampError
+    const stampResult = Array.isArray(stampResultRows) ? stampResultRows[0] : stampResultRows
+    if (!stampResult) throw new Error('Stamp adjustment returned no result')
 
-    if (pendingRewardError) throw pendingRewardError
+    const auditLogged = await recordAdminAction(admin, {
+      actorId: caller.id,
+      action: 'stamp.add',
+      resourceType: 'members',
+      resourceId: targetMember.id,
+      changedFields: ['stamp_card_visits', 'stamp_card_rewards'],
+    })
 
-    if (pendingReward) {
-      return json({
-        success: true,
-        rewardPending: true,
-        cycleCompleted: true,
-        cardCycle: pendingReward.card_cycle,
-      })
-    }
-
-    const { data: priorVisits, error: fetchError } = await admin
-      .from('stamp_card_visits')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('restaurant_id', restaurantId)
-
-    if (fetchError) throw fetchError
-
-    const priorCount = priorVisits?.length ?? 0
-    const cardCycle = Math.floor(priorCount / safeTotalStamps) + 1
-
-    const { error: insertError } = await admin
-      .from('stamp_card_visits')
-      .insert({
-        user_id: userId,
-        restaurant_id: restaurantId,
-        visited_at: visitedAt,
-        card_cycle: cardCycle,
-        added_by_admin: true,
-        admin_note: adminNote || null,
-      })
-
-    if (insertError) throw insertError
-
-    const newCount = priorCount + 1
-    const cycleCompleted = newCount % safeTotalStamps === 0
-
-    if (cycleCompleted) {
-      const { error: rewardError } = await admin
-        .from('stamp_card_rewards')
-        .insert({
-          user_id: userId,
-          restaurant_id: restaurantId,
-          card_cycle: cardCycle,
-          redeemed: false,
-        })
-
-      if (rewardError) throw rewardError
+    if (stampResult.reward_pending) {
+      return json({ success: true, auditLogged, rewardPending: true, cycleCompleted: true, cardCycle: stampResult.card_cycle })
     }
 
     return json({
       success: true,
-      newCount,
-      cardCycle,
-      cycleCompleted,
+      auditLogged,
+      newCount: stampResult.new_count,
+      cardCycle: stampResult.card_cycle,
+      cycleCompleted: stampResult.cycle_completed,
     })
   } catch (err) {
     console.error('admin-add-stamp fatal error:', err)
     return json({
       success: false,
-      message: err instanceof Error ? err.message : '서버 오류가 발생했습니다.',
+      message: '스탬프를 추가하지 못했습니다.',
     }, 500)
   }
 })

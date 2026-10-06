@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Flag, PencilSimple, Plus, Trash } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 
@@ -36,20 +36,21 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const loadComments = async () => {
+  const loadComments = useCallback(async () => {
     if (!restaurantId) return
     const { data, error: loadError } = await supabase
-      .from('restaurant_comments')
-      .select('id, user_id, username, is_anonymous, body, created_at, updated_at')
+      .from('restaurant_comments_safe')
+      .select('id, restaurant_id, is_mine, username, is_anonymous, body, created_at, updated_at')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
     if (loadError) setError('댓글을 불러오지 못했어요.')
     else setComments(data || [])
     setLoading(false)
-  }
+  }, [restaurantId])
 
   useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
     setComments([])
     setLoading(true)
     setComposerOpen(false)
@@ -59,16 +60,10 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
     loadComments()
 
     if (!restaurantId) return undefined
-    const channel = supabase
-      .channel(`restaurant-comments-${restaurantId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'restaurant_comments', filter: `restaurant_id=eq.${restaurantId}` },
-        loadComments,
-      )
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [restaurantId])
+    const refreshInterval = window.setInterval(loadComments, 15000)
+    return () => window.clearInterval(refreshInterval)
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [restaurantId, loadComments])
 
   const openNewComment = () => {
     setError('')
@@ -160,7 +155,7 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
         ) : comments.length === 0 ? (
           <p className="py-8 text-center text-xs text-gray-400">첫 번째 한마디를 남겨 보세요.</p>
         ) : comments.map((comment) => {
-          const isMine = comment.user_id === userId
+          const isMine = comment.is_mine
           return (
             <article key={comment.id} className="rounded-xl bg-white px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-2">

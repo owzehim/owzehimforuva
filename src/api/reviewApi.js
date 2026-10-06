@@ -5,7 +5,6 @@
 // ─────────────────────────────────────────────────────────────
 
 import { supabase } from '../lib/supabase'
-import { buildReviewSummary } from '../domain/reviewDomain'
 
 // ─────────────────────────────────────────────────────────────
 // CREATE
@@ -120,39 +119,20 @@ export async function getStoreReviewSummaries(storeIds) {
   const uniqueStoreIds = Array.from(new Set((storeIds || []).filter(Boolean)))
   if (uniqueStoreIds.length === 0) return { data: [], error: null }
 
-  const { data, error } = await supabase.rpc('get_store_review_summaries', {
-    p_store_ids: uniqueStoreIds,
-  })
-
-  if (error) {
-    console.warn(
-      'get_store_review_summaries RPC unavailable; using client aggregation fallback:',
-      error.message,
-    )
-
-    const { data: reviews, error: fallbackError } = await supabase
-      .from('reviews')
-      .select('store_id, rating, tags')
-      .in('store_id', uniqueStoreIds)
-
-    if (fallbackError) return { data: null, error: fallbackError }
-
-    const reviewsByStore = new Map(
-      uniqueStoreIds.map((storeId) => [storeId, []]),
-    )
-    for (const review of reviews || []) {
-      reviewsByStore.get(review.store_id)?.push(review)
-    }
-
-    return {
-      data: uniqueStoreIds.map((storeId) =>
-        buildReviewSummary(storeId, reviewsByStore.get(storeId)),
-      ),
-      error: null,
-    }
+  const batches = []
+  for (let index = 0; index < uniqueStoreIds.length; index += 100) {
+    batches.push(uniqueStoreIds.slice(index, index + 100))
   }
 
-  return { data: data || [], error: null }
+  const results = await Promise.all(
+    batches.map((batch) =>
+      supabase.rpc('get_store_review_summaries', { p_store_ids: batch }),
+    ),
+  )
+  const error = results.find((result) => result.error)?.error
+  if (error) return { data: null, error }
+
+  return { data: results.flatMap((result) => result.data || []), error: null }
 }
 
 /**

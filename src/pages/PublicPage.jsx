@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MapView from '../components/MapView'
 import { supabase } from '../lib/supabase'
 import { SpotCard } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
-import { MapPin, Lock, ForkKnife, CalendarDots, Users } from '@phosphor-icons/react'
+import { MapPin, Lock, ForkKnife, Calendar, CalendarDots, Users } from '@phosphor-icons/react'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 
 const PUBLIC_ACTIVE_TAB_KEY = 'uvain_public_active_tab'
@@ -219,24 +219,19 @@ function PublicMapTab({ restaurants }) {
     return () => observer.disconnect()
   }, [])
 
-  const filtered = useMemo(
-    () =>
-      activeCategory === '전체'
-        ? restaurants
-        : restaurants.filter((r) => r.category === activeCategory),
-    [restaurants, activeCategory]
-  )
-
   const visibleCategories = useMemo(
     () => getVisibleMapCategories(restaurants),
     [restaurants],
   )
-
-  useEffect(() => {
-    if (!visibleCategories.includes(activeCategory)) {
-      setActiveCategory(MAP_CATEGORIES[0])
-    }
-  }, [activeCategory, visibleCategories])
+  const selectedCategory = visibleCategories.includes(activeCategory)
+    ? activeCategory
+    : MAP_CATEGORIES[0]
+  const filtered = useMemo(
+    () => selectedCategory === MAP_CATEGORIES[0]
+      ? restaurants
+      : restaurants.filter((restaurant) => restaurant.category === selectedCategory),
+    [restaurants, selectedCategory],
+  )
 
   return (
     <div className="h-full flex flex-col no-highlight-zone">
@@ -251,7 +246,7 @@ function PublicMapTab({ restaurants }) {
         }}
       >
   {visibleCategories.map((cat) => {
-    const isActive = activeCategory === cat
+    const isActive = selectedCategory === cat
 
     const iconSvg = isActive
       ? darkMode
@@ -300,7 +295,7 @@ function PublicMapTab({ restaurants }) {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             {(() => {
-              const iconSvg = CATEGORY_ICONS_ORANGE[activeCategory]
+              const iconSvg = CATEGORY_ICONS_ORANGE[selectedCategory]
               return (
                 <div
                   style={{ width: 32, height: 32, margin: '0 auto 8px' }}
@@ -443,11 +438,11 @@ function MembershipCarousel() {
     })
   }
 
-  const goToSlide = (nextSlide) => {
+  const goToSlide = useCallback((nextSlide) => {
     const slideCount = slides.length
     setTransitionEnabled(true)
     setActiveSlide((nextSlide + slideCount) % slideCount)
-  }
+  }, [slides.length])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -455,7 +450,7 @@ function MembershipCarousel() {
     }, SLIDE_INTERVAL_MS)
 
     return () => window.clearInterval(timer)
-  }, [activeSlide, slides.length])
+  }, [activeSlide, goToSlide])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -703,12 +698,10 @@ function MembershipImageLayer({
   onImageLoaded,
 }) {
   const candidates = image.srcCandidates || (image.src ? [image.src] : [])
-  const [candidateIndex, setCandidateIndex] = useState(0)
+  const candidateKey = candidates.join('|')
+  const [candidateFallback, setCandidateFallback] = useState({ key: '', index: 0 })
+  const candidateIndex = candidateFallback.key === candidateKey ? candidateFallback.index : 0
   const src = candidates[candidateIndex]
-
-  useEffect(() => {
-    setCandidateIndex(0)
-  }, [candidates.join('|')])
 
   if (!src && !image.style) return null
 
@@ -743,7 +736,7 @@ function MembershipImageLayer({
       }}
       onError={() => {
         if (candidateIndex < candidates.length - 1) {
-          setCandidateIndex((current) => current + 1)
+          setCandidateFallback({ key: candidateKey, index: candidateIndex + 1 })
         }
       }}
     />

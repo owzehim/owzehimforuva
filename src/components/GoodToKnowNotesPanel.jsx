@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChatDots, Flag, PencilSimple, Plus, Trash, UserCircle, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { getPastelColor } from '../lib/avatarColor'
+import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 
 const MAX_NOTE_LENGTH = 200
 
@@ -43,9 +44,7 @@ function errorMessage(error) {
   if (message.includes('row-level security')) {
     return 'You do not have permission to save this note.'
   }
-  return error?.message
-    ? `Could not save your note: ${error.message}`
-    : 'Could not save your note. Please try again.'
+  return 'Could not save your note. Please try again.'
 }
 
 export function GoodToKnowNotesPanel({
@@ -64,10 +63,10 @@ export function GoodToKnowNotesPanel({
   const [editingNote, setEditingNote] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [todayKey, setTodayKey] = useState('')
   const touchStartRef = useRef(null)
-  const todayKey = formatAmsterdamDay(Date.now())
   const hasNoteToday = notes.some((note) => (
-    note.user_id === userId && formatAmsterdamDay(note.created_at) === todayKey
+    note.is_mine && formatAmsterdamDay(note.created_at) === todayKey
   ))
   const canCreateNote = !!userId && canComment && !hasNoteToday
   const mutedAccentStyle = mutedAccentColor ? { color: mutedAccentColor } : undefined
@@ -82,16 +81,37 @@ export function GoodToKnowNotesPanel({
     }
 
     const { data, error: loadError } = await supabase
-      .from('restaurant_notes')
-      .select('id, user_id, username, profile_image_url, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags')
+      .from('restaurant_notes_safe')
+      .select('id, restaurant_id, is_mine, username, profile_image_url, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
 
-    if (loadError) setError('Could not load notes.')
-    else setNotes(data || [])
+    if (loadError) {
+      setError('Could not load notes.')
+    } else {
+      const notesWithOwnImageUrls = await Promise.all((data || []).map(async (note) => ({
+        ...note,
+        // Other members' profile images are private; only sign the caller's own.
+        profile_image_url:
+          note.is_mine && !note.is_anonymous
+            ? await createProfileImageSignedUrl(note.profile_image_url)
+            : null,
+      })))
+      setNotes(notesWithOwnImageUrls)
+    }
     setLoading(false)
   }, [restaurantId, userId])
+
+  useEffect(() => {
+    const updateTodayKey = () => setTodayKey(formatAmsterdamDay(Date.now()))
+    const initialTimer = window.setTimeout(updateTodayKey, 0)
+    const refreshTimer = window.setInterval(updateTodayKey, 60000)
+    return () => {
+      window.clearTimeout(initialTimer)
+      window.clearInterval(refreshTimer)
+    }
+  }, [])
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -104,16 +124,8 @@ export function GoodToKnowNotesPanel({
     loadNotes()
 
     if (!restaurantId) return undefined
-    const channel = supabase
-      .channel(`restaurant-notes-${restaurantId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'restaurant_notes', filter: `restaurant_id=eq.${restaurantId}` },
-        loadNotes,
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
+    const refreshInterval = window.setInterval(loadNotes, 15000)
+    return () => window.clearInterval(refreshInterval)
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [restaurantId, loadNotes])
 
@@ -326,8 +338,8 @@ export function GoodToKnowNotesPanel({
             <ChatDots size={34} weight="regular" />
           </div>
         ) : notes.map((note) => {
-          const isMine = note.user_id === userId
-          const avatarBg = getPastelColor(note.avatar_color_seed || note.username || note.user_id)
+          const isMine = note.is_mine
+          const avatarBg = getPastelColor(note.avatar_color_seed || note.username || note.id)
           return (
             <article key={note.id} className="flex gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm">
               <div

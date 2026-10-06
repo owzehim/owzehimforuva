@@ -1,53 +1,48 @@
+import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-retention-secret',
-}
+import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
+import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
+import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
+import { constantTimeSecretEquals } from '../_shared/constantTimeSecret.js'
 
 async function postJsonToAppsScript(url: string, payload: Record<string, unknown>) {
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(withAppsScriptSecret(payload, Deno.env.get('APPS_SCRIPT_SHARED_SECRET'))),
   })
 
   const text = await res.text().catch(() => '')
   if (!res.ok) {
-    throw new Error(`Apps Script failed with ${res.status}: ${text}`)
+    // Apps Script can echo user data or the webhook URL in its response.
+    throw new Error(`Apps Script failed with status ${res.status}`)
   }
 
-  if (!text) return null
+  if (!text) throw new Error('Apps Script did not confirm anonymization')
 
+  let body: unknown
   try {
-    const body = JSON.parse(text)
-    if (body && body.success === false) {
-      throw new Error(`Apps Script returned failure: ${text}`)
-    }
-    return body
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Apps Script returned failure')) {
-      throw error
-    }
+    body = JSON.parse(text)
+  } catch {
+    // A successful Apps Script deployment can return plain text. Never copy
+    // an untrusted response body into errors or logs.
     return text
   }
-}
-
-function getServiceRoleKey() {
-  const direct = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  if (direct) return direct
-
-  try {
-    const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || '{}'
-    const parsed = JSON.parse(raw)
-    return parsed.service_role_key || parsed.service_role || Object.values(parsed)[0] || ''
-  } catch {
-    return ''
+  if (body && typeof body === 'object' && 'success' in body && body.success === false) {
+    throw new Error('Apps Script returned failure')
   }
+  if (!body || typeof body !== 'object' || !('success' in body) || body.success !== true) {
+    throw new Error('Apps Script did not confirm anonymization')
+  }
+  return body
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
+  const corsHeaders = getCorsHeaders(origin, configuredOrigins)
+  if (!isAllowedCorsOrigin(origin, configuredOrigins)) return new Response('Origin not allowed', { status: 403 })
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -56,7 +51,7 @@ serve(async (req) => {
     const expectedSecret = Deno.env.get('RETENTION_JOB_SECRET')
     const suppliedSecret = req.headers.get('x-retention-secret')
 
-    if (!expectedSecret || suppliedSecret !== expectedSecret) {
+    if (!await constantTimeSecretEquals(expectedSecret, suppliedSecret)) {
       return new Response(
         JSON.stringify({ success: false, message: 'Unauthorized retention job request' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -64,14 +59,14 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const serviceKey = getServiceRoleKey()
+    const serviceKey = getSupabaseServiceKey()
     const masterAppsScriptUrl = Deno.env.get('MASTER_SHEET_APPS_SCRIPT_URL')
 
     if (!supabaseUrl || !serviceKey || !masterAppsScriptUrl) {
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'Missing SUPABASE_URL, service role key, or MASTER_SHEET_APPS_SCRIPT_URL',
+          message: '개인정보 보존 작업을 처리하지 못했습니다.',
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
@@ -79,62 +74,79 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
+      global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
-    const { data: anonymizedUsers, error } = await admin.rpc('anonymize_expired_members_for_sheets')
+    const { data: newlyQueued, error: queueError } = await admin.rpc('queue_expired_member_anonymizations')
 
-    if (error) {
-      console.error('Retention RPC failed:', error)
+    if (queueError) {
+      console.error('Retention RPC failed')
       return new Response(
-        JSON.stringify({ success: false, message: error.message }),
+        JSON.stringify({ success: false, message: '개인정보 보존 작업을 처리하지 못했습니다.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
-    const users = Array.isArray(anonymizedUsers) ? anonymizedUsers : []
-    const sheetResults = []
+    const { data: queuedUsers, error: claimError } = await admin.rpc(
+      'claim_privacy_sheet_sync_batch',
+      { p_batch_size: 50 },
+    )
+    if (claimError) {
+      console.error('Privacy sync queue claim failed')
+      return new Response(
+        JSON.stringify({ success: false, message: '개인정보 보존 작업을 처리하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const users = Array.isArray(queuedUsers) ? queuedUsers : []
+    let syncedCount = 0
+    let failedCount = 0
 
     for (const row of users) {
       const userId = typeof row === 'string' ? row : row?.anonymized_user_id || row?.user_id
       if (!userId) continue
 
       try {
-        const body = await postJsonToAppsScript(masterAppsScriptUrl, {
+        await postJsonToAppsScript(masterAppsScriptUrl, {
           type: 'privacy_anonymize',
           user_id: userId,
         })
-        sheetResults.push({ user_id: userId, success: true, body })
-      } catch (sheetError) {
-        console.error('Master Sheet privacy sync failed:', userId, sheetError)
-        sheetResults.push({
-          user_id: userId,
-          success: false,
-          error: sheetError instanceof Error ? sheetError.message : String(sheetError),
+        const { data: completed, error: completionError } = await admin.rpc('complete_privacy_sheet_sync', {
+          p_user_id: userId,
+          p_success: true,
+        })
+        if (completionError || completed !== true) throw new Error('Privacy sync acknowledgement failed')
+        syncedCount += 1
+      } catch {
+        console.error('Master Sheet privacy sync failed')
+        failedCount += 1
+        await admin.rpc('complete_privacy_sheet_sync', {
+          p_user_id: userId,
+          p_success: false,
         })
       }
     }
 
-    const failedSheetSyncs = sheetResults.filter((result) => !result.success)
-
     return new Response(
       JSON.stringify({
-        success: failedSheetSyncs.length === 0,
-        anonymized_count: users.length,
-        sheet_synced_count: sheetResults.length - failedSheetSyncs.length,
-        sheet_failed_count: failedSheetSyncs.length,
-        sheet_results: sheetResults,
+        success: failedCount === 0,
+        newly_queued_count: Number(newlyQueued) || 0,
+        attempted_count: users.length,
+        sheet_synced_count: syncedCount,
+        sheet_failed_count: failedCount,
       }),
       {
-        status: failedSheetSyncs.length === 0 ? 200 : 207,
+        status: failedCount === 0 ? 200 : 207,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     )
-  } catch (err) {
-    console.error('privacy-retention-sync fatal error:', err)
+  } catch {
+    console.error('privacy-retention-sync fatal error')
     return new Response(
       JSON.stringify({
         success: false,
-        message: err instanceof Error ? err.message : String(err),
+        message: '개인정보 보존 작업을 처리하지 못했습니다.',
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

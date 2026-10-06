@@ -24,6 +24,6 @@ export async function logRedemption({ storeId }) {
 
   } catch (err) {
     console.error('logRedemption error:', err)
-    return { success: false, message: '오류가 발생했습니다: ' + err.message }
+    return { success: false, message: '오류가 발생했습니다. 다시 시도해주세요.' }
   }
 }
