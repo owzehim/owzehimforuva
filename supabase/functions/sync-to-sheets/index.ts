@@ -204,10 +204,14 @@ serve(async (req) => {
       comment:        sheetText(review.comment, 2000),
     }
 
+    // Partner-owned trackers can be shared with restaurant staff. Keep free-
+    // text review content in the master sheet only; it may identify a member.
+    const partnerReviewPayload = { ...reviewPayload, comment: '' }
+
     // ── POST to both Apps Scripts ─────────────────────────────
     await Promise.all([
       postJsonToAppsScript(integrations?.master_apps_script_url, reviewPayload, 'master'),
-      postJsonToAppsScript(integrations?.partner_apps_script_url, reviewPayload, 'partner'),
+      postJsonToAppsScript(integrations?.partner_apps_script_url, partnerReviewPayload, 'partner'),
     ])
 
     return new Response(

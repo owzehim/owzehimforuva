@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { updatePassword } from '../api/authRepository'
-import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X } from '@phosphor-icons/react'
+import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X, Trash } from '@phosphor-icons/react'
 import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
@@ -73,6 +73,10 @@ export default function SettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState('')
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState('')
   const [usernameEditing, setUsernameEditing] = useState(false)
   const [usernameDraft, setUsernameDraft] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
@@ -157,6 +161,41 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     navigate('/public', { replace: true })
     await supabase.auth.signOut()
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleteAccountError('')
+    if (deleteAccountConfirmation !== 'DELETE') {
+      setDeleteAccountError('계속하려면 DELETE를 입력해 주세요.')
+      return
+    }
+
+    setDeleteAccountLoading(true)
+    try {
+      const { data, error: deleteError } = await supabase.functions.invoke('delete-my-account', {
+        body: { confirmation: 'DELETE' },
+      })
+
+      if (deleteError || !data?.success) {
+        let message = data?.message || deleteError?.message || '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+        try {
+          const response = deleteError?.context
+          if (response && typeof response.json === 'function') {
+            const responseBody = await response.json()
+            if (responseBody?.message) message = responseBody.message
+          }
+        } catch {
+          // Keep the generic message when the Edge Function response is unavailable.
+        }
+        throw new Error(message)
+      }
+
+      await supabase.auth.signOut({ scope: 'local' })
+      navigate('/login', { replace: true })
+    } catch (deleteError) {
+      setDeleteAccountError(deleteError.message || '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+      setDeleteAccountLoading(false)
+    }
   }
 
   const handlePasswordPanelToggle = () => {
@@ -614,9 +653,76 @@ export default function SettingsPage() {
             >
               로그아웃
             </button>
+
+            <div className="rounded-2xl border border-red-100 bg-white p-4 dark:border-red-950 dark:bg-[#111111]">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">계정 삭제</p>
+              <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                계정과 연결된 회원 정보, 댓글, 노트 및 프로필 사진을 삭제합니다. 식별정보가 제거된 통계·운영 기록이나 파트너가 보유한 제한된 거래 기록은 남을 수 있습니다.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteAccountError('')
+                  setDeleteAccountConfirmation('')
+                  setDeleteAccountOpen(true)
+                }}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-red-300 px-5 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:text-red-300"
+              >
+                <Trash size={17} weight="bold" />
+                계정 삭제 요청
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {deleteAccountOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-account-title"
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl dark:bg-[#161616]"
+          >
+            <h2 id="delete-account-title" className="text-base font-bold text-gray-900 dark:text-white">
+              계정을 영구 삭제할까요?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+              회원 계정과 연결된 프로필, 댓글, 노트, 방문·리워드 기록을 삭제합니다. Google 마스터 시트의 식별 정보도 익명화합니다. 식별정보가 없는 제한된 파트너 거래 기록은 남을 수 있습니다. 보안을 위해 최근 10분 이내에 비밀번호와 이메일 인증으로 로그인해야 합니다. 이 작업은 되돌릴 수 없습니다.
+            </p>
+            <label className="mt-4 block text-xs font-medium text-gray-700 dark:text-gray-300">
+              확인을 위해 DELETE를 입력하세요.
+              <input
+                type="text"
+                value={deleteAccountConfirmation}
+                onChange={(event) => setDeleteAccountConfirmation(event.target.value)}
+                autoComplete="off"
+                disabled={deleteAccountLoading}
+                className="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-500 dark:border-gray-700 dark:text-white"
+              />
+            </label>
+            {deleteAccountError && <p role="alert" className="mt-3 text-sm text-red-600">{deleteAccountError}</p>}
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteAccountOpen(false)}
+                disabled={deleteAccountLoading}
+                className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleteAccountLoading || deleteAccountConfirmation !== 'DELETE'}
+                className="flex-1 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {deleteAccountLoading ? '삭제 중...' : '계정 영구 삭제'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* Crop modal */}
       {cropModalOpen && cropImageSrc && (

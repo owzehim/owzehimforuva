@@ -19,6 +19,11 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/privacy-retention-sync/index.ts"
 
+[functions.delete-my-account]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/delete-my-account/index.ts"
+
 [functions.change-pending-email]
 enabled = true
 verify_jwt = false
