@@ -654,24 +654,18 @@ export default function SettingsPage() {
               로그아웃
             </button>
 
-            <div className="rounded-2xl border border-red-100 bg-white p-4 dark:border-red-950 dark:bg-[#111111]">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">계정 삭제</p>
-              <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                계정과 연결된 회원 정보, 댓글, 노트 및 프로필 사진을 삭제합니다. 식별정보가 제거된 통계·운영 기록이나 파트너가 보유한 제한된 거래 기록은 남을 수 있습니다.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setDeleteAccountError('')
-                  setDeleteAccountConfirmation('')
-                  setDeleteAccountOpen(true)
-                }}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-full border border-red-300 px-5 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:text-red-300"
-              >
-                <Trash size={17} weight="bold" />
-                계정 삭제 요청
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteAccountError('')
+                setDeleteAccountConfirmation('')
+                setDeleteAccountOpen(true)
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-red-300 px-5 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:text-red-300"
+            >
+              <Trash size={17} weight="bold" />
+              회원탈퇴
+            </button>
           </div>
         </div>
       </div>
