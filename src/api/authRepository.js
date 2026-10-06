@@ -62,8 +62,9 @@ export function hasPendingLogin(email) {
   )
 }
 
-export async function clearLoginAttempt() {
-  const clients = [passwordAuthClient, otpAuthClient].filter(Boolean)
+export async function clearLoginAttempt({ preserveClient = null } = {}) {
+  const clients = [passwordAuthClient, otpAuthClient]
+    .filter((client) => client && client !== preserveClient)
   passwordAuthClient = null
   passwordProofSession = null
   otpAuthClient = null
@@ -98,6 +99,7 @@ export async function completePasswordOnlyLogin() {
     throw new Error('로그인 정보가 만료되었습니다. 비밀번호를 다시 입력해주세요.')
   }
 
+  const promotedClient = passwordAuthClient
   ensureAppAccess(passwordProofSession)
   const { error } = await supabase.auth.setSession({
     access_token: passwordProofSession.access_token,
@@ -105,7 +107,8 @@ export async function completePasswordOnlyLogin() {
   })
   if (error) throw new Error(error.message)
 
-  await clearLoginAttempt()
+  // Do not revoke this Auth session: the main client now uses the same tokens.
+  await clearLoginAttempt({ preserveClient: promotedClient })
 }
 
 /** Send the built-in Supabase email OTP after password proof has been checked. */
@@ -156,7 +159,9 @@ export async function verifyLoginOtp(email, otp) {
   })
   if (sessionError) throw new Error(sessionError.message)
 
-  await clearLoginAttempt()
+  // The OTP client owns the session promoted into the main app client.
+  // Revoke only the separate password-proof session during cleanup.
+  await clearLoginAttempt({ preserveClient: otpAuthClient })
   return { session: refreshedData.session }
 }
 
