@@ -1445,7 +1445,7 @@ function EventsTab() {
       image_urls,
     }
 
-    let saveError
+    let saveError = null
     if (editTarget) {
       const { error } = await supabase
         .from('events')
@@ -2344,7 +2344,7 @@ function RestaurantsTab() {
       image_urls,
     }
 
-    let saveError
+    let saveError = null
     if (editTarget) {
       const { error } = await supabase
         .from('restaurants')

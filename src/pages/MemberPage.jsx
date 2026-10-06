@@ -3,9 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import MapView from '../components/MapView'
 import { SpotCard, RichText } from '../components/SpotCard'
-import { CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
+import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
-import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning, Image as ImageIcon } from '@phosphor-icons/react'
+import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, ArrowsVertical, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning, Image as ImageIcon } from '@phosphor-icons/react'
 import { useReviewPrompt } from '../hooks/useReviewPrompt'
 import ReviewModal from '../components/ReviewModal'
 import ActivityStatsCard from '../components/ActivityStatsCard'
@@ -15,7 +15,6 @@ import StampCardModal from '../features/stampCard/components/StampCardModal'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
-import { getSafeHttpsUrl } from '../lib/sanitizeHtml'
 
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
 const MEMBER_TABS = ['qr', 'events', 'map']
@@ -1848,6 +1847,297 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   )
 }
 
+// Nav Button (not currently used, but kept for future)
+function NavBtn({ onClick, children, style = {} }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        background: 'rgba(30,30,30,0.7)',
+        border: 'none',
+        color: '#fff',
+        borderRadius: '999px',
+        width: '32px',
+        height: '32px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '18px',
+        lineHeight: 1,
+        cursor: 'pointer',
+        backdropFilter: 'blur(4px)',
+        transition: 'background 0.15s',
+        flexShrink: 0,
+        ...style,
+      }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.background = 'rgba(30,30,30,0.92)')
+      }
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.background = 'rgba(30,30,30,0.7)')
+      }
+    >
+      {children}
+    </button>
+  )
+}
+
+// Event Lightbox (SpotCard-style)
+function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
+  const [index, setIndex] = useState(startIndex)
+  const [visible, setVisible] = useState(false)
+  const [imageRatios, setImageRatios] = useState({})
+  const [lightboxBounds, setLightboxBounds] = useState(() => ({
+    width: typeof window === 'undefined' ? 360 : window.innerWidth * 0.9,
+    height: typeof window === 'undefined' ? 640 : window.innerHeight * 0.9,
+  }))
+  const touchStartX = useRef(null)
+  const touchStartY = useRef(null)
+
+  const activeImageRatio = imageRatios[index] || 1
+  const lightboxImageMaxHeight = Math.max(
+    0,
+    lightboxBounds.height - (imgs.length > 1 ? 38 : 0),
+  )
+  const lightboxImageWidth = Math.min(
+    lightboxBounds.width,
+    lightboxImageMaxHeight * activeImageRatio,
+  )
+  const lightboxImageHeight = lightboxImageWidth / activeImageRatio
+
+  const goToIndex = (nextIndex) => {
+    const clampedIndex = Math.max(0, Math.min(nextIndex, imgs.length - 1))
+    if (clampedIndex === index) return
+    setIndex(clampedIndex)
+    onIndexChange?.(clampedIndex)
+  }
+
+  // zoom-in + fade-in on open
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true))
+  }, [])
+
+  useEffect(() => {
+    const updateBounds = () => {
+      setLightboxBounds({
+        width: window.innerWidth * 0.9,
+        height: window.innerHeight * 0.9,
+      })
+    }
+
+    window.addEventListener('resize', updateBounds)
+    return () => window.removeEventListener('resize', updateBounds)
+  }, [])
+
+  useEffect(() => {
+    ;[index, index - 1, index + 1]
+      .filter((nextIndex) => nextIndex >= 0 && nextIndex < imgs.length)
+      .forEach((nextIndex) => {
+        const image = new Image()
+        image.decoding = 'async'
+        image.src = imgs[nextIndex]
+        image.decode?.().catch(() => {})
+      })
+  }, [imgs, index])
+
+  useEffect(() => {
+    setIndex(startIndex)
+  }, [startIndex, imgs])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') handleClose()
+      if (e.key === 'ArrowRight') goToIndex(index + 1)
+      if (e.key === 'ArrowLeft') goToIndex(index - 1)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgs.length, index])
+
+  const handleClose = () => {
+    setVisible(false)
+    setTimeout(() => onClose?.(), 250)
+  }
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current == null || touchStartY.current == null) return
+
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    const dy = e.changedTouches[0].clientY - touchStartY.current
+    const absDx = Math.abs(dx)
+    const absDy = Math.abs(dy)
+
+    // Vertical swipe (up or down) → close
+    if (absDy > absDx && absDy > 60) {
+      handleClose()
+    }
+    // Horizontal swipe → next / prev
+    else if (absDx > absDy && absDx > 40) {
+      if (dx < 0) {
+        // swipe left → next
+        goToIndex(index + 1)
+      } else {
+        // swipe right → prev
+        if (index === 0) handleClose()
+        else goToIndex(index - 1)
+      }
+    }
+
+    touchStartX.current = null
+    touchStartY.current = null
+  }
+
+  if (!imgs || imgs.length === 0) return null
+
+  return (
+    <>
+      <style>{`
+        @keyframes lightboxZoomIn {
+          from { transform: translateY(-18px) scale(0.9); }
+          to { transform: translateY(-18px) scale(1); }
+        }
+        .lightbox-zoom-enter {
+          animation: lightboxZoomIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+      `}</style>
+      <div
+        className="no-highlight-zone"
+        onClick={handleClose}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: 'rgba(0, 0, 0, 0.75)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: visible ? 1 : 0,
+          transition: 'opacity 0.25s ease',
+          touchAction: 'none',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={visible ? 'lightbox-zoom-enter' : ''}
+          style={{
+            width: '100%',
+            maxWidth: '90vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+          }}
+        >
+          <div
+            style={{
+              width: `${lightboxImageWidth}px`,
+              height: `${lightboxImageHeight}px`,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                width: '100%',
+                height: '100%',
+                transform: `translateX(-${index * 100}%)`,
+                transition: 'transform 0.3s ease',
+              }}
+            >
+              {imgs.map((src, imgIndex) => (
+                <div
+                  key={`${src}-${imgIndex}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    flexShrink: 0,
+                    padding: '0 6px',
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <img
+                    src={src}
+                    decoding="async"
+                    fetchPriority={imgIndex === index ? 'high' : 'auto'}
+                    loading={Math.abs(imgIndex - index) <= 1 ? 'eager' : 'lazy'}
+                    alt={`사진 ${imgIndex + 1}`}
+                    onLoad={(event) => {
+                      const ratio = event.currentTarget.naturalWidth / event.currentTarget.naturalHeight
+                      if (!Number.isFinite(ratio) || ratio <= 0) return
+                      setImageRatios((previous) => (
+                        previous[imgIndex] === ratio
+                          ? previous
+                          : { ...previous, [imgIndex]: ratio }
+                      ))
+                    }}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
+                      borderRadius: 12,
+                      boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+                      userSelect: 'none',
+                      WebkitUserSelect: 'none',
+                    }}
+                    draggable={false}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          {imgs.length > 1 && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 6,
+                paddingTop: 4,
+              }}
+            >
+              {imgs.map((_, i) => (
+                <div
+                  key={i}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    goToIndex(i)
+                  }}
+                  style={{
+                    width: i === index ? 8 : 6,
+                    height: i === index ? 8 : 6,
+                    borderRadius: '999px',
+                    background:
+                      i === index ? '#fff' : 'rgba(255,255,255,0.4)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+// Events Tab
 function EventsTab({ events }) {
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -1908,12 +2198,15 @@ function EventsTab({ events }) {
     .sort((a, b) => new Date(getPrimaryEventDateTime(b)) - new Date(getPrimaryEventDateTime(a)))
 
   const nextEvent = futureEvents[0] || null
+  const otherUpcomingEvents = nextEvent ? futureEvents.slice(1) : futureEvents
   const eventTabEvents = [...futureEvents.slice().reverse(), ...pastEvents, ...tbdEvents]
   const allEvents = eventTabEvents
   const initialEvent = nextEvent || allEvents[0] || null
 
   const [selectedEvent, setSelectedEvent] = useState(initialEvent)
+  const [previewEvent, setPreviewEvent] = useState(initialEvent)
   const [isDragging, setIsDragging] = useState(false)
+  const [isTouching, setIsTouching] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [slideIndexes, setSlideIndexes] = useState({})
   const [eventListOpen, setEventListOpen] = useState(getStoredEventListOpen)
@@ -1929,6 +2222,7 @@ function EventsTab({ events }) {
   )
 
   // SpotCard-style Lightbox index
+  const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const [imageAspectRatios, setImageAspectRatios] = useState({})
   const [frontPanelTextColor, setFrontPanelTextColor] = useState('#1f2937')
@@ -1980,6 +2274,7 @@ function EventsTab({ events }) {
     const selectedStillExists = selectedEvent && allEvents.some((ev) => ev.id === selectedEvent.id)
     if (selectedStillExists) return
     setSelectedEvent(initialEvent)
+    setPreviewEvent(initialEvent)
   }, [initialEvent, selectedEvent, allEvents])
 
   useEffect(() => {
@@ -2197,6 +2492,8 @@ function EventsTab({ events }) {
     currentDragIdxRef.current = activeEventIndex
     activePointerIdRef.current = null
     setIsDragging(false)
+    setIsTouching(false)
+    setPreviewEvent(selectedEventRef.current)
   }
 
   const finalizeDrag = () => {
@@ -2223,6 +2520,7 @@ function EventsTab({ events }) {
     const nextEvent = eventsNow[idx]
     selectedEventRef.current = nextEvent
     setSelectedEvent(nextEvent)
+    setPreviewEvent(nextEvent)
   }
 
   const handleContainerPointerDown = (e) => {
@@ -2238,6 +2536,9 @@ function EventsTab({ events }) {
     dragBaseIdxRef.current = activeEventIndex
     currentDragIdxRef.current = activeEventIndex
     setIsDragging(false)
+    setIsTouching(true)
+    setPreviewEvent(selectedEventRef.current)
+
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }
 
@@ -2256,6 +2557,11 @@ function EventsTab({ events }) {
     if (e.pointerId !== activePointerIdRef.current) return
     e.currentTarget.releasePointerCapture?.(e.pointerId)
     finalizeDrag()
+  }
+
+  // Helper to open lightbox at specific index
+  const openLightboxAt = (index) => {
+    setLightboxIndex(index)
   }
 
   useEffect(() => {
@@ -2512,7 +2818,6 @@ function EventsTab({ events }) {
     ? '0'
     : `calc(100% - ${eventCollapsedCardHeight})`
   const displayEvent = selectedEvent
-  const safeInstagramUrl = getSafeHttpsUrl(displayEvent?.instagram_url)
   const eventIndicatorRows = Array.from(
     { length: Math.ceil(allEvents.length / 5) },
     (_, rowIndex) => allEvents.slice(rowIndex * 5, rowIndex * 5 + 5),
@@ -2572,9 +2877,12 @@ function EventsTab({ events }) {
     window.sessionStorage.removeItem(MEMBER_EVENT_LIST_OPEN_KEY)
     await ensureEventFirstImageRatio(ev)
     setSelectedEvent(ev)
+    setPreviewEvent(ev)
     closeEventCard(ev.id)
     setExpandedId(null)
+    setLightboxIndex(null)
     setIsDragging(false)
+    setIsTouching(false)
     setEventListClosing(true)
     window.setTimeout(() => {
       setEventListOpen(false)
@@ -2595,6 +2903,7 @@ function EventsTab({ events }) {
     await ensureEventFirstImageRatio(nextEvent)
     setEventSwipeDirection(direction)
     setSelectedEvent(nextEvent)
+    setPreviewEvent(nextEvent)
     closeEventCard(nextEvent.id)
     window.setTimeout(() => setEventSwipeDirection(0), 320)
   }
@@ -2725,7 +3034,7 @@ function EventsTab({ events }) {
     if (!ev) return null
     const isExpanded = expandedId === ev.id
     const imgs = ev.image_urls || []
-    const instaUrl = getSafeHttpsUrl(ev.instagram_url)
+    const instaUrl = ev.instagram_url
     const currentSlide = slideIndexes[ev.id] || 0
 
     return (
@@ -2808,6 +3117,7 @@ function EventsTab({ events }) {
                               objectFit: 'contain',
                             }}
                             draggable={false}
+                            onClick={() => openLightboxAt(i)}
                           />
                         </div>
                       ))}
@@ -3085,11 +3395,61 @@ const effectiveDateColor = isDragging
           <>
             <div className="absolute inset-0 bg-white dark:bg-[#121212]" />
 
+            {false && eventIndicatorRows.length > 0 && (
+              <div
+                aria-label="Event position indicator"
+                style={{
+                  position: 'fixed',
+                  right: '24px',
+                  top: 'calc(env(safe-area-inset-top) + 62px)',
+                  zIndex: 96,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '3px',
+                  pointerEvents: 'none',
+                  opacity: eventCardOpen || eventListOpen ? 0 : 1,
+                  transition: 'opacity 0.2s ease',
+                }}
+              >
+                {eventIndicatorRows.map((row, rowIndex) => (
+                  <div key={rowIndex} style={{ display: 'flex', height: '9px', alignItems: 'center', gap: '3px' }}>
+                    {row.map((event) => {
+                      const isDisplayed = event.id === displayEvent?.id
+                      const isUpcoming = event.id === nextEvent?.id
+                      return (
+                      <span
+                        key={event.id}
+                        style={{
+                          width: '9px',
+                          height: '9px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: isDisplayed ? '9px' : '6px',
+                            height: isDisplayed ? '9px' : '6px',
+                            borderRadius: '999px',
+                            background: isDisplayed
+                              ? (isUpcoming ? '#f97316' : (darkMode ? '#ffffff' : '#111827'))
+                              : (darkMode ? '#6b7280' : '#d1d5db'),
+                            transition: 'width 0.2s ease, height 0.2s ease',
+                          }}
+                        />
+                      </span>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
 
-
-            {safeInstagramUrl && (
+            {displayEvent.instagram_url && (
               <a
-                href={safeInstagramUrl}
+                href={displayEvent.instagram_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={
@@ -3478,9 +3838,9 @@ const effectiveDateColor = isDragging
                       ))}
                     </div>
                   )}
-                  {safeInstagramUrl && (
+                  {displayEvent.instagram_url && (
                     <a
-                      href={safeInstagramUrl}
+                      href={displayEvent.instagram_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hidden"

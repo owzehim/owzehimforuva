@@ -52,18 +52,6 @@ export default function EmailConfirmedPage() {
           return
         }
 
-        const { data: emailChangeResult, error: emailChangeError } =
-          await supabase.functions.invoke('finalize-pending-email')
-        if (emailChangeError || !emailChangeResult?.success) {
-          console.error(
-            'Email was confirmed, but the pending email change could not be finalized:',
-            emailChangeError || emailChangeResult?.message,
-          )
-          await supabase.auth.signOut()
-          if (!cancelled) finish('email_change_error')
-          return
-        }
-
         if (result.data.session.user?.user_metadata?.registration) {
           const { data: registrationResult, error: registrationError } =
             await supabase.functions.invoke('complete-member-registration')
@@ -75,6 +63,18 @@ export default function EmailConfirmedPage() {
             )
             await supabase.auth.signOut()
             if (!cancelled) finish('registration_error')
+            return
+          }
+        } else {
+          const { data: emailChangeResult, error: emailChangeError } =
+            await supabase.functions.invoke('finalize-pending-email')
+          if (emailChangeError || !emailChangeResult?.success) {
+            console.error(
+              'Email was confirmed, but the pending email change could not be finalized:',
+              emailChangeError || emailChangeResult?.message,
+            )
+            await supabase.auth.signOut()
+            if (!cancelled) finish('email_change_error')
             return
           }
         }
