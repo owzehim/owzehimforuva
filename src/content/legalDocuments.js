@@ -118,43 +118,44 @@ UvA-IN is not affiliated with, endorsed by, or operated by the University of Ams
 Data controller: Woojay Lim
 Website: www.uva-in.nl
 Privacy contact: woojay.lim@gmail.com
-Additional UvA-IN contact: uvaksa16@gmail.com
 
 2. Information We Collect
 
-When creating an account, we may collect first name, last name, Korean name, student number, university, education level, year of study, major, year of birth, country of origin, and gender.
+When creating an account, we collect your email address, first and last name, and student number. We may also collect your Korean name, university, education level, year of study, major, username, profile photo, and optional year of birth, country of origin, and gender. Authentication credentials are managed by Supabase Auth; UvA-IN does not receive or store your raw password.
 
 To operate your membership, we may collect membership validity period, membership status, student verification status, and membership history.
 
-When you use the App, we may record QR code check-ins, visit date and time, participating partner location, digital stamp progress, reward redemption records, and operational usage records.
+When you use the App, we may record QR code check-ins, visit date and time, participating partner location, digital stamp progress, reward redemption records, and operational usage records. We also process comments, notes, ratings, selected review tags, and reports you submit through the App. Comments and notes may be visible to other signed-in App members according to the feature's access rules. Your username and profile photo may be shown with a contribution unless you use an anonymous option where available.
 
-If you provide feedback, we may collect ratings, selected review tags, and written comments.
+The App stores authentication session information and limited app state in your browser's local or session storage (for example, your sign-in session, temporary sign-up state, and display preference). This supports sign-in and basic App operation. The current App code does not use advertising cookies or collect push-notification device tokens.
 
-To maintain platform security and reliability, we may collect internal account identifiers, device and application logs, security logs, and error reports.
+To maintain platform security and reliability, we and our service providers may process internal account identifiers, IP address, browser/device request information, access and security logs, and error reports.
 
 3. Why We Process Your Information
 
-We process your information to verify student eligibility, create and manage your membership, operate digital stamp cards, administer rewards and discounts, prevent fraud and misuse, improve our services, analyse platform performance, provide customer support, and comply with legal obligations.
+We process your information to verify student eligibility, create and manage your membership, operate digital stamp cards, administer rewards and discounts, prevent fraud and misuse, improve service reliability, provide customer support, and respond to legal obligations when they apply.
+
+Legal bases: We process the information needed to register and operate your membership and the features you request because this is necessary to perform our agreement with you (Article 6(1)(b) GDPR). We process limited account, visit, and security information where necessary for our legitimate interests in verifying reward claims, preventing fraud, protecting the App, and maintaining service reliability (Article 6(1)(f) GDPR). We use optional profile details only for membership administration or internal, appropriately grouped service planning; we do not provide partners with demographic reports under the current App flow. If we introduce an optional activity that relies on consent, we will ask for that consent separately and explain how to withdraw it. We process specific information under Article 6(1)(c) only where a concrete legal obligation requires it. Withdrawing consent will not affect processing already carried out lawfully or processing based on another applicable legal basis.
 
 We do not sell your personal information.
 
 4. Information Shared with Partner Businesses
 
-For their own restaurant, participating partners may receive a redemption identifier, visit date, reward or stamp progress, redemption status, and review rating or selected tags. Exact visit times and free-text review comments are not sent to partner trackers. The app integration does not send partners a member's full registration profile, student number, or Supabase account identifier.
+For in-person check-in, the success screen shows the member's name, student number, university, scan time, and membership end date, and asks the member to show that screen and their student card to restaurant staff so they can verify eligibility. The automated partner record for that restaurant receives only a redemption identifier, visit date, reward or stamp progress, redemption status, review rating, and selected review tags. Exact visit times, free-text review comments, the full registration profile, and the Supabase account identifier are not sent to partner records.
 
-Partner copies are limited to that partner's records and follow the 12-month transaction retention limit in Section 7. If you have a privacy request about a partner's copy, contact us using the details below so we can pass it to the relevant partner.
+Partner copies are limited to that partner's records and follow the 12-month transaction retention limit in Section 7. A partner may act as a separate controller for records it uses for its own reward administration; if so, it is responsible for providing its own privacy information and handling requests about that processing. You can also contact us using the details below and we will pass your request to the relevant partner.
 
 5. Analytics and Reporting
 
-UvA-IN prepares analytical reports to help participating businesses understand visitor trends and improve their services. Reports may include aggregated information such as university, geographic region of origin, faculty group, study stage, age group, and gender.
+We may use appropriately grouped membership and visit information to understand service usage and improve UvA-IN. Participating businesses receive only the records for their own reward operations described in Section 4. They do not receive the internal member profile fields listed in Section 2 through the partner-record integration.
 
-Where appropriate, demographic information is limited or grouped to reduce the likelihood of identifying individuals, especially where sample sizes are small.
+We do not provide partners with demographic reports under the current App flow. If we introduce such reports, we will first ensure they are sufficiently aggregated to reduce the likelihood of identifying individuals, especially where sample sizes are small, and update this notice if needed.
 
 6. Information Sharing
 
-We may share information only with participating partner businesses for reward administration and transaction verification, trusted service providers supporting UvA-IN, trusted data processing and analytics providers, or competent public authorities where required by law.
+We share information with participating partner businesses only for reward administration and transaction verification as described in Section 4, with service providers that support the App, and with competent public authorities where required by law. Current service providers include Supabase for account authentication, database and file storage; Vercel for hosting and delivery of the App; Resend for account and email-verification messages; Google services for internal administrative records and externally hosted web fonts; and MapTiler for map display. The internal administrative records sent through Google services can include the member identity and profile fields listed in Section 2, together with visit, reward, and review records. Access to these records is limited to authorised UvA-IN administrators. Partner-record integrations do not send those profile fields to restaurant owners. When the App loads a map or externally hosted font, the provider may receive your IP address, browser/device request information, and the requested resource. MapTiler receives map requests when you use a map feature. We do not currently use the retired translation or comment-moderation features to send member content to Google Cloud Translation or OpenAI.
 
-Service providers must process personal information only for authorised purposes and apply appropriate security measures.
+The role of each provider depends on the service: a provider may process data on our instructions, or may independently process technical request information under its own privacy notice. The production Supabase project is hosted in the EU. Resend stores service data in the United States. Other providers or their subprocessors may process information outside the European Economic Area. Where the GDPR requires a transfer mechanism, we rely on the mechanism applicable to that provider and processing, such as an adequacy decision or appropriate contractual safeguards. You can contact us for information about the safeguards relevant to a specific provider.
 
 7. Data Retention
 
@@ -176,7 +177,7 @@ We implement appropriate technical and organisational safeguards designed to pro
 
 10. Your Rights
 
-Under the GDPR, you may have the right to access your personal information, correct inaccurate information, request deletion of your account, request restriction of processing, object to processing, request a copy of your personal information where applicable, and lodge a complaint with the relevant supervisory authority.
+Under the GDPR, you may have the right to access your personal information, correct inaccurate information, request deletion of your account, request restriction of processing, object to processing, request a copy of your personal information where applicable, and lodge a complaint with the Dutch Data Protection Authority (Autoriteit Persoonsgegevens): https://autoriteitpersoonsgegevens.nl/.
 
 You can request account deletion in Settings. This deletes your account and linked profile, comments, notes, and app visit/reward data, removes your profile photo, and anonymizes direct identifiers in operational records. A partner may retain the minimum transaction record needed for reward verification and related questions, fraud, or disputes for up to 12 months from the transaction date; after that, it must be deleted or irreversibly anonymized. Any legal accounting exception is limited to the necessary records as described in Section 7. For access, correction, restriction, objection, or other privacy requests concerning a partner's copy, contact the controller using the information below so we can pass the request to the relevant partner.
 
@@ -186,14 +187,13 @@ UvA-IN is intended for university students and is not designed for children unde
 
 12. Changes to This Privacy Policy
 
-We may update this Privacy Policy from time to time. The latest version will be available within the App and on our website. Continued use of the App after changes become effective constitutes acceptance of the updated Privacy Policy.
+We may update this Privacy Policy from time to time. The latest version will be available within the App and on our website. We will provide notice of material changes through the App or another reasonable channel. A change to this notice does not by itself create consent for processing. Where the law requires consent for a new or changed optional use, we will ask you separately.
 
 13. Contact
 
 Data controller: Woojay Lim (UvA-IN)
 Website: www.uva-in.nl
-Privacy contact: woojay.lim@gmail.com
-Additional UvA-IN contact: uvaksa16@gmail.com`,
+Privacy contact: woojay.lim@gmail.com`,
   },
   community: {
     title: 'Community Guidelines',
