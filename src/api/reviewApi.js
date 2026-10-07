@@ -54,15 +54,19 @@ export async function createReview({ redemptionId, storeId, rating, tags, commen
     .catch((err) => console.warn('Sheet sync failed (non-critical):', err?.message))
 
   if (comment?.trim()) {
-    syncReviewCommentToRestaurantNotes({
-      reviewId: data.id,
-      redemptionId,
-      storeId,
-      rating,
-      tags,
-      comment,
-      userId: user.id,
-    }).catch((err) => console.warn('Review note sync failed (non-critical):', err?.message))
+    try {
+      await syncReviewCommentToRestaurantNotes({
+        reviewId: data.id,
+        redemptionId,
+        storeId,
+        rating,
+        tags,
+        comment,
+        userId: user.id,
+      })
+    } catch (err) {
+      console.warn('Review note sync failed (non-critical):', err?.message)
+    }
   }
 
   return { data, error: null }
@@ -214,32 +218,40 @@ async function syncReviewCommentToRestaurantNotes({
     throw restaurantError || new Error('Matching restaurant not found')
   }
 
-  const { data: member } = await supabase
+  const { data: member, error: memberError } = await supabase
     .from('members')
-    .select('username, first_name, last_name, first_name_korean, last_name_korean')
+    .select('username')
     .eq('user_id', userId)
     .maybeSingle()
 
-  const noteUsername = (
-    member?.username ||
-    [member?.last_name_korean, member?.first_name_korean].filter(Boolean).join('') ||
-    [member?.first_name, member?.last_name].filter(Boolean).join(' ')
-  ).trim()
+  if (memberError) throw memberError
+  const username = member?.username?.trim() || ''
+  const { data: existingNote, error: lookupError } = await supabase
+    .from('restaurant_notes_safe')
+    .select('id')
+    .eq('source_redemption_id', redemptionId)
+    .eq('is_mine', true)
+    .maybeSingle()
 
-  const { error } = await supabase
-    .from('restaurant_notes')
-    .insert({
-      restaurant_id: restaurant.id,
-      user_id: userId,
-      username: noteUsername,
-      body: trimmedComment,
-      is_anonymous: false,
-      source_review_id: reviewId,
-      source_redemption_id: redemptionId,
-      source_store_id: storeId,
-      source_rating: rating,
-      source_tags: tags,
-    })
+  if (lookupError) throw lookupError
 
-  if (error) throw error
+  const notePayload = {
+    body: trimmedComment,
+    is_anonymous: !username,
+    username: username || '익명',
+  }
+  const result = existingNote
+    ? await supabase.from('restaurant_notes').update(notePayload).eq('id', existingNote.id)
+    : await supabase.from('restaurant_notes').insert({
+        ...notePayload,
+        restaurant_id: restaurant.id,
+        user_id: userId,
+        source_review_id: reviewId,
+        source_redemption_id: redemptionId,
+        source_store_id: storeId,
+        source_rating: rating,
+        source_tags: tags,
+      })
+
+  if (result.error) throw result.error
 }

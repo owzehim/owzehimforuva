@@ -397,7 +397,7 @@ export default function SettingsPage() {
     .join(' ')
   const displayName = koreanDisplayName || englishDisplayName
   const username = member?.username?.trim()
-  const usernameDisplay = username || displayName
+  const usernameDisplay = username || 'Username'
 
   return (
     <div
@@ -517,7 +517,7 @@ export default function SettingsPage() {
                       disabled={usernameSaving}
                       autoFocus
                       className="h-8 w-36 rounded-none border-0 border-b border-dotted border-gray-400 bg-transparent px-1 text-center text-xs font-medium text-gray-700 outline-none focus:border-gray-800 dark:border-gray-500 dark:text-gray-200 dark:focus:border-white"
-                      placeholder="username"
+                      placeholder="Username"
                     />
                     <button
                       type="button"
