@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 const MAX_COMMENT_LENGTH = 200
 
 function formatCommentDate(value) {
-  return new Intl.DateTimeFormat('nl-NL', {
+  return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Amsterdam',
     day: 'numeric',
     month: 'short',

@@ -8,7 +8,7 @@ import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 const MAX_NOTE_LENGTH = 200
 
 function formatNoteDate(value) {
-  return new Intl.DateTimeFormat('nl-NL', {
+  return new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Amsterdam',
     day: 'numeric',
     month: 'short',
@@ -33,7 +33,7 @@ function errorMessage(error) {
     return 'Please keep notes friendly and useful.'
   }
   if (message.includes('username is required')) {
-    return 'Add a username in Settings before leaving a note.'
+    return '한마디를 남기려면 먼저 설정에서 닉네임을 등록해 주세요.'
   }
   if (message.includes('member name is required')) {
     return 'Add your name in Settings before leaving a note.'
@@ -192,6 +192,23 @@ export function GoodToKnowNotesPanel({
     setSaving(true)
     setError('')
 
+    if (editingNote?.source_redemption_id && editingNote?.source_store_id) {
+      try {
+        await syncLinkedReviewNoteToSheets({
+          redemptionId: editingNote.source_redemption_id,
+          storeId: editingNote.source_store_id,
+          rating: editingNote.source_rating,
+          tags: editingNote.source_tags,
+          comment: trimmedBody,
+        })
+      } catch (syncError) {
+        console.warn('Linked review note sync failed:', syncError?.message)
+        setSaving(false)
+        setError('리뷰 한마디를 동기화하지 못했어요. 잠시 후 다시 시도해 주세요.')
+        return
+      }
+    }
+
     const payload = { body: trimmedBody, is_anonymous: anonymous }
     const result = editingNote
       ? await supabase.from('restaurant_notes').update(payload).eq('id', editingNote.id)
@@ -209,16 +226,6 @@ export function GoodToKnowNotesPanel({
       return
     }
 
-    if (editingNote?.source_redemption_id && editingNote?.source_store_id) {
-      syncLinkedReviewNoteToSheets({
-        redemptionId: editingNote.source_redemption_id,
-        storeId: editingNote.source_store_id,
-        rating: editingNote.source_rating,
-        tags: editingNote.source_tags,
-        comment: trimmedBody,
-      }).catch((err) => console.warn('Linked review note sheet sync failed:', err?.message))
-    }
-
     closeComposer()
     setBody('')
     setEditingNote(null)
@@ -226,7 +233,24 @@ export function GoodToKnowNotesPanel({
   }
 
   const deleteNote = async (noteId) => {
-    if (!window.confirm('Delete this note?')) return
+    if (!window.confirm('이 한마디를 삭제할까요?')) return
+    const note = notes.find((item) => item.id === noteId)
+    if (note?.source_redemption_id && note?.source_store_id) {
+      try {
+        await syncLinkedReviewNoteToSheets({
+          redemptionId: note.source_redemption_id,
+          storeId: note.source_store_id,
+          rating: note.source_rating,
+          tags: note.source_tags,
+          comment: '',
+        })
+      } catch (syncError) {
+        console.warn('Linked review note deletion sync failed:', syncError?.message)
+        setError('리뷰 한마디를 시트에서 지우지 못했어요. 잠시 후 다시 시도해 주세요.')
+        return
+      }
+    }
+
     const { error: deleteError } = await supabase
       .from('restaurant_notes')
       .delete()
@@ -234,7 +258,7 @@ export function GoodToKnowNotesPanel({
 
     if (deleteError) {
       console.error('delete restaurant note error:', deleteError)
-      setError('Could not delete the note.')
+      setError('한마디를 삭제하지 못했어요.')
     } else {
       setNotes((currentNotes) => currentNotes.filter((note) => note.id !== noteId))
       await loadNotes()
@@ -242,14 +266,14 @@ export function GoodToKnowNotesPanel({
   }
 
   const reportNote = async (noteId) => {
-    if (!userId || !window.confirm('Report this note?')) return
+    if (!userId || !window.confirm('이 한마디를 신고할까요?')) return
     const { error: reportError } = await supabase
       .from('restaurant_note_reports')
       .insert({ note_id: noteId, reporter_id: userId })
 
-    if (reportError?.code === '23505') setError('You already reported this note.')
-    else if (reportError) setError('Could not report this note.')
-    else setError('Thanks. The note has been reported.')
+    if (reportError?.code === '23505') setError('이미 신고한 한마디예요.')
+    else if (reportError) setError('신고하지 못했어요.')
+    else setError('한마디를 신고했어요.')
   }
 
   const handleNotesTouchStart = (event) => {
@@ -303,7 +327,7 @@ export function GoodToKnowNotesPanel({
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-gray-500">가본 사람 한마디</p>
-          <p className="mt-0.5 text-[10px] text-gray-400">Newest 10</p>
+          <p className="mt-0.5 text-[10px] text-gray-400">최근 10개</p>
         </div>
         <button
           type="button"
@@ -311,7 +335,7 @@ export function GoodToKnowNotesPanel({
           disabled={!canCreateNote}
           className="flex items-center gap-1 rounded-full bg-orange-500 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:bg-gray-200 disabled:text-gray-400 disabled:opacity-100"
           aria-disabled={!canCreateNote}
-          title={hasNoteToday ? 'You already left a note here today.' : undefined}
+          title={hasNoteToday ? '오늘은 이 매장에 이미 한마디를 남겼어요.' : undefined}
           style={disabledNoteButtonStyle}
         >
           <Plus size={13} weight="bold" /> 한마디
@@ -326,11 +350,11 @@ export function GoodToKnowNotesPanel({
         onTouchCancel={handleNotesTouchEnd}
       >
         {loading ? (
-          <p className="py-8 text-center text-xs text-gray-400">Loading notes...</p>
+          <p className="py-8 text-center text-xs text-gray-400">불러오는 중...</p>
         ) : !userId ? (
           <div className="flex h-full min-h-[120px] items-center justify-center px-4">
             <p className="text-center text-xs leading-relaxed text-gray-400">
-              Log in as a member to read and leave notes.
+              회원으로 로그인하면 한마디를 읽고 남길 수 있어요.
             </p>
           </div>
         ) : notes.length === 0 ? (
@@ -366,15 +390,15 @@ export function GoodToKnowNotesPanel({
                     <span className="text-[10px] text-gray-400">{formatNoteDate(note.created_at)}</span>
                     {isMine && (
                       <>
-                        <button type="button" aria-label="Edit note" onClick={() => openEdit(note)} className="text-gray-400"><PencilSimple size={13} /></button>
-                        <button type="button" aria-label="Delete note" onClick={() => deleteNote(note.id)} className="text-gray-400"><Trash size={13} /></button>
+                        <button type="button" aria-label="한마디 수정" onClick={() => openEdit(note)} className="text-gray-400"><PencilSimple size={13} /></button>
+                        <button type="button" aria-label="한마디 삭제" onClick={() => deleteNote(note.id)} className="text-gray-400"><Trash size={13} /></button>
                       </>
                     )}
                     {!isMine && userId && (
-                      <button type="button" aria-label="Report note" onClick={() => reportNote(note.id)} className="text-gray-400"><Flag size={13} /></button>
+                      <button type="button" aria-label="한마디 신고" onClick={() => reportNote(note.id)} className="text-gray-400"><Flag size={13} /></button>
                     )}
                     {isAdmin && (
-                      <button type="button" aria-label="Admin delete note" onClick={() => deleteNote(note.id)} className="text-red-400"><Trash size={13} /></button>
+                      <button type="button" aria-label="관리자 한마디 삭제" onClick={() => deleteNote(note.id)} className="text-red-400"><Trash size={13} /></button>
                     )}
                   </div>
                 </div>
@@ -387,7 +411,7 @@ export function GoodToKnowNotesPanel({
 
       {error && <p className="mt-2 text-center text-[11px] text-red-500">{error}</p>}
       {!canComment && userId && (
-        <p className="mt-2 text-center text-[11px] text-gray-400">Only active members can leave notes.</p>
+        <p className="mt-2 text-center text-[11px] text-gray-400">활성 회원만 한마디를 남길 수 있어요.</p>
       )}
 
       {composerOpen && createPortal(
@@ -415,7 +439,7 @@ export function GoodToKnowNotesPanel({
                 type="button"
                 onClick={closeComposer}
                 className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400"
-                aria-label="Close note composer"
+                aria-label="작성창 닫기"
               >
                 <X size={17} weight="bold" />
               </button>
@@ -435,7 +459,7 @@ export function GoodToKnowNotesPanel({
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-gray-400">{body.length}/{MAX_NOTE_LENGTH}</span>
                 <button type="submit" disabled={saving || !body.trim()} className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">
-                  {saving ? 'Saving' : '추가'}
+                  {saving ? '저장 중...' : '추가'}
                 </button>
               </div>
             </div>
@@ -448,21 +472,27 @@ export function GoodToKnowNotesPanel({
 }
 
 async function syncLinkedReviewNoteToSheets({ redemptionId, storeId, rating, tags, comment }) {
-  if (!redemptionId || !storeId || !rating || !tags) return
+  if (!redemptionId || !storeId || !rating || !Array.isArray(tags)) {
+    throw new Error('연결된 리뷰 정보를 찾을 수 없습니다.')
+  }
 
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return
+  if (!session) throw new Error('로그인이 필요합니다.')
 
-  await supabase.functions.invoke('sync-to-sheets', {
+  const { data, error } = await supabase.functions.invoke('sync-to-sheets', {
     body: {
       redemption_id: redemptionId,
       store_id: storeId,
       rating,
       tags,
       comment,
+      update_review_comment: true,
     },
     headers: {
       Authorization: `Bearer ${session.access_token}`,
     },
   })
+  if (error || data?.success !== true) {
+    throw error || new Error(data?.message || 'Review note sync failed')
+  }
 }

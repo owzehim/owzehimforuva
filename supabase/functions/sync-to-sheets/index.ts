@@ -81,6 +81,10 @@ serve(async (req) => {
       )
     }
     const redemption_id = body?.redemption_id
+    const shouldUpdateReviewComment = body?.update_review_comment === true
+    const requestedReviewComment = typeof body?.comment === 'string'
+      ? body.comment.trim().slice(0, 200)
+      : undefined
 
     if ((typeof redemption_id !== 'string' && typeof redemption_id !== 'number') || !/^[1-9]\d{0,17}$/.test(String(redemption_id))) {
       return new Response(
@@ -186,7 +190,7 @@ serve(async (req) => {
     const tagsArray = Array.isArray(review.tags)
       ? review.tags.filter((tag: unknown) => typeof tag === 'string' && validTags.has(tag)).slice(0, 4)
       : []
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    if (!Number.isInteger(rating * 2) || rating < 0.5 || rating > 5) {
       return new Response(
         JSON.stringify({ success: false, message: '필수 항목이 누락되었습니다.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -204,15 +208,43 @@ serve(async (req) => {
       comment:        sheetText(review.comment, 2000),
     }
 
+    if (shouldUpdateReviewComment) {
+      const { error: updateCommentError } = await admin
+        .from('reviews')
+        .update({ comment: requestedReviewComment?.trim() || null })
+        .eq('redemption_id', redemption.id)
+        .eq('user_id', userId)
+
+      if (updateCommentError) {
+        console.error('Review comment update failed:', updateCommentError)
+        return new Response(
+          JSON.stringify({ success: false, message: '리뷰 한마디를 수정하지 못했습니다.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+      review.comment = requestedReviewComment?.trim() || null
+      reviewPayload.comment = sheetText(review.comment, 2000)
+    }
+
     // Partner-owned trackers can be shared with restaurant staff. Keep free-
     // text review content in the master sheet only; it may identify a member.
     const partnerReviewPayload = { ...reviewPayload, comment: '' }
 
     // ── POST to both Apps Scripts ─────────────────────────────
-    await Promise.all([
+    const syncResults = await Promise.all([
       postJsonToAppsScript(integrations?.master_apps_script_url, reviewPayload, 'master'),
       postJsonToAppsScript(integrations?.partner_apps_script_url, partnerReviewPayload, 'partner'),
     ])
+
+    const requiredSyncFailed = shouldUpdateReviewComment
+      ? !syncResults[0]?.ok
+      : syncResults.some((result) => !result.ok)
+    if (requiredSyncFailed) {
+      return new Response(
+        JSON.stringify({ success: false, message: '리뷰 기록을 모두 동기화하지 못했습니다.' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
 
     return new Response(
       JSON.stringify({ success: true }),
