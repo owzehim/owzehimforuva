@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Eye, EyeSlash } from '@phosphor-icons/react'
 import { updatePassword } from '../api/authRepository'
 import { isPasswordRecoveryClaims } from '../domain/auth/recovery'
 import { supabase } from '../lib/supabase'
@@ -8,6 +9,8 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -43,8 +46,8 @@ export default function ResetPasswordPage() {
       return
     }
 
-    if (password.length < 12) {
-      setError('비밀번호는 최소 12자 이상이어야 합니다.')
+    if (password.length < 8) {
+      setError('비밀번호는 최소 8자 이상이어야 합니다.')
       return
     }
 
@@ -109,25 +112,45 @@ export default function ResetPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <ResetField label="새 비밀번호">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputClass}
-                required
-              />
-            </ResetField>
+            <div className="relative">
+              <ResetField label="새 비밀번호">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${inputClass} pr-9`}
+                  required
+                />
+              </ResetField>
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-gray-500"
+              >
+                {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
-            <ResetField label="새 비밀번호 확인">
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={inputClass}
-                required
-              />
-            </ResetField>
+            <div className="relative">
+              <ResetField label="새 비밀번호 확인">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`${inputClass} pr-9`}
+                  required
+                />
+              </ResetField>
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((visible) => !visible)}
+                aria-label={showConfirmPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-gray-500"
+              >
+                {showConfirmPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
             {error && <p className="text-sm text-red-500">{error}</p>}
 
