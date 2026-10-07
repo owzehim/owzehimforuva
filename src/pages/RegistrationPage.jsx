@@ -564,6 +564,7 @@ export default function RegistrationPage() {
     privacy: false,
     community: false,
   });
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState(null);
 
   useEffect(() => {
@@ -657,6 +658,10 @@ export default function RegistrationPage() {
   const handleAccountSubmit = (event) => {
     handleSubmit(event, {
       legalAccepted: Object.values(legalAgreements).every(Boolean),
+      ageConfirmed,
+      ageConfirmationError: language === 'ko'
+        ? '만 16세 이상만 가입할 수 있습니다.'
+        : 'You must confirm that you are at least 16 years old.',
       legalDocumentsVersion: LEGAL_DOCUMENT_VERSION,
     });
   };
@@ -808,6 +813,8 @@ export default function RegistrationPage() {
             t={t}
             language={language}
             legalAgreements={legalAgreements}
+            ageConfirmed={ageConfirmed}
+            onAgeConfirmedChange={setAgeConfirmed}
             onAgreementChange={handleAgreementChange}
             onOpenLegalDocument={setActiveLegalDoc}
             profileHeroProps={profileHeroProps}
@@ -1164,6 +1171,8 @@ function AccountStep({
   t,
   language,
   legalAgreements,
+  ageConfirmed,
+  onAgeConfirmedChange,
   onAgreementChange,
   onOpenLegalDocument,
   profileHeroProps,
@@ -1175,6 +1184,7 @@ function AccountStep({
     formData.confirmPassword &&
     formData.password === formData.confirmPassword &&
     formData.password.length >= 12 &&
+    ageConfirmed &&
     allLegalAccepted;
 
   return (
@@ -1238,6 +1248,19 @@ function AccountStep({
             onOpenDocument={onOpenLegalDocument}
             language={language}
           />
+          <label style={s.legalRow}>
+            <input
+              type="checkbox"
+              checked={ageConfirmed}
+              onChange={(event) => onAgeConfirmedChange(event.target.checked)}
+              style={s.legalCheckbox}
+            />
+            <span style={s.legalText}>
+              {language === 'ko'
+                ? '만 16세 이상임을 확인합니다.'
+                : 'I confirm that I am at least 16 years old.'}
+            </span>
+          </label>
         </div>
 
         {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (

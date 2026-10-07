@@ -30,6 +30,7 @@ function isValidRegistration(value: unknown) {
   const yearNumber = integerOrNull(profile.year_number)
 
   return Boolean(
+    profile.age_16_plus_confirmed === true &&
     text(profile.first_name, 100) &&
     text(profile.last_name, 100) &&
     getStudentNumberRegistrationFields(profile.student_number) !== null &&

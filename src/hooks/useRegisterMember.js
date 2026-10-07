@@ -81,6 +81,10 @@ export function useRegisterMember() {
       setError('Please read and accept the Terms, Privacy Policy, and Community Guidelines');
       return;
     }
+    if (options.ageConfirmed !== true) {
+      setError(options.ageConfirmationError || 'Please confirm that you are at least 16 years old.');
+      return;
+    }
 
     // Client-side password checks
     if (formData.password !== formData.confirmPassword) {
@@ -147,6 +151,7 @@ export function useRegisterMember() {
           ? Number(formData.yearNumber)
           : null,
         legalDocumentsVersion: options.legalDocumentsVersion,
+        ageConfirmed: options.ageConfirmed,
       });
 
       // Account created — now tell user to check their email.

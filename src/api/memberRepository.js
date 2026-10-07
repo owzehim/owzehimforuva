@@ -61,6 +61,7 @@ function isEmailNotConfirmedError(error) {
  *  educationLevel: 'foundation' | 'bachelor' | 'master' | 'alumni',
  *  yearNumber: number | null,
  *  legalDocumentsVersion?: string,
+ *  ageConfirmed: boolean,
  * }} payload
  *
  * @returns {Promise<{ userId: string | null, confirmationEmailResent?: boolean }>}
@@ -82,6 +83,7 @@ export async function registerMember(payload) {
     educationLevel,
     yearNumber,
     legalDocumentsVersion,
+    ageConfirmed,
   } = payload;
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -136,6 +138,7 @@ export async function registerMember(payload) {
             privacy: legalDocumentsVersion || null,
             community: legalDocumentsVersion || null,
           },
+          age_16_plus_confirmed: ageConfirmed === true,
         },
       },
     },
