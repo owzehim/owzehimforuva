@@ -142,7 +142,7 @@ We do not sell your personal information.
 
 For their own restaurant, participating partners may receive a redemption identifier, visit date, reward or stamp progress, redemption status, and review rating or selected tags. Exact visit times and free-text review comments are not sent to partner trackers. The app integration does not send partners a member's full registration profile, student number, or Supabase account identifier.
 
-Partner trackers are intended to contain only that partner's records. A partner's own copy may retain limited transaction records under its own applicable retention rules; contact us if you want us to pass a deletion request to a partner.
+Partner copies are limited to that partner's records and follow the 12-month transaction retention limit in Section 7. If you have a privacy request about a partner's copy, contact us using the details below so we can pass it to the relevant partner.
 
 5. Analytics and Reporting
 
@@ -158,19 +158,17 @@ Service providers must process personal information only for authorised purposes
 
 7. Data Retention
 
-Personal identifying information is retained while your membership remains active.
+Personal identifying information needed to operate your membership is retained while your membership remains active. After your membership ends, we retain the identifying information needed for support, fraud prevention, and dispute resolution for up to 12 months, then delete or irreversibly anonymize it.
 
-After your membership ends, personal identifying information is retained for 12 months for customer support, fraud prevention, dispute resolution, and legitimate operational requirements.
+When you request account deletion, we delete or anonymize information directly linked to your account as part of the deletion process, subject to any specific legal obligation or unresolved legal claim that requires limited information to be retained.
 
-After this 12-month period, personal identifying information is automatically anonymized.
+The minimum partner transaction records needed to verify rewards and handle related questions, fraud, or disputes are retained for no more than 12 months from the transaction date. Partner businesses are instructed to delete or irreversibly anonymize these records when that period ends. If a specific record must be retained to meet a legal accounting obligation, only the necessary record is kept separately, with restricted access, for the legally required period.
 
-Operational records relating to QR code check-ins, reward redemptions, stamp card activity, reviews, and anonymous platform usage statistics may be retained indefinitely for operational, analytical, and historical purposes.
-
-Once personal identifying information has been anonymized, these records can no longer reasonably identify an individual.
+Records that have been irreversibly anonymized so that a person can no longer reasonably be identified may be retained for statistical purposes.
 
 8. Automatic Anonymization
 
-UvA-IN automatically anonymizes personal identifying information after the applicable retention period expires. The process removes or permanently replaces information capable of identifying an individual while preserving operational records required for legitimate statistical and operational purposes.
+At the end of an applicable retention period, personal information is deleted or irreversibly anonymized. Anonymization removes or permanently replaces information that could reasonably identify or be linked back to an individual. Partner businesses are responsible for applying the agreed 12-month limit to the transaction records they receive.
 
 9. Security
 
@@ -180,7 +178,7 @@ We implement appropriate technical and organisational safeguards designed to pro
 
 Under the GDPR, you may have the right to access your personal information, correct inaccurate information, request deletion of your account, request restriction of processing, object to processing, request a copy of your personal information where applicable, and lodge a complaint with the relevant supervisory authority.
 
-You can request account deletion in Settings. This deletes your Supabase account and linked profile, comments, notes, and visit/reward data, removes your profile photo, and anonymizes direct identifiers in the master operational sheet. Limited partner transaction records may remain without direct account identifiers where they are needed for the partner's own operational records. For access, correction, restriction, objection, or other privacy requests, contact the controller using the information below.
+You can request account deletion in Settings. This deletes your account and linked profile, comments, notes, and app visit/reward data, removes your profile photo, and anonymizes direct identifiers in operational records. A partner may retain the minimum transaction record needed for reward verification and related questions, fraud, or disputes for up to 12 months from the transaction date; after that, it must be deleted or irreversibly anonymized. Any legal accounting exception is limited to the necessary records as described in Section 7. For access, correction, restriction, objection, or other privacy requests concerning a partner's copy, contact the controller using the information below so we can pass the request to the relevant partner.
 
 11. Children's Privacy
 

@@ -6,8 +6,6 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasAal2, hasActiveDeviceSession, requireAal2Response } from '../_shared/requireAal2.ts'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
-const MAX_AUTH_AGE_SECONDS = 10 * 60
-
 function decodeClaims(token: string): Record<string, unknown> | null {
   try {
     const payload = token.split('.')[1]
@@ -74,11 +72,6 @@ serve(async (req) => {
     if (!(await hasAal2(admin, token))) return requireAal2Response(corsHeaders)
     if (!(await hasActiveDeviceSession(admin, user.id, token))) {
       return json({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }, 403)
-    }
-
-    const lastSignIn = user.last_sign_in_at ? Date.parse(user.last_sign_in_at) : 0
-    if (!Number.isFinite(lastSignIn) || Date.now() - lastSignIn > MAX_AUTH_AGE_SECONDS * 1000) {
-      return json({ success: false, message: '계정 삭제를 위해 로그아웃한 뒤 비밀번호와 이메일 인증으로 다시 로그인해 주세요.' }, 403)
     }
 
     const { data: adminRole, error: adminRoleError } = await admin

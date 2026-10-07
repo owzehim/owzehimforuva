@@ -8,6 +8,7 @@ import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X, Trash } from
 import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
+import { legalDocuments } from '../content/legalDocuments'
 
 function isValidUsername(value) {
   const trimmed = value.trim()
@@ -74,6 +75,7 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState('')
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false)
   const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState('')
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState('')
@@ -682,8 +684,15 @@ export default function SettingsPage() {
               계정을 영구 삭제할까요?
             </h2>
             <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-              회원 계정과 연결된 프로필, 댓글, 노트, 방문·리워드 기록을 삭제합니다. Google 마스터 시트의 식별 정보도 익명화합니다. 식별정보가 없는 제한된 파트너 거래 기록은 남을 수 있습니다. 보안을 위해 최근 10분 이내에 비밀번호와 이메일 인증으로 로그인해야 합니다. 이 작업은 되돌릴 수 없습니다.
+              회원 탈퇴 시 계정에 연결된 프로필·댓글·노트 등 개인정보는 삭제 또는 익명화 처리됩니다. 다만 제휴 매장에 제공된 최소한의 방문·리워드 기록은 리워드 확인과 문의·분쟁 처리를 위해 거래일로부터 최대 12개월 보관한 뒤 삭제 또는 익명화합니다. 탈퇴는 되돌릴 수 없습니다.
             </p>
+            <button
+              type="button"
+              onClick={() => setPrivacyPolicyOpen(true)}
+              className="mt-2 text-sm font-medium text-blue-600 underline underline-offset-2 dark:text-blue-400"
+            >
+              개인정보처리방침 보기
+            </button>
             <label className="mt-4 block text-xs font-medium text-gray-700 dark:text-gray-300">
               확인을 위해 DELETE를 입력하세요.
               <input
@@ -713,6 +722,38 @@ export default function SettingsPage() {
               >
                 {deleteAccountLoading ? '삭제 중...' : '계정 영구 삭제'}
               </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {privacyPolicyOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-privacy-policy-title"
+            className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white p-5 shadow-xl dark:bg-[#161616]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="delete-privacy-policy-title" className="text-base font-bold text-gray-900 dark:text-white">
+                  개인정보처리방침
+                </h2>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  시행일: {legalDocuments.privacy.effectiveDate}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPrivacyPolicyOpen(false)}
+                className="rounded-full px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                닫기
+              </button>
+            </div>
+            <div className="mt-4 overflow-y-auto rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-700 dark:bg-[#202020] dark:text-gray-200">
+              <p className="whitespace-pre-wrap">{legalDocuments.privacy.body}</p>
             </div>
           </section>
         </div>
