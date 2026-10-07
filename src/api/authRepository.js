@@ -210,9 +210,19 @@ export async function sendPasswordResetEmail(email) {
   if (error) throw new Error(error.message)
 }
 
-/** Update the password for the active password recovery session. */
-export async function updatePassword(password) {
-  const { error } = await supabase.auth.updateUser({ password })
+/** Change a password, optionally requiring the current password and reauthentication nonce. */
+export async function updatePassword(password, currentPassword, nonce) {
+  const attributes = { password }
+
+  if (currentPassword !== undefined || nonce !== undefined) {
+    if (typeof currentPassword !== 'string' || !currentPassword || typeof nonce !== 'string' || !nonce) {
+      throw new Error('현재 비밀번호와 이메일 확인 코드를 모두 입력해주세요.')
+    }
+    attributes.currentPassword = currentPassword
+    attributes.nonce = nonce
+  }
+
+  const { error } = await supabase.auth.updateUser(attributes)
   if (error) throw new Error(error.message)
 }
 
