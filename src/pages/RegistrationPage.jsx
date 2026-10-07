@@ -1248,7 +1248,7 @@ function AccountStep({
             onOpenDocument={onOpenLegalDocument}
             language={language}
           />
-          <label style={s.legalRow}>
+          <label style={{ ...s.legalRow, margin: '0 13px' }}>
             <input
               type="checkbox"
               checked={ageConfirmed}
@@ -1257,8 +1257,8 @@ function AccountStep({
             />
             <span style={s.legalText}>
               {language === 'ko'
-                ? '만 16세 이상임을 확인합니다.'
-                : 'I confirm that I am at least 16 years old.'}
+                ? '만 16세 이상임을 확인합니다'
+                : 'I confirm that I am at least 16 years old'}
             </span>
           </label>
         </div>
