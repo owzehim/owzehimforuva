@@ -1,16 +1,54 @@
-# React + Vite
+# UvA-IN App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A progressive web app (PWA) for UvA-IN members.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Software developer and technical maintainer: Woojay Lim
 
-## React Compiler
+## Technology
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Frontend: React, Vite, and Tailwind CSS
+- Backend and authentication: Supabase (Postgres, Auth, and Edge Functions)
+- Hosting and deployment: Vercel
+- Map integration: MapTiler
+- Additional integration: Google Apps Script
 
-## Expanding the ESLint configuration
+## Local development
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Requirements: Node.js and npm.
+
+1. Install dependencies:
+
+   ```sh
+   npm install
+   ```
+
+2. Create a `.env.local` file with the frontend configuration values:
+
+   ```text
+   VITE_SUPABASE_URL=
+   VITE_SUPABASE_PUBLISHABLE_KEY=
+   VITE_MAPTILER_API_KEY=
+   ```
+
+3. Start the development server:
+
+   ```sh
+   npm run dev
+   ```
+
+Create a production build with `npm run build`.
+
+## Project structure
+
+- `src/` — React application
+- `supabase/functions/` — Supabase Edge Functions
+- `supabase/migrations/` — database migrations
+- `vercel.json` — Vercel routing and deployment configuration
+
+## Security
+
+- Never commit credentials or private keys.
+- Keep Supabase service-role credentials in Supabase's server-side function secrets; do not expose them to frontend code or `VITE_` variables.
+- Configure frontend environment values in the local environment and Vercel project settings.
