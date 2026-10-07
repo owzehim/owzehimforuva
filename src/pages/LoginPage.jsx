@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CaretLeft } from '@phosphor-icons/react'
+import { CaretLeft, Eye, EyeSlash } from '@phosphor-icons/react'
 import { useLogin } from '../hooks/useLogin'
 
 const KEYBOARD_CLOSE_DELAY_MS = 360
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const [showPassword, setShowPassword] = useState(false)
   const {
     step,
     email,
@@ -99,17 +101,27 @@ export default function LoginPage() {
                 />
               </LoginField>
 
-              <LoginField label="비밀번호">
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={inputClass}
-                  placeholder=""
-                  autoComplete="current-password"
-                  required
-                />
-              </LoginField>
+              <div className="relative">
+                <LoginField label="비밀번호">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`${inputClass} pr-9`}
+                    placeholder=""
+                    autoComplete="current-password"
+                    required
+                  />
+                </LoginField>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
+                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-gray-500 dark:text-gray-400"
+                >
+                  {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
 
               <div className="flex justify-end">
                 <button

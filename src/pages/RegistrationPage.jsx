@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, CaretDown, CaretLeft, EnvelopeSimple, UserCircle } from '@phosphor-icons/react';
+import { Camera, CaretDown, CaretLeft, EnvelopeSimple, Eye, EyeSlash, UserCircle } from '@phosphor-icons/react';
 import Cropper from 'react-easy-crop';
 import { useRegisterMember } from '../hooks/useRegisterMember';
 import { getYearOptions } from '../domain/member/memberRegistration';
@@ -410,7 +410,6 @@ const translations = {
     goToLogin: 'Go to login',
     alreadyHaveAccount: 'Already have an account?',
     logIn: 'Log in',
-      minCharacters: 'Min. 12 characters',
     selectGender: 'Select gender',
     selectNationality: 'Select nationality',
     selectUniversity: 'Select university',
@@ -456,7 +455,6 @@ const translations = {
     goToLogin: '로그인으로 이동',
     alreadyHaveAccount: '이미 계정이 있으신가요?',
     logIn: '로그인',
-    minCharacters: '최소 12자',
     selectGender: '성별 선택',
     selectNationality: '국적 선택',
     selectUniversity: '대학교 선택',
@@ -552,6 +550,8 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
 export default function RegistrationPage() {
   const navigate = useNavigate();
   const [language, setLanguage] = useState('ko');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const fileInputRef = useRef(null);
   const [profilePreviewUrl, setProfilePreviewUrl] = useState('');
   const [cropImageSrc, setCropImageSrc] = useState(null);
@@ -1183,7 +1183,7 @@ function AccountStep({
     formData.password &&
     formData.confirmPassword &&
     formData.password === formData.confirmPassword &&
-    formData.password.length >= 12 &&
+    formData.password.length >= 8 &&
     ageConfirmed &&
     allLegalAccepted;
 
@@ -1219,25 +1219,53 @@ function AccountStep({
 
           <Row>
             <Field label={t.password}>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                minLength={12}
-                style={s.input}
-                placeholder={t.minCharacters}
-              />
+              <div style={s.passwordInputRow}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  minLength={8}
+                  style={s.input}
+                  placeholder=""
+                  autoComplete="new-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={language === 'ko'
+                    ? (showPassword ? '비밀번호 숨기기' : '비밀번호 표시')
+                    : (showPassword ? 'Hide password' : 'Show password')}
+                  style={s.passwordToggle}
+                >
+                  {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </Field>
             <Field label={t.confirmPassword}>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                minLength={12}
-                style={s.input}
-              />
+              <div style={s.passwordInputRow}>
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  minLength={8}
+                  style={s.input}
+                  autoComplete="new-password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((visible) => !visible)}
+                  aria-label={language === 'ko'
+                    ? (showConfirmPassword ? '비밀번호 숨기기' : '비밀번호 표시')
+                    : (showConfirmPassword ? 'Hide password' : 'Show password')}
+                  style={s.passwordToggle}
+                >
+                  {showConfirmPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </Field>
           </Row>
 
@@ -1886,6 +1914,22 @@ const s = {
     backgroundColor: 'var(--reg-field-bg)',
     color: 'var(--reg-text)',
     minHeight: '20px',
+  },
+  passwordInputRow: {
+    display: 'flex',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  passwordToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    padding: '4px',
+    border: 'none',
+    background: 'transparent',
+    color: 'var(--reg-muted)',
+    cursor: 'pointer',
   },
   select: {
     padding: '0',
