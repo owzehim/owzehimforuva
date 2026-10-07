@@ -237,16 +237,35 @@ export default function SettingsPage() {
   }
 
   const syncRestaurantNotesProfile = async (profile) => {
-    if (!profile?.user_id || !profile.username?.trim()) return
+    if (!profile?.user_id) return
+
+    const { data: ownNotes, error: notesReadError } = await supabase
+      .from('restaurant_notes_safe')
+      .select('id')
+      .eq('is_mine', true)
+
+    if (notesReadError) throw notesReadError
+    const noteIds = (ownNotes || []).map((note) => note.id).filter(Boolean)
+    if (noteIds.length === 0) return
+
+    const username = profile.username?.trim() || ''
+    const noteProfile = username
+      ? {
+          username,
+          profile_image_url: profile.profile_image_url || null,
+          avatar_color_seed: getMemberAvatarSeed(profile),
+        }
+      : {
+          username: '익명',
+          is_anonymous: true,
+          profile_image_url: null,
+          avatar_color_seed: null,
+        }
 
     const { error: notesUpdateError } = await supabase
       .from('restaurant_notes')
-      .update({
-        username: profile.username.trim(),
-        profile_image_url: profile.profile_image_url || null,
-        avatar_color_seed: getMemberAvatarSeed(profile),
-      })
-      .eq('user_id', profile.user_id)
+      .update(noteProfile)
+      .in('id', noteIds)
 
     if (notesUpdateError) throw notesUpdateError
   }
