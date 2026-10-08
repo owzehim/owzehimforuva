@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { hasAdminRole } from '../lib/adminRoles'
 import { sanitizeRichText } from '../lib/sanitizeHtml'
@@ -168,7 +168,7 @@ function TimeInput({ value, onChange, className = '' }) {
 // ─── AdminPage ────────────────────────────────────────────────────────────────
 
 const ADMIN_ACTIVE_TAB_KEY = 'uvain_admin_active_tab'
-const ADMIN_TABS = ['members', 'events', 'restaurants']
+const ADMIN_TABS = ['members', 'events', 'restaurants', 'reports']
 const PUBLIC_IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/avif'
 
 async function uploadSanitizedPublicImage(bucket, file) {
@@ -255,6 +255,7 @@ export default function AdminPage() {
           { key: 'members', label: '멤버 관리' },
           { key: 'events', label: '이벤트' },
           { key: 'restaurants', label: '장소' },
+          { key: 'reports', label: '신고 검토' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -280,8 +281,167 @@ export default function AdminPage() {
           {activeTab === 'members' && <MembersTab />}
           {activeTab === 'events' && <EventsTab />}
           {activeTab === 'restaurants' && <RestaurantsTab />}
+          {activeTab === 'reports' && <ReportsTab />}
         </div>
       </div>
+    </div>
+  )
+}
+
+function ReportsTab() {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const loadReports = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    const [commentResult, noteResult] = await Promise.all([
+      supabase
+        .from('restaurant_comment_reports')
+        .select('id, comment_id, created_at, reviewed_at')
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabase
+        .from('restaurant_note_reports')
+        .select('id, note_id, created_at, reviewed_at')
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ])
+
+    if (commentResult.error || noteResult.error) {
+      setError('신고 목록을 불러오지 못했습니다.')
+      setLoading(false)
+      return
+    }
+
+    const commentReports = commentResult.data || []
+    const noteReports = noteResult.data || []
+    const commentIds = commentReports.map((report) => report.comment_id)
+    const noteIds = noteReports.map((report) => report.note_id)
+    const [commentsResult, notesResult] = await Promise.all([
+      commentIds.length
+        ? supabase
+            .from('restaurant_comments')
+            .select('id, username, is_anonymous, body, created_at')
+            .in('id', commentIds)
+        : Promise.resolve({ data: [], error: null }),
+      noteIds.length
+        ? supabase
+            .from('restaurant_notes')
+            .select('id, username, is_anonymous, body, created_at')
+            .in('id', noteIds)
+        : Promise.resolve({ data: [], error: null }),
+    ])
+
+    if (commentsResult.error || notesResult.error) {
+      setError('신고된 내용을 불러오지 못했습니다.')
+      setLoading(false)
+      return
+    }
+
+    const commentsById = new Map((commentsResult.data || []).map((row) => [row.id, row]))
+    const notesById = new Map((notesResult.data || []).map((row) => [row.id, row]))
+    setItems([
+      ...commentReports.map((report) => ({
+        ...report,
+        kind: '리뷰',
+        target: commentsById.get(report.comment_id),
+      })),
+      ...noteReports.map((report) => ({
+        ...report,
+        kind: '한마디',
+        target: notesById.get(report.note_id),
+      })),
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    loadReports()
+  }, [loadReports])
+
+  const markReviewed = async (item) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError('로그인이 필요합니다.')
+      return
+    }
+    const table = item.kind === '리뷰' ? 'restaurant_comment_reports' : 'restaurant_note_reports'
+    const { data: updatedReport, error: updateError } = await supabase
+      .from(table)
+      .update({ reviewed_at: new Date().toISOString(), reviewed_by: user.id })
+      .eq('id', item.id)
+      .is('reviewed_at', null)
+      .select('id')
+      .maybeSingle()
+    if (updateError || !updatedReport) {
+      setError('신고 상태를 저장하지 못했습니다.')
+      return
+    }
+    await loadReports()
+  }
+
+  const deleteReportedContent = async (item) => {
+    if (!item.target) return
+    if (!window.confirm('신고된 내용을 삭제할까요? 삭제하면 복구할 수 없습니다.')) return
+    const table = item.kind === '리뷰' ? 'restaurant_comments' : 'restaurant_notes'
+    const { data: deletedContent, error: deleteError } = await supabase
+      .from(table)
+      .delete()
+      .eq('id', item.target.id)
+      .select('id')
+      .maybeSingle()
+    if (deleteError || !deletedContent) {
+      setError('신고된 내용을 삭제하지 못했습니다.')
+      return
+    }
+    await loadReports()
+  }
+
+  if (loading) return <LoadingIndicator />
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-gray-900">리뷰·한마디 신고</h2>
+        <button onClick={loadReports} className="text-sm text-blue-600">새로고침</button>
+      </div>
+      {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {items.length === 0 ? (
+        <p className="rounded-xl bg-white p-5 text-sm text-gray-500">접수된 신고가 없습니다.</p>
+      ) : items.map((item) => (
+        <article key={`${item.kind}-${item.id}`} className="rounded-xl border border-gray-100 bg-white p-4 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-gray-500">
+              {item.kind} · {new Date(item.created_at).toLocaleString('nl-NL')}
+              {item.reviewed_at && <span className="ml-2 text-green-700">검토 완료</span>}
+            </div>
+            {!item.reviewed_at && (
+              <div className="flex shrink-0 gap-2">
+                {item.target && (
+                  <button onClick={() => deleteReportedContent(item)} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600">
+                    내용 삭제
+                  </button>
+                )}
+                <button onClick={() => markReviewed(item)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">
+                  검토 완료
+                </button>
+              </div>
+            )}
+          </div>
+          {item.target ? (
+            <>
+              <p className="text-sm font-medium text-gray-800">
+                {item.target.is_anonymous ? '익명' : item.target.username || '사용자'}
+              </p>
+              <p className="whitespace-pre-wrap break-words text-sm text-gray-700">{item.target.body}</p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-500">원문이 이미 삭제되었습니다.</p>
+          )}
+        </article>
+      ))}
     </div>
   )
 }
