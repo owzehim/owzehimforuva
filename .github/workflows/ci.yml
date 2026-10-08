@@ -26,5 +26,11 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Run automated tests
+        run: npm test
+
+      - name: Run ESLint
+        run: npm run lint
+
       - name: Build application
         run: npm run build
