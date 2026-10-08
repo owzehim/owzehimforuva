@@ -1,6 +1,9 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
+
+maplibregl.setWorkerUrl(maplibreWorkerUrl)
 
 import { getMapIconSvg } from '../lib/mapCategories'
 import { MapPinSimple } from '@phosphor-icons/react'
@@ -25,7 +28,11 @@ if (typeof window !== 'undefined' && !document.getElementById('map-view-performa
     .maplibregl-ctrl-top-left { display: none !important; }
     .maplibregl-ctrl-top-right { display: none !important; }
     .maplibregl-ctrl-bottom-left { display: none !important; }
-    .maplibregl-ctrl-bottom-right { display: none !important; }
+    .maplibregl-ctrl-attrib {
+      font-size: 10px !important;
+      line-height: 16px !important;
+      padding: 0 4px !important;
+    }
     
     .custom-marker[data-selected="true"] .marker-circle {
       border: 3px solid #f97316 !important;
@@ -38,6 +45,7 @@ if (typeof window !== 'undefined' && !document.getElementById('map-view-performa
 const API_KEY = import.meta.env.VITE_MAPTILER_API_KEY
 const LIGHT_MAP_STYLE_ID = '019eb88d-92dc-70b4-b9c2-008b7e4a977d'
 const DARK_MAP_STYLE_ID = '019e33af-3185-79df-9f26-1bc6d896eeee'
+
 function getMapStyleUrl(isDark) {
   const styleId = isDark ? DARK_MAP_STYLE_ID : LIGHT_MAP_STYLE_ID
   return `https://api.maptiler.com/maps/${styleId}/style.json?key=${API_KEY}`
@@ -211,7 +219,7 @@ export default function MapView({ restaurants, selected, onSelect }) {
       center: [4.9041, 52.3676],
       zoom: 13,
       antialias: false,
-      attributionControl: false,
+      attributionControl: { compact: false },
       fadeDuration: 0,
       optimizeForTerrain: false,
       preserveDrawingBuffer: false,
@@ -464,6 +472,29 @@ export default function MapView({ restaurants, selected, onSelect }) {
           zIndex: 1,
         }}
       />
+      <a
+        href="https://www.maptiler.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="MapTiler 웹사이트 열기"
+        style={{
+          position: 'absolute',
+          left: '10px',
+          bottom: '10px',
+          zIndex: 2,
+          display: 'block',
+          width: '68px',
+          padding: '2px 4px',
+          borderRadius: '4px',
+          background: 'rgba(255,255,255,0.9)',
+        }}
+      >
+        <img
+          src="https://api.maptiler.com/resources/logo.svg"
+          alt="MapTiler"
+          style={{ display: 'block', width: '100%', height: 'auto' }}
+        />
+      </a>
       <button
         onClick={toggleLocationTracking}
         aria-pressed={isTrackingLocation}
