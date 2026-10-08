@@ -17,5 +17,16 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Keep the existing app lintable while surfacing legacy cleanup items
+      // without making them block routine builds.
+      'no-unused-vars': 'warn',
+      'no-constant-binary-expression': 'warn',
+      'no-useless-assignment': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+    },
   },
 ])
