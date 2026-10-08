@@ -5,25 +5,11 @@ import { sanitizeRichText } from '../lib/sanitizeHtml'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { useNavigate } from 'react-router-dom'
 import { ImageCropper } from '../components/ImageCropper'
-import { preparePublicImage } from '../lib/preparePublicImage'
 import { Plus, MapPin, Ticket, StarFour } from '@phosphor-icons/react'
 import StampCardEditPanel from '../features/stampCard/components/StampCardEditPanel'
 import StampCardMemberPanel from '../features/stampCard/components/StampCardMemberPanel'
 import { fetchConfigBySpot } from '../features/stampCard/api/config'
-
-async function uploadSanitizedPublicImage(bucketName, file) {
-  const sanitizedFile = await preparePublicImage(file)
-  const { error } = await supabase.storage
-    .from(bucketName)
-    .upload(sanitizedFile.name, sanitizedFile, {
-      contentType: sanitizedFile.type,
-      upsert: false,
-    })
-  if (error) throw error
-
-  const { data } = supabase.storage.from(bucketName).getPublicUrl(sanitizedFile.name)
-  return data.publicUrl
-}
+import { preparePublicImage } from '../lib/preparePublicImage'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -183,6 +169,15 @@ function TimeInput({ value, onChange, className = '' }) {
 
 const ADMIN_ACTIVE_TAB_KEY = 'uvain_admin_active_tab'
 const ADMIN_TABS = ['members', 'events', 'restaurants']
+const PUBLIC_IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/avif'
+
+async function uploadSanitizedPublicImage(bucket, file) {
+  const preparedFile = await preparePublicImage(file)
+  const { error } = await supabase.storage.from(bucket).upload(preparedFile.name, preparedFile)
+  if (error) throw error
+  const { data } = supabase.storage.from(bucket).getPublicUrl(preparedFile.name)
+  return data.publicUrl
+}
 
 function getStoredAdminTab() {
   if (typeof window === 'undefined') return 'members'
@@ -554,7 +549,7 @@ function ImageUploadPanel({
           </div>
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
+            accept={PUBLIC_IMAGE_TYPES}
             multiple
             className="hidden"
             onChange={handleFileSelect}
@@ -567,7 +562,7 @@ function ImageUploadPanel({
           </div>
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
+            accept={PUBLIC_IMAGE_TYPES}
             className="hidden"
             onChange={handleFileSelectForCrop}
           />
@@ -1408,25 +1403,23 @@ function EventsTab() {
     let image_urls = [...(editTarget?.image_urls || [])]
 
     for (const { idx, file } of pendingReplacements) {
-      const oldFileName = image_urls[idx]?.split('/').pop()
-      let publicUrl
       try {
-        publicUrl = await uploadSanitizedPublicImage('event-images', file)
+        const imageUrl = await uploadSanitizedPublicImage('event-images', file)
+        const oldFileName = image_urls[idx]?.split('/').pop()
+        if (oldFileName) await supabase.storage.from('event-images').remove([oldFileName])
+        image_urls[idx] = imageUrl
       } catch (error) {
-        alert('이미지 업로드 실패: ' + error.message)
+        alert('이미지 업로드 실패: ' + (error?.message || '이미지 파일을 처리하지 못했습니다.'))
         setUploading(false)
         return
       }
-      if (oldFileName) await supabase.storage.from('event-images').remove([oldFileName])
-      image_urls[idx] = publicUrl
     }
 
     for (const file of imageFiles) {
       try {
-        const publicUrl = await uploadSanitizedPublicImage('event-images', file)
-        image_urls = [...image_urls, publicUrl]
+        image_urls = [...image_urls, await uploadSanitizedPublicImage('event-images', file)]
       } catch (error) {
-        alert('이미지 업로드 실패: ' + error.message)
+        alert('이미지 업로드 실패: ' + (error?.message || '이미지 파일을 처리하지 못했습니다.'))
         setUploading(false)
         return
       }
@@ -2280,26 +2273,24 @@ function RestaurantsTab() {
 
     // Apply pending replacements
     for (const { idx, file } of pendingReplacements) {
-      const oldFileName = image_urls[idx]?.split('/').pop()
-      let publicUrl
       try {
-        publicUrl = await uploadSanitizedPublicImage('place-images', file)
+        const imageUrl = await uploadSanitizedPublicImage('place-images', file)
+        const oldFileName = image_urls[idx]?.split('/').pop()
+        if (oldFileName) await supabase.storage.from('place-images').remove([oldFileName])
+        image_urls[idx] = imageUrl
       } catch (error) {
-        alert('이미지 업로드 실패: ' + error.message)
+        alert('이미지 업로드 실패: ' + (error?.message || '이미지 파일을 처리하지 못했습니다.'))
         setUploading(false)
         return
       }
-      if (oldFileName) await supabase.storage.from('place-images').remove([oldFileName])
-      image_urls[idx] = publicUrl
     }
 
     // New images
     for (const file of imageFiles) {
       try {
-        const publicUrl = await uploadSanitizedPublicImage('place-images', file)
-        image_urls = [...image_urls, publicUrl]
+        image_urls = [...image_urls, await uploadSanitizedPublicImage('place-images', file)]
       } catch (error) {
-        alert('이미지 업로드 실패: ' + error.message)
+        alert('이미지 업로드 실패: ' + (error?.message || '이미지 파일을 처리하지 못했습니다.'))
         setUploading(false)
         return
       }
