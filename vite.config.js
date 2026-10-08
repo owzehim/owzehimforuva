@@ -18,7 +18,7 @@ export default defineConfig({
       manifest: {
         name: 'UvA-IN 멤버십',
         short_name: 'UvA-IN',
-        description: 'University of Amsterdam 한국인 학생회 멤버십 앱',
+        description: 'UvA-IN 회원용 멤버십 앱',
         theme_color: '#2563eb',
         background_color: '#ffffff',
         display: 'fullscreen',
