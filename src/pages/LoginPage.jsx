@@ -81,7 +81,7 @@ export default function LoginPage() {
               <div className="mb-8 text-center">
                 <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">UvA-IN</h1>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                  네덜란드 유학생을 위한 공식 커뮤니티
+                  네덜란드 유학생을 위한 커뮤니티
                 </p>
               </div>
             </>

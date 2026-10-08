@@ -94,7 +94,7 @@ export default function VerifyPage() {
         <div className="text-center mb-6">
           <h1 className="font-bold text-gray-900 text-lg">UvA-IN Membership</h1>
           <p className="text-xs text-gray-400 mt-1">
-            University of Amsterdam Korean Student Association
+            UvA-IN Student Association
           </p>
         </div>
 
