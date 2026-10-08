@@ -77,3 +77,7 @@ entrypoint = "./functions/verify-member-qr/index.ts"
 [functions.moderate-comment]
 enabled = true
 verify_jwt = true
+
+[functions.translate-note]
+enabled = true
+verify_jwt = true

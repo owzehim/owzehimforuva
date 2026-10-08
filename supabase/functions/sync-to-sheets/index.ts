@@ -43,8 +43,10 @@ async function postJsonToAppsScript(url: string | null | undefined, payload: Rec
 
     return { ok: true, body, label }
   } catch (error) {
-    console.error(`${label} sheet sync threw:`, error)
-    return { ok: false, error: error instanceof Error ? error.message : String(error), label }
+    // Do not retain exception text in results that may later be returned to
+    // callers; fetch errors can include the integration URL or other details.
+    console.error(`${label} sheet sync failed unexpectedly`)
+    return { ok: false, label }
   }
 }
 
