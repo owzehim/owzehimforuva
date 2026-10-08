@@ -14,9 +14,7 @@ By creating an account or using UvA-IN, you agree to these Terms. If you do not 
 
 1. About UvA-IN
 
-UvA-IN is an independent student membership platform that connects verified students with participating restaurants and local businesses through exclusive offers, digital rewards, and community experiences.
-
-UvA-IN is not affiliated with, endorsed by, or operated by the University of Amsterdam or any other educational institution.
+UvA-IN is the membership app operated by the UvA-IN student association. It connects members with participating restaurants and local businesses through offers, digital rewards, and community experiences.
 
 2. Eligibility
 
@@ -111,9 +109,7 @@ UvA-IN complies with the General Data Protection Regulation and applicable Dutch
 
 1. Who We Are
 
-UvA-IN is an independent student membership platform that connects verified students with participating restaurants and local businesses through exclusive offers, digital rewards, and community experiences.
-
-UvA-IN is not affiliated with, endorsed by, or operated by the University of Amsterdam or any other educational institution.
+UvA-IN is the membership app operated by the UvA-IN student association. It connects members with participating restaurants and local businesses through offers, digital rewards, and community experiences.
 
 Data controller: Woojay Lim
 Website: www.uva-in.nl
