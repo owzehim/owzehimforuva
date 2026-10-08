@@ -41,7 +41,7 @@ serve(async (req) => {
     const lastName = typeof body?.last_name === 'string' ? body.last_name.trim() : ''
     const studentNumber = typeof body?.student_number === 'string' ? body.student_number.trim() : ''
     const major = typeof body?.major === 'string' ? body.major.trim() : ''
-    const skipEmailConfirmation = ['admin@uvain.nl', 'test@uvain.nl'].includes(email)
+    const skipEmailConfirmation = email === 'test@uvain.nl'
     const isTestAccount = email === 'test@uvain.nl'
     const isMember = body?.is_member === true
     const membershipValidUntil = body?.membership_valid_until ?? null

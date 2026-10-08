@@ -5,10 +5,25 @@ import { sanitizeRichText } from '../lib/sanitizeHtml'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { useNavigate } from 'react-router-dom'
 import { ImageCropper } from '../components/ImageCropper'
+import { preparePublicImage } from '../lib/preparePublicImage'
 import { Plus, MapPin, Ticket, StarFour } from '@phosphor-icons/react'
 import StampCardEditPanel from '../features/stampCard/components/StampCardEditPanel'
 import StampCardMemberPanel from '../features/stampCard/components/StampCardMemberPanel'
 import { fetchConfigBySpot } from '../features/stampCard/api/config'
+
+async function uploadSanitizedPublicImage(bucketName, file) {
+  const sanitizedFile = await preparePublicImage(file)
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .upload(sanitizedFile.name, sanitizedFile, {
+      contentType: sanitizedFile.type,
+      upsert: false,
+    })
+  if (error) throw error
+
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(sanitizedFile.name)
+  return data.publicUrl
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -539,7 +554,7 @@ function ImageUploadPanel({
           </div>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/avif"
             multiple
             className="hidden"
             onChange={handleFileSelect}
@@ -552,7 +567,7 @@ function ImageUploadPanel({
           </div>
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/avif"
             className="hidden"
             onChange={handleFileSelectForCrop}
           />
@@ -1394,40 +1409,27 @@ function EventsTab() {
 
     for (const { idx, file } of pendingReplacements) {
       const oldFileName = image_urls[idx]?.split('/').pop()
-      if (oldFileName) {
-        await supabase.storage.from('event-images').remove([oldFileName])
-      }
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${crypto.randomUUID()}.${fileExt}`
-      const { error } = await supabase.storage
-        .from('event-images')
-        .upload(fileName, file)
-      if (error) {
-        alert('업로드 실패: ' + error.message)
+      let publicUrl
+      try {
+        publicUrl = await uploadSanitizedPublicImage('event-images', file)
+      } catch (error) {
+        alert('이미지 업로드 실패: ' + error.message)
         setUploading(false)
         return
       }
-      const { data: urlData } = supabase.storage
-        .from('event-images')
-        .getPublicUrl(fileName)
-      image_urls[idx] = urlData.publicUrl
+      if (oldFileName) await supabase.storage.from('event-images').remove([oldFileName])
+      image_urls[idx] = publicUrl
     }
 
     for (const file of imageFiles) {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${crypto.randomUUID()}.${fileExt}`
-      const { error: uploadError } = await supabase.storage
-        .from('event-images')
-        .upload(fileName, file)
-      if (uploadError) {
-        alert('업로드 실패: ' + uploadError.message)
+      try {
+        const publicUrl = await uploadSanitizedPublicImage('event-images', file)
+        image_urls = [...image_urls, publicUrl]
+      } catch (error) {
+        alert('이미지 업로드 실패: ' + error.message)
         setUploading(false)
         return
       }
-      const { data: urlData } = supabase.storage
-        .from('event-images')
-        .getPublicUrl(fileName)
-      image_urls = [...image_urls, urlData.publicUrl]
     }
 
     const payload = {
@@ -2279,41 +2281,28 @@ function RestaurantsTab() {
     // Apply pending replacements
     for (const { idx, file } of pendingReplacements) {
       const oldFileName = image_urls[idx]?.split('/').pop()
-      if (oldFileName) {
-        await supabase.storage.from('place-images').remove([oldFileName])
-      }
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${crypto.randomUUID()}.${fileExt}`
-      const { error } = await supabase.storage
-        .from('place-images')
-        .upload(fileName, file)
-      if (error) {
-        alert('업로드 실패: ' + error.message)
+      let publicUrl
+      try {
+        publicUrl = await uploadSanitizedPublicImage('place-images', file)
+      } catch (error) {
+        alert('이미지 업로드 실패: ' + error.message)
         setUploading(false)
         return
       }
-      const { data: urlData } = supabase.storage
-        .from('place-images')
-        .getPublicUrl(fileName)
-      image_urls[idx] = urlData.publicUrl
+      if (oldFileName) await supabase.storage.from('place-images').remove([oldFileName])
+      image_urls[idx] = publicUrl
     }
 
     // New images
     for (const file of imageFiles) {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${crypto.randomUUID()}.${fileExt}`
-      const { error: uploadError } = await supabase.storage
-        .from('place-images')
-        .upload(fileName, file)
-      if (uploadError) {
-        alert('업로드 실패: ' + uploadError.message)
+      try {
+        const publicUrl = await uploadSanitizedPublicImage('place-images', file)
+        image_urls = [...image_urls, publicUrl]
+      } catch (error) {
+        alert('이미지 업로드 실패: ' + error.message)
         setUploading(false)
         return
       }
-      const { data: urlData } = supabase.storage
-        .from('place-images')
-        .getPublicUrl(fileName)
-      image_urls = [...image_urls, urlData.publicUrl]
     }
 
     const payload = {
