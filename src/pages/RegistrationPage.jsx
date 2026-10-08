@@ -550,8 +550,6 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
 export default function RegistrationPage() {
   const navigate = useNavigate();
   const [language, setLanguage] = useState('ko');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const fileInputRef = useRef(null);
   const [profilePreviewUrl, setProfilePreviewUrl] = useState('');
   const [cropImageSrc, setCropImageSrc] = useState(null);
@@ -1177,6 +1175,8 @@ function AccountStep({
   onOpenLegalDocument,
   profileHeroProps,
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const allLegalAccepted = Object.values(legalAgreements).every(Boolean);
   const isComplete =
     formData.email &&
@@ -1226,7 +1226,7 @@ function AccountStep({
                   value={formData.password}
                   onChange={handleChange}
                   minLength={8}
-                  style={s.input}
+                  style={{ ...s.input, paddingRight: '44px' }}
                   placeholder=""
                   autoComplete="new-password"
                   required
@@ -1251,7 +1251,7 @@ function AccountStep({
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   minLength={8}
-                  style={s.input}
+                  style={{ ...s.input, paddingRight: '44px' }}
                   autoComplete="new-password"
                   required
                 />
@@ -1916,16 +1916,20 @@ const s = {
     minHeight: '20px',
   },
   passwordInputRow: {
-    display: 'flex',
-    alignItems: 'center',
+    position: 'relative',
     minWidth: 0,
   },
   passwordToggle: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-    padding: '4px',
+    position: 'absolute',
+    top: '50%',
+    right: '8px',
+    transform: 'translateY(-50%)',
+    width: '32px',
+    height: '32px',
+    padding: 0,
     border: 'none',
     background: 'transparent',
     color: 'var(--reg-muted)',
