@@ -33,7 +33,7 @@ CREATE OR REPLACE FUNCTION public.log_admin_action()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = pg_catalog, public, pg_temp
+SET search_path = ''
 AS $function$
 DECLARE
   old_row jsonb;
