@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
-import { hasAal2, hasActiveDeviceSession } from '../_shared/requireAal2.ts'
+import { hasVerifiedAppLogin, hasActiveDeviceSession } from '../_shared/requireVerifiedLogin.ts'
 import { recordAdminAction } from '../_shared/adminAudit.ts'
 
 const allowedFields = new Set([
@@ -123,8 +123,8 @@ serve(async (req) => {
     if (userError || !caller) {
       return json({ success: false, message: '로그인이 필요합니다.' }, 401)
     }
-    if (!(await hasAal2(admin, token))) {
-      return json({ success: false, message: '계속하려면 2단계 인증을 완료해 주세요.' }, 403)
+    if (!hasVerifiedAppLogin(token, caller.id)) {
+      return json({ success: false, message: '이메일 인증을 포함해 다시 로그인해 주세요.' }, 403)
     }
     if (!(await hasActiveDeviceSession(admin, caller.id, token))) {
       return json({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }, 403)

@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
-import { hasAal2, hasActiveDeviceSession, requireAal2Response } from '../_shared/requireAal2.ts'
+import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
 function decodeClaims(token: string): Record<string, unknown> | null {
@@ -69,7 +69,7 @@ serve(async (req) => {
       return json({ success: false, message: '다시 로그인하고 이메일 인증을 완료해 주세요.' }, 401)
     }
 
-    if (!(await hasAal2(admin, token))) return requireAal2Response(corsHeaders)
+    if (!hasVerifiedAppLogin(token, user.id)) return requireVerifiedLoginResponse(corsHeaders)
     if (!(await hasActiveDeviceSession(admin, user.id, token))) {
       return json({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }, 403)
     }

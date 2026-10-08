@@ -3,13 +3,9 @@
 // Pure business rules for authentication.
 // ✅ Copy as-is to React Native — zero React/web dependencies.
 
-/**
- * These two explicitly allowlisted accounts skip email OTP. The server-side
- * Auth Hook independently grants the corresponding account IDs.
- */
+/** Only the designated test account skips email OTP. */
 const OTP_EXEMPT_EMAILS = [
   'test@uvain.nl',
-  'admin@uvain.nl',
 ]
 
 /**

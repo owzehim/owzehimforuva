@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
-import { hasAal2, hasActiveDeviceSession, requireAal2Response } from '../_shared/requireAal2.ts'
+import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { sheetText } from '../_shared/sheetText.js'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
@@ -95,7 +95,7 @@ serve(async (req) => {
     const { data: userData, error: userError } = await admin.auth.getUser(token)
     const user = userData?.user
     if (userError || !user) return json({ success: false, message: '로그인이 필요합니다.' }, 401)
-    if (!(await hasAal2(admin, token))) return requireAal2Response(corsHeaders)
+    if (!hasVerifiedAppLogin(token, user.id)) return requireVerifiedLoginResponse(corsHeaders)
     if (!(await hasActiveDeviceSession(admin, userData.user.id, token))) {
       return new Response(
         JSON.stringify({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }),
