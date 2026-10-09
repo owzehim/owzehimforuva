@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
+import { isMembershipActive } from '../_shared/membershipStatus.js'
 import { sheetText } from '../_shared/sheetText.js'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
@@ -101,6 +102,20 @@ serve(async (req) => {
         JSON.stringify({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
+    }
+
+    const { data: member, error: memberError } = await admin
+      .from('members')
+      .select('is_member, account_status, identity_anonymized_at, membership_valid_until')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (memberError) {
+      console.error('Membership status lookup failed:', memberError)
+      return json({ success: false, message: '멤버십 상태를 확인하지 못했습니다.' }, 500)
+    }
+    if (!isMembershipActive(member)) {
+      return json({ success: false, message: '현재 사용할 수 있는 멤버십이 아닙니다.' }, 403)
     }
 
     const { data: reward, error: rewardError } = await admin
