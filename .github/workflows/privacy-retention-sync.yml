@@ -1,0 +1,35 @@
+name: Daily privacy retention
+
+on:
+  schedule:
+    - cron: '15 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retention:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run the privacy retention job
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          RETENTION_JOB_SECRET: ${{ secrets.RETENTION_JOB_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$SUPABASE_URL" || -z "$RETENTION_JOB_SECRET" ]]; then
+            echo "Set SUPABASE_URL and RETENTION_JOB_SECRET in GitHub Actions secrets."
+            exit 1
+          fi
+
+          response="$(curl --fail-with-body --silent --show-error --max-time 120 \
+            --request POST "$SUPABASE_URL/functions/v1/privacy-retention-sync" \
+            --header 'content-type: application/json' \
+            --header "x-retention-secret: $RETENTION_JOB_SECRET" \
+            --data '{}')"
+
+          echo "$response" | jq -e '.success == true' >/dev/null
+          echo "$response" | jq '{success, newly_queued_count, attempted_count, sheet_synced_count, sheet_failed_count}'
