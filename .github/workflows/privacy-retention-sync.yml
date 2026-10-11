@@ -15,13 +15,13 @@ jobs:
     steps:
       - name: Run the privacy retention job
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: https://npvcghdzrtqrlliprtnw.supabase.co
           RETENTION_JOB_SECRET: ${{ secrets.RETENTION_JOB_SECRET }}
         run: |
           set -euo pipefail
 
-          if [[ -z "$SUPABASE_URL" || -z "$RETENTION_JOB_SECRET" ]]; then
-            echo "Set SUPABASE_URL and RETENTION_JOB_SECRET in GitHub Actions secrets."
+          if [[ -z "$RETENTION_JOB_SECRET" ]]; then
+            echo "Set RETENTION_JOB_SECRET in GitHub Actions secrets."
             exit 1
           fi
 
