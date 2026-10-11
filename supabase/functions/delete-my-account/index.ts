@@ -6,6 +6,30 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
+async function anonymizeMasterSheet(admin: any, userId: string) {
+  const { data: integration, error } = await admin
+    .from('partnership_integrations')
+    .select('master_apps_script_url')
+    .not('master_apps_script_url', 'is', null)
+    .limit(1)
+    .maybeSingle()
+  if (error) throw new Error('Master Sheet integration lookup failed')
+  const url = integration?.master_apps_script_url
+  if (!url) throw new Error('Master Sheet privacy endpoint is not configured')
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(withAppsScriptSecret(
+      { type: 'privacy_anonymize', user_id: userId },
+      Deno.env.get('APPS_SCRIPT_SHARED_SECRET'),
+    )),
+  })
+  const body = await response.json().catch(() => null)
+  if (!response.ok || body?.success !== true) {
+    throw new Error('Master Sheet anonymization was not confirmed')
+  }
+}
+
 function decodeClaims(token: string): Record<string, unknown> | null {
   try {
     const payload = token.split('.')[1]
@@ -16,19 +40,6 @@ function decodeClaims(token: string): Record<string, unknown> | null {
   } catch {
     return null
   }
-}
-
-async function anonymizeMasterSheet(userId: string) {
-  const url = Deno.env.get('MASTER_SHEET_APPS_SCRIPT_URL')
-  if (!url) throw new Error('Master Sheet privacy endpoint is not configured')
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(withAppsScriptSecret({ type: 'privacy_anonymize', user_id: userId }, Deno.env.get('APPS_SCRIPT_SHARED_SECRET'))),
-  })
-  const body = await response.json().catch(() => null)
-  if (!response.ok || body?.success !== true) throw new Error('Master Sheet anonymization was not confirmed')
 }
 
 serve(async (req) => {
@@ -90,9 +101,9 @@ serve(async (req) => {
       }
     }
 
-    // Keep the master tracker usable while removing its direct identity fields.
-    // Fail closed before deleting the Auth account if Sheets cannot confirm.
-    await anonymizeMasterSheet(user.id)
+    // The master sheet still has identifying fields. Anonymize it before the
+    // member row and Auth identity are irreversibly removed.
+    await anonymizeMasterSheet(admin, user.id)
 
     const { error: imageError } = await admin.storage
       .from('profile-images')

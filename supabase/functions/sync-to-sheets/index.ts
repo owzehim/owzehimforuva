@@ -9,42 +9,26 @@ import { readJsonBody, RequestBodyTooLargeError } from '../_shared/readJsonBody.
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
 async function postJsonToAppsScript(url: string | null | undefined, payload: Record<string, unknown>, label: string) {
-  if (!url) {
-    console.warn(`Skipping ${label} sheet sync: missing Apps Script URL`)
-    return { ok: false, skipped: true, label }
-  }
-
+  if (!url) return { ok: false, skipped: true, label }
   try {
-    const res = await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(withAppsScriptSecret(payload, Deno.env.get('APPS_SCRIPT_SHARED_SECRET'))),
     })
-    const text = await res.text().catch(() => '')
-
-    if (!res.ok) {
-      // Apps Script error bodies can echo submitted member data; keep them out
-      // of Edge Function logs and client-visible response objects.
-      console.error(`${label} sheet sync failed:`, res.status)
-      return { ok: false, status: res.status, label }
-    }
-
-    let body: unknown = text
-    try {
-      body = text ? JSON.parse(text) : null
-    } catch {
-      // Apps Script may return plain text if the deployment is misconfigured.
-    }
-
-    if (body && typeof body === 'object' && 'success' in body && !(body as { success?: boolean }).success) {
-      console.error(`${label} Apps Script returned failure`)
+    const text = await response.text().catch(() => '')
+    if (!response.ok) {
+      console.error(`${label} sheet sync failed:`, response.status)
       return { ok: false, label }
     }
-
-    return { ok: true, body, label }
-  } catch (error) {
-    // Do not retain exception text in results that may later be returned to
-    // callers; fetch errors can include the integration URL or other details.
+    try {
+      const result = text ? JSON.parse(text) : null
+      if (result && typeof result === 'object' && result.success === false) return { ok: false, label }
+    } catch {
+      // Apps Script deployments can return plain text on errors.
+    }
+    return { ok: true, label }
+  } catch {
     console.error(`${label} sheet sync failed unexpectedly`)
     return { ok: false, label }
   }
@@ -158,56 +142,22 @@ serve(async (req) => {
       )
     }
 
-    // ── Fetch public store details and private webhook URLs ───
     const { data: partnership, error: partnershipError } = await admin
       .from('partnerships')
       .select('name, sheet_name')
       .eq('id', redemption.store_id)
-      .single()
-
-    if (partnershipError || !partnership) {
-      console.error('Partnership lookup failed:', partnershipError)
-      return new Response(
-        JSON.stringify({ success: false, message: '매장 정보를 찾을 수 없습니다.' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
-    }
-
+      .maybeSingle()
     const { data: integrations, error: integrationsError } = await admin
       .from('partnership_integrations')
       .select('master_apps_script_url, partner_apps_script_url')
       .eq('partnership_id', redemption.store_id)
       .maybeSingle()
-
-    if (integrationsError) {
-      console.error('Partnership integration lookup failed:', integrationsError)
+    if (partnershipError || integrationsError || !partnership) {
+      console.error('Review sheet configuration lookup failed')
       return new Response(
         JSON.stringify({ success: false, message: '매장 연동 설정을 확인하지 못했습니다.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
-    }
-
-    const rating = Number(review.rating)
-    const validTags = new Set(['GREAT_FOOD', 'FRIENDLY_STAFF', 'NICE_ATMOSPHERE', 'GOOD_VALUE'])
-    const tagsArray = Array.isArray(review.tags)
-      ? review.tags.filter((tag: unknown) => typeof tag === 'string' && validTags.has(tag)).slice(0, 4)
-      : []
-    if (!Number.isInteger(rating * 2) || rating < 0.5 || rating > 5) {
-      return new Response(
-        JSON.stringify({ success: false, message: '필수 항목이 누락되었습니다.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
-    }
-
-    // ── Build review payload for both sheets ──────────────────
-    const reviewPayload = {
-      type:           'review',
-      partnership_id:  redemption.store_id,
-      sheet_name:     sheetText(partnership.sheet_name || partnership.name, 160),
-      redemption_id:  String(redemption_id),
-      rating:         rating,
-      tags:           tagsArray,   // Apps Script reads tags.includes('GREAT_FOOD') etc.
-      comment:        sheetText(review.comment, 2000),
     }
 
     if (shouldUpdateReviewComment) {
@@ -225,22 +175,35 @@ serve(async (req) => {
         )
       }
       review.comment = requestedReviewComment?.trim() || null
-      reviewPayload.comment = sheetText(review.comment, 2000)
     }
 
-    // Partner-owned trackers can be shared with restaurant staff. Keep free-
-    // text review content in the master sheet only; it may identify a member.
-    const partnerReviewPayload = { ...reviewPayload, comment: '' }
-
-    // ── POST to both Apps Scripts ─────────────────────────────
+    const rating = Number(review.rating)
+    const validTags = new Set(['GREAT_FOOD', 'FRIENDLY_STAFF', 'NICE_ATMOSPHERE', 'GOOD_VALUE'])
+    const tags = Array.isArray(review.tags)
+      ? review.tags.filter((tag: unknown) => typeof tag === 'string' && validTags.has(tag)).slice(0, 4)
+      : []
+    const now = new Date()
+    const reviewPayload = {
+      type: 'review',
+      partnership_id: redemption.store_id,
+      sheet_name: sheetText(partnership.sheet_name || partnership.name, 160),
+      redemption_id: String(redemption_id),
+      rating,
+      tags,
+      comment: sheetText(review.comment || '', 2000),
+      review_submitted_at_date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' }),
+      review_submitted_at_time: now.toLocaleTimeString('en-GB', {
+        timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit',
+      }),
+    }
+    const partnerPayload = { ...reviewPayload, comment: '' }
     const syncResults = await Promise.all([
       postJsonToAppsScript(integrations?.master_apps_script_url, reviewPayload, 'master'),
-      postJsonToAppsScript(integrations?.partner_apps_script_url, partnerReviewPayload, 'partner'),
+      postJsonToAppsScript(integrations?.partner_apps_script_url, partnerPayload, 'partner'),
     ])
-
     const requiredSyncFailed = shouldUpdateReviewComment
       ? !syncResults[0]?.ok
-      : syncResults.some((result) => !result.ok)
+      : syncResults.some(result => !result.ok)
     if (requiredSyncFailed) {
       return new Response(
         JSON.stringify({ success: false, message: '리뷰 기록을 모두 동기화하지 못했습니다.' }),

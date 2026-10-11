@@ -4,20 +4,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
-import { isMembershipActive } from '../_shared/membershipStatus.js'
 import { sheetText } from '../_shared/sheetText.js'
+import { isMembershipActive } from '../_shared/membershipStatus.js'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
-async function syncClaimToAppsScript(
-  url: string | null | undefined,
-  label: string,
-  payload: Record<string, unknown>,
-) {
-  if (!url) {
-    console.warn(`Skipping ${label} reward claim sync: missing Apps Script URL`)
-    return { ok: false, skipped: true }
-  }
-
+async function syncClaimToAppsScript(url: string | null | undefined, label: string, payload: Record<string, unknown>) {
+  if (!url) return { ok: false, skipped: true, label }
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -26,25 +18,19 @@ async function syncClaimToAppsScript(
     })
     const text = await response.text().catch(() => '')
     if (!response.ok) {
-      // Avoid logging an external response that might contain submitted data.
       console.error(`${label} reward claim sync failed:`, response.status)
-      return { ok: false, status: response.status }
+      return { ok: false, status: response.status, label }
     }
-
     try {
       const result = text ? JSON.parse(text) : null
-      if (result && typeof result === 'object' && result.success === false) {
-        console.error(`${label} Apps Script returned failure`)
-        return { ok: false }
-      }
+      if (result && typeof result === 'object' && result.success === false) return { ok: false, label }
     } catch {
-      // Apps Script may return plain text when the request succeeds.
+      // Apps Script may return plain text on deployment errors.
     }
-
-    return { ok: true }
-  } catch (error) {
-    console.error(`${label} reward claim sync threw:`, error)
-    return { ok: false }
+    return { ok: true, label }
+  } catch {
+    console.error(`${label} reward claim sync failed unexpectedly`)
+    return { ok: false, label }
   }
 }
 
@@ -153,7 +139,7 @@ serve(async (req) => {
 
     const { data: restaurantById, error: restaurantLookupError } = await admin
       .from('restaurants')
-      .select('id')
+      .select('id, redeemed_at')
       .eq('id', storeId)
       .maybeSingle()
 
@@ -183,9 +169,10 @@ serve(async (req) => {
 
     // The redeemed=false predicate makes this a one-way, atomic state change:
     // concurrent or repeated claims can update the reward only once.
+    const claimedAt = new Date()
     const { data: updatedReward, error: updateError } = await admin
       .from('stamp_card_rewards')
-      .update({ redeemed: true, redeemed_at: new Date().toISOString() })
+      .update({ redeemed: true, redeemed_at: claimedAt.toISOString() })
       .eq('id', rewardId)
       .eq('user_id', user.id)
       .eq('restaurant_id', restaurantId)
@@ -206,38 +193,37 @@ serve(async (req) => {
       .select('name, sheet_name')
       .eq('id', storeId)
       .maybeSingle()
-
-    if (partnershipError || !partnership) {
-      console.error('Reward claim partnership lookup failed:', partnershipError)
-      return json({ success: true, sheetSync: { success: false } })
-    }
-
     const { data: integrations, error: integrationsError } = await admin
       .from('partnership_integrations')
       .select('master_apps_script_url, partner_apps_script_url')
       .eq('partnership_id', storeId)
       .maybeSingle()
-
-    if (integrationsError) {
-      console.error('Reward claim integration lookup failed:', integrationsError)
+    if (partnershipError || integrationsError) {
+      console.error('Reward claim sheet configuration lookup failed')
       return json({ success: true, sheetSync: { success: false } })
     }
 
-    const claimPayload = {
+    const date = claimedAt.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' })
+    const time = claimedAt.toLocaleTimeString('en-GB', {
+      timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit',
+    })
+    const payload = {
       type: 'stamp_claim',
       partnership_id: storeId,
-      sheet_name: sheetText(partnership.sheet_name || partnership.name, 160),
+      sheet_name: sheetText(partnership?.sheet_name || partnership?.name || storeId, 160),
       redemption_id: String(redemption.id),
       stamp_status: 'claimed',
+      claimed_at_date: date,
+      claimed_at_time: time,
     }
     const sheetResults = await Promise.all([
-      syncClaimToAppsScript(integrations?.master_apps_script_url, 'master', claimPayload),
-      syncClaimToAppsScript(integrations?.partner_apps_script_url, 'partner', claimPayload),
+      syncClaimToAppsScript(integrations?.master_apps_script_url, 'master', payload),
+      syncClaimToAppsScript(integrations?.partner_apps_script_url, 'partner', payload),
     ])
 
     return json({
       success: true,
-      sheetSync: { success: sheetResults.every((result) => result.ok) },
+      sheetSync: { success: sheetResults.every(result => result.ok) },
     })
   } catch (error) {
     console.error('Unexpected reward redemption error:', error)
