@@ -64,6 +64,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/sync-review-to-sheets/index.ts"
 
+[functions.export-aggregate-report]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/export-aggregate-report/index.ts"
+
 [functions.complete-login]
 enabled = true
 verify_jwt = true

@@ -1,0 +1,1 @@
+Deno.serve(() => new Response(JSON.stringify({ success: false, message: 'Aggregate sheet reporting has been retired.' }), { status: 410, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }))

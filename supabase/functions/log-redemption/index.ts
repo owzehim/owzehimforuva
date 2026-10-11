@@ -8,43 +8,54 @@ import { sheetText } from '../_shared/sheetText.js'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 import { isMembershipActive } from '../_shared/membershipStatus.js'
 
-async function postJsonToAppsScript(url: string | null | undefined, payload: Record<string, unknown>, label: string) {
-  if (!url) {
-    console.warn(`Skipping ${label} sheet sync: missing Apps Script URL`)
-    return { ok: false, skipped: true, label }
-  }
-
+async function postJsonToAppsScript(
+  url: string | null | undefined,
+  payload: Record<string, unknown>,
+  label: string,
+): Promise<{
+  ok: boolean
+  skipped?: boolean
+  status?: number
+  errorCode?: string
+  scriptVersion?: string
+  label: string
+}> {
+  if (!url) return { ok: false, skipped: true, label }
   try {
-    const res = await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(withAppsScriptSecret(payload, Deno.env.get('APPS_SCRIPT_SHARED_SECRET'))),
     })
-    const text = await res.text().catch(() => '')
-
-    if (!res.ok) {
-      // Apps Script error bodies can echo submitted member data; keep them out
-      // of Edge Function logs and client-visible response objects.
-      console.error(`${label} sheet sync failed:`, res.status)
-      return { ok: false, status: res.status, label }
+    const text = await response.text().catch(() => '')
+    if (!response.ok) {
+      console.error(`${label} sheet sync failed:`, response.status)
+      return { ok: false, status: response.status, label }
     }
-
-    let body: unknown = text
+    let result: Record<string, unknown>
     try {
-      body = text ? JSON.parse(text) : null
+      result = text ? JSON.parse(text) : {}
     } catch {
-      // Apps Script sometimes returns plain text on deployment/configuration errors.
+      console.error(`${label} Apps Script returned a non-JSON response`)
+      return { ok: false, errorCode: 'invalid_response', label }
     }
 
-    if (body && typeof body === 'object' && 'success' in body && !(body as { success?: boolean }).success) {
-      console.error(`${label} Apps Script returned failure`)
-      return { ok: false, label }
+    const scriptVersion = typeof result.version === 'string' ? result.version : undefined
+    if (result.success !== true) {
+      const message = typeof result.error === 'string' ? result.error.toLowerCase() : ''
+      const errorCode = message === 'unauthorized'
+        ? 'auth_rejected'
+        : message.includes('partnership_id')
+          ? 'partnership_mismatch'
+          : message.includes('permission') || message.includes('spreadsheet') || message.includes('sheet')
+            ? 'sheet_access_or_structure'
+            : 'script_rejected'
+      console.error(`${label} Apps Script returned failure`, { errorCode, scriptVersion })
+      return { ok: false, errorCode, scriptVersion, label }
     }
 
-    return { ok: true, body, label }
-  } catch (error) {
-    // Do not retain exception text in results that may later be returned to
-    // callers; fetch errors can include the integration URL or other details.
+    return { ok: true, scriptVersion, label }
+  } catch {
     console.error(`${label} sheet sync failed unexpectedly`)
     return { ok: false, label }
   }
@@ -52,7 +63,6 @@ async function postJsonToAppsScript(url: string | null | undefined, payload: Rec
 
 function formatStampStatus(stampResult: any) {
   if (!stampResult?.enabled) return ''
-
   if (stampResult.rewardPending) return 'reward pending'
   if (stampResult.cycleCompleted) return 'ready to claim'
   if (stampResult.alreadyStamped) return 'already stamped today'
@@ -61,12 +71,10 @@ function formatStampStatus(stampResult: any) {
 
 function formatStampProgress(stampResult: any) {
   if (!stampResult?.enabled) return ''
-
   const totalStamps = Math.max(1, Number(stampResult.totalStamps || 10))
   const count = stampResult.rewardPending || stampResult.cycleCompleted
     ? totalStamps
     : Number(stampResult.newCount ?? stampResult.currentCount ?? 0)
-
   return `${Math.max(0, count)}/${totalStamps}`
 }
 
@@ -226,7 +234,7 @@ serve(async (req) => {
           redemptionId: '',
           testMode: true,
           stampResult: { enabled: false, testMode: true },
-          sheetResults: [],
+          sheetSync: 'not logged (test mode)',
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
@@ -240,16 +248,18 @@ serve(async (req) => {
       )
     }
 
-    // ── Date / time (Amsterdam) ────────────────────────────────────────────
-    const date = now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' })
-    const time = now.toLocaleTimeString('en-GB', {
-      timeZone: 'Europe/Amsterdam',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-
-    // ── Safe field helpers ─────────────────────────────────────────────────
-    const safe = (v: unknown) => (v != null && v !== '' ? sheetText(v) : '')
+    const { data: integrations, error: integrationsError } = await admin
+      .from('partnership_integrations')
+      .select('master_apps_script_url, partner_apps_script_url')
+      .eq('partnership_id', storeId)
+      .maybeSingle()
+    if (integrationsError) {
+      console.error('Partnership integration lookup failed')
+      return new Response(
+        JSON.stringify({ success: false, message: '매장 연동 설정을 확인하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
 
     // Record (or safely recognize) today's visit before claiming the 15-minute
     // redemption window. If stamp persistence fails, return an error without
@@ -264,20 +274,6 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
-    const { data: integrations, error: integrationsError } = await admin
-      .from('partnership_integrations')
-      .select('master_apps_script_url, partner_apps_script_url')
-      .eq('partnership_id', storeId)
-      .maybeSingle()
-
-    if (integrationsError) {
-      console.error('Partnership integration lookup failed:', integrationsError)
-      return new Response(
-        JSON.stringify({ success: false, message: '매장 연동 설정을 확인하지 못했습니다.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
-    }
-
     // Atomically claim this user's 15-minute window. The database lock
     // ensures only one scan creates a redemption/Sheets event in that window.
     const { data: redemptionClaims, error: claimError } = await admin.rpc(
@@ -304,81 +300,65 @@ serve(async (req) => {
 
     const reuseRecent = redemptionClaim.created !== true
     const redemptionId = String(redemptionClaim.redemption_id)
+    let redemptionTimestamp = now
 
     if (reuseRecent) {
-      // No new DB row, no Google Sheets POST — just return success
-      return new Response(
-        JSON.stringify({
-          success: true,
-          storeName: partnership.name,
-          redemptionId,
-          stampResult,
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+      // Retry the idempotent Sheets upsert for the existing event. Preserve
+      // its original timestamp so a retry cannot make an old scan look new.
+      const { data: existingRedemption, error: existingRedemptionError } = await admin
+        .from('redemptions')
+        .select('redeemed_at')
+        .eq('id', redemptionId)
+        .eq('user_id', user.id)
+        .eq('store_id', storeId)
+        .maybeSingle()
+
+      if (existingRedemptionError || !existingRedemption?.redeemed_at) {
+        console.error('Existing redemption lookup failed during Sheets retry')
+        return new Response(
+          JSON.stringify({ success: false, message: '매장 이용 기록을 다시 불러오지 못했습니다.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+
+      redemptionTimestamp = new Date(existingRedemption.redeemed_at)
     }
 
-    // ── Master sheet payload ───────────────────────────────────────────────
+    const date = redemptionTimestamp.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' })
+    const time = redemptionTimestamp.toLocaleTimeString('en-GB', {
+      timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit',
+    })
+    const safe = (value: unknown) => value == null || value === '' ? '' : sheetText(value)
     const masterPayload = {
-  type: 'master',
-  date,
-  time,
-
-  redemption_id: redemptionId,
-  restaurant_id: storeId,
-  place_name: sheetText(partnership.name, 160),
-
-  user_id: user.id,
-  first_name: safe(member.first_name),
-  last_name: safe(member.last_name),
-  first_name_korean: safe(member.first_name_korean),
-  last_name_korean: safe(member.last_name_korean),
-  university: safe(member.University),
-  student_number: safe(member.student_number),
-  education_level: safe(member.education_level),
-  year_number: member.year_number ?? '',
-  major: safe(member.major),
-  gender: safe(member.gender),
-  year_of_birth: safe(member.year_of_birth),
-  country_of_origin: safe(member.country_of_origin),
-
-  star_rating: '',
-  great_food: '',
-  friendly_staff: '',
-  nice_atmosphere: '',
-  good_value: '',
-  comment: '',
-
-  stamp_status: formatStampStatus(stampResult),
-  stamp_progress: formatStampProgress(stampResult),
-  stamp_card_progress: formatStampProgress(stampResult),
-  stamp_card_claimed_after_scan: stampResult?.claimedAfterScan ? 'Yes' : 'No',
-
-  account_status: safe(member.account_status) || 'active',
-  membership_valid_until: safe(member.membership_valid_until),
-  membership_ended_at: safe(member.membership_ended_at),
-  identity_anonymized_at: safe(member.identity_anonymized_at),
-};
-
-    // ── Partner sheet payload ──────────────────────────────────────────────
-    const storePayload = {
-      type: 'store',
-      partnership_id: storeId,
+      type: 'master', date, time, redemption_id: redemptionId,
+      restaurant_id: storeId, place_name: sheetText(partnership.name, 160), user_id: user.id,
+      first_name: safe(member.first_name), last_name: safe(member.last_name),
+      first_name_korean: safe(member.first_name_korean), last_name_korean: safe(member.last_name_korean),
+      university: safe(member.University), student_number: safe(member.student_number),
+      education_level: safe(member.education_level), year_number: member.year_number ?? '',
+      major: safe(member.major), gender: safe(member.gender), year_of_birth: safe(member.year_of_birth),
+      country_of_origin: safe(member.country_of_origin), star_rating: '', great_food: '',
+      friendly_staff: '', nice_atmosphere: '', good_value: '', comment: '',
+      stamp_status: formatStampStatus(stampResult), stamp_progress: formatStampProgress(stampResult),
+      stamp_card_progress: formatStampProgress(stampResult),
+      stamp_card_claimed_after_scan: stampResult?.claimedAfterScan ? 'Yes' : 'No',
+      account_status: safe(member.account_status) || 'active',
+      membership_valid_until: safe(member.membership_valid_until),
+      membership_ended_at: safe(member.membership_ended_at),
+      identity_anonymized_at: safe(member.identity_anonymized_at),
+    }
+    const partnerPayload = {
+      type: 'store', partnership_id: storeId,
       sheet_name: sheetText(partnership.sheet_name || partnership.name, 160),
-      date,
-      redemption_id: redemptionId,
-      place_name: sheetText(partnership.name, 160),
-      stamp_status: formatStampStatus(stampResult),
-      stamp_progress: formatStampProgress(stampResult),
+      date, redemption_id: redemptionId, place_name: sheetText(partnership.name, 160),
+      stamp_status: formatStampStatus(stampResult), stamp_progress: formatStampProgress(stampResult),
       stamp_card_progress: formatStampProgress(stampResult),
       stamp_card_claimed_after_scan: stampResult?.claimedAfterScan ? 'Yes' : 'No',
     }
-
     const sheetResults = await Promise.all([
       postJsonToAppsScript(integrations?.master_apps_script_url, masterPayload, 'master'),
-      postJsonToAppsScript(integrations?.partner_apps_script_url, storePayload, 'partner'),
+      postJsonToAppsScript(integrations?.partner_apps_script_url, partnerPayload, 'partner'),
     ])
-    const safeSheetResults = sheetResults.map(({ ok, skipped, label }) => ({ ok, skipped, label }))
 
     return new Response(
       JSON.stringify({
@@ -386,7 +366,9 @@ serve(async (req) => {
         storeName: partnership.name,
         redemptionId,
         stampResult,
-        sheetResults: safeSheetResults,
+        sheetResults: sheetResults.map(({ ok, skipped, label, errorCode, scriptVersion }) => ({
+          ok, skipped, label, errorCode, scriptVersion,
+        })),
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
