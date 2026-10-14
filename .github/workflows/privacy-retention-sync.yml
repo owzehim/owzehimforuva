@@ -32,4 +32,4 @@ jobs:
             --data '{}')"
 
           echo "$response" | jq -e '.success == true' >/dev/null
-          echo "$response" | jq '{success, newly_queued_count, attempted_count, sheet_synced_count, sheet_failed_count}'
+          echo "$response" | jq '{success, newly_queued_count, attempted_count, sheet_synced_count, auth_accounts_deleted_count, sheet_failed_count, overdue_record_count, pending_sync_count}'
