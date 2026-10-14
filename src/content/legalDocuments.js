@@ -1,4 +1,4 @@
-export const LEGAL_DOCUMENT_VERSION = '2026-10-07-02';
+export const LEGAL_DOCUMENT_VERSION = '2026-10-14-01';
 
 export const legalDocuments = {
   terms: {
@@ -98,10 +98,10 @@ By creating an account, you confirm that you have read, understood, and agree to
   },
   privacy: {
     title: 'Privacy Policy',
-    effectiveDate: '7 October 2026',
+    effectiveDate: '14 October 2026',
     body: `UvA-IN Privacy Policy
 
-Effective Date: 7 October 2026
+Effective Date: 14 October 2026
 
 UvA-IN is committed to protecting your privacy and handling your personal information responsibly. This Privacy Policy explains how we collect, use, store, share, protect, and retain your personal data when you use the UvA-IN mobile application.
 
@@ -156,6 +156,8 @@ The role of each provider depends on the service: a provider may process data on
 7. Data Retention
 
 Personal identifying information needed to operate your membership is retained while your membership remains active. After your membership ends, we retain the identifying information needed for support, fraud prevention, and dispute resolution for up to 12 months, then delete or irreversibly anonymize it.
+
+If you confirm your account but do not become a member, we retain your account and profile information for up to 12 months after account creation. After that period, we delete the account and its identifying information.
 
 When you request account deletion, we delete or anonymize information directly linked to your account as part of the deletion process, subject to any specific legal obligation or unresolved legal claim that requires limited information to be retained.
 

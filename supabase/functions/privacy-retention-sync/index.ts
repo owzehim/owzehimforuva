@@ -19,6 +19,31 @@ async function anonymizeMasterSheet(url: string, userId: string) {
   if (!response.ok || body?.success !== true) throw new Error('Master sheet did not confirm anonymization')
 }
 
+async function clearAuthPersonalMetadata(admin: ReturnType<typeof createClient>, userId: string) {
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    user_metadata: {
+      first_name: null,
+      last_name: null,
+      first_name_korean: null,
+      last_name_korean: null,
+      name: null,
+      registration: null,
+      registration_accepted_at: null,
+    },
+  })
+  if (error && error.status !== 404) throw new Error('Auth metadata cleanup failed')
+}
+
+async function deleteAuthAccount(admin: ReturnType<typeof createClient>, userId: string) {
+  const { error: imageError } = await admin.storage
+    .from('profile-images')
+    .remove([`avatars/${userId}.jpg`])
+  if (imageError) throw new Error('Inactive account profile image cleanup failed')
+
+  const { error } = await admin.auth.admin.deleteUser(userId)
+  if (error && error.status !== 404) throw new Error('Inactive Auth account deletion failed')
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin')
   const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
@@ -67,7 +92,7 @@ serve(async (req) => {
     }
 
     const { data: queuedUsers, error: claimError } = await admin.rpc(
-      'claim_privacy_sheet_sync_batch',
+      'claim_privacy_retention_batch',
       { p_batch_size: 50 },
     )
     if (claimError) {
@@ -79,8 +104,9 @@ serve(async (req) => {
     }
 
     const users = Array.isArray(queuedUsers) ? queuedUsers : []
+    const sheetUsers = users.filter((row) => row?.delete_auth_user !== true)
     let masterUrl: string | null = null
-    if (users.length > 0) {
+    if (sheetUsers.length > 0) {
       const { data: integration, error: integrationError } = await admin
         .from('partnership_integrations')
         .select('master_apps_script_url')
@@ -97,21 +123,29 @@ serve(async (req) => {
       masterUrl = integration?.master_apps_script_url || null
     }
     let syncedCount = 0
+    let deletedAuthAccountCount = 0
     let failedCount = 0
 
     for (const row of users) {
       const userId = typeof row === 'string' ? row : row?.anonymized_user_id || row?.user_id
       if (!userId) continue
+      const deleteAuthUser = typeof row === 'object' && row?.delete_auth_user === true
 
       try {
-        if (!masterUrl) throw new Error('Master sheet endpoint is not configured')
-        await anonymizeMasterSheet(masterUrl, userId)
+        if (deleteAuthUser) {
+          await deleteAuthAccount(admin, userId)
+          deletedAuthAccountCount += 1
+        } else {
+          if (!masterUrl) throw new Error('Master sheet endpoint is not configured')
+          await anonymizeMasterSheet(masterUrl, userId)
+          await clearAuthPersonalMetadata(admin, userId)
+          syncedCount += 1
+        }
         const { data: completed, error: completionError } = await admin.rpc('complete_privacy_sheet_sync', {
           p_user_id: userId,
           p_success: true,
         })
         if (completionError || completed !== true) throw new Error('Privacy queue acknowledgement failed')
-        syncedCount += 1
       } catch {
         console.error('Privacy queue cleanup failed')
         failedCount += 1
@@ -122,17 +156,44 @@ serve(async (req) => {
       }
     }
 
+    const { data: overdueData, error: overdueError } = await admin.rpc('count_overdue_member_retention')
+    if (overdueError) {
+      console.error('Overdue retention count failed')
+      return new Response(
+        JSON.stringify({ success: false, message: '개인정보 보존 작업 결과를 확인하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const { count: pendingQueueCount, error: pendingQueueError } = await admin
+      .from('privacy_sheet_sync_queue')
+      .select('user_id', { count: 'exact', head: true })
+    if (pendingQueueError) {
+      console.error('Privacy retention queue count failed')
+      return new Response(
+        JSON.stringify({ success: false, message: '개인정보 보존 작업 결과를 확인하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const overdueRecordCount = Number(overdueData) || 0
+    const remainingQueueCount = Number(pendingQueueCount) || 0
+    const success = failedCount === 0 && overdueRecordCount === 0 && remainingQueueCount === 0
+
     return new Response(
       JSON.stringify({
-        success: failedCount === 0,
+        success,
         newly_queued_count: Number(newlyQueued) || 0,
         attempted_count: users.length,
         sheet_synced_count: syncedCount,
+        auth_accounts_deleted_count: deletedAuthAccountCount,
         sheet_failed_count: failedCount,
+        overdue_record_count: overdueRecordCount,
+        pending_sync_count: remainingQueueCount,
         historical_archive_updated: false,
       }),
       {
-        status: failedCount === 0 ? 200 : 207,
+        status: success ? 200 : 207,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       },
     )
