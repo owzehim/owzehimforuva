@@ -5,20 +5,14 @@ import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
+import { getMasterPrivacyEndpoint } from '../_shared/masterPrivacyEndpoint.ts'
 
 async function anonymizeMasterSheet(admin: any, userId: string) {
-  const { data: integration, error } = await admin
-    .from('partnership_integrations')
-    .select('master_apps_script_url')
-    .not('master_apps_script_url', 'is', null)
-    .limit(1)
-    .maybeSingle()
-  if (error) throw new Error('Master Sheet integration lookup failed')
-  const url = integration?.master_apps_script_url
-  if (!url) throw new Error('Master Sheet privacy endpoint is not configured')
+  const url = await getMasterPrivacyEndpoint(admin)
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify(withAppsScriptSecret(
       { type: 'privacy_anonymize', user_id: userId },
       Deno.env.get('APPS_SCRIPT_SHARED_SECRET'),
@@ -129,6 +123,14 @@ serve(async (req) => {
       .delete()
       .or(`old_user_id.eq.${user.id},new_user_id.eq.${user.id}`)
     if (pendingChangesError) throw new Error('Pending email change cleanup failed')
+
+    // This retry queue deliberately has no Auth foreign key. Remove any stale
+    // retention entry so a later scheduled run does not revisit this account.
+    const { error: privacyQueueError } = await admin
+      .from('privacy_sheet_sync_queue')
+      .delete()
+      .eq('user_id', user.id)
+    if (privacyQueueError) throw new Error('Privacy queue cleanup failed')
 
     // Revoke refresh sessions before deleting the Auth user. Existing access
     // JWTs may remain valid until expiry, but all account-owned rows are gone.

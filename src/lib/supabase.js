@@ -8,6 +8,7 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
   },
   global: { fetch: apiKeyOnlyFetch(supabasePublishableKey) },
 })

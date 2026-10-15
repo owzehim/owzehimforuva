@@ -1,9 +1,23 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeSlash } from '@phosphor-icons/react'
-import { updatePassword } from '../api/authRepository'
+import { updatePasswordFromRecovery } from '../api/authRepository'
 import { isPasswordRecoveryClaims } from '../domain/auth/recovery'
 import { supabase } from '../lib/supabase'
+import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
+
+let recoveryExchangeCode = null
+let recoveryExchangePromise = null
+
+function exchangeRecoveryCodeOnce(code) {
+  if (recoveryExchangeCode === code && recoveryExchangePromise) {
+    return recoveryExchangePromise
+  }
+
+  recoveryExchangeCode = code
+  recoveryExchangePromise = passwordRecoverySupabase.auth.exchangeCodeForSession(code)
+  return recoveryExchangePromise
+}
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -19,15 +33,34 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     let active = true
     const verifyRecoverySession = async () => {
-      const { data, error } = await supabase.auth.getClaims()
-      if (active) setRecoveryReady(!error && isPasswordRecoveryClaims(data?.claims))
+      try {
+        const url = new URL(window.location.href)
+        const code = url.searchParams.get('code')
+        if (code) {
+          const { error: exchangeError } = await exchangeRecoveryCodeOnce(code)
+          if (exchangeError) {
+            if (active) setRecoveryReady(false)
+            return
+          }
+
+          url.searchParams.delete('code')
+          window.history.replaceState(
+            window.history.state,
+            '',
+            `${url.pathname}${url.search}${url.hash}`,
+          )
+        }
+
+        const { data, error } = await passwordRecoverySupabase.auth.getClaims()
+        if (active) setRecoveryReady(!error && isPasswordRecoveryClaims(data?.claims))
+      } catch {
+        if (active) setRecoveryReady(false)
+      }
     }
     void verifyRecoverySession()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        void verifyRecoverySession()
-      } else if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+    const { data: { subscription } } = passwordRecoverySupabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
         setRecoveryReady(false)
       }
     })
@@ -58,18 +91,28 @@ export default function ResetPasswordPage() {
 
     setLoading(true)
     try {
-      const { data, error: claimsError } = await supabase.auth.getClaims()
+      const { data, error: claimsError } = await passwordRecoverySupabase.auth.getClaims()
       if (claimsError) throw claimsError
       if (!isPasswordRecoveryClaims(data?.claims)) {
         setRecoveryReady(false)
         throw new Error('이 화면은 비밀번호 재설정 이메일의 링크로만 사용할 수 있습니다.')
       }
 
-      await updatePassword(password)
-      const { error: otherSessionsError } = await supabase.auth.signOut({ scope: 'others' })
-      const { error: localSignOutError } = await supabase.auth.signOut({ scope: 'local' })
+      const { data: { session: recoverySession } } =
+        await passwordRecoverySupabase.auth.getSession()
+      await updatePasswordFromRecovery(password)
+      const { error: otherSessionsError } =
+        await passwordRecoverySupabase.auth.signOut({ scope: 'others' })
+      const { error: localSignOutError } =
+        await passwordRecoverySupabase.auth.signOut({ scope: 'local' })
       if (localSignOutError) throw localSignOutError
       if (otherSessionsError) console.error('Could not revoke other sessions after password reset')
+
+      const { data: { session: appSession } } = await supabase.auth.getSession()
+      if (appSession?.user?.id && appSession.user.id === recoverySession?.user?.id) {
+        const { error: appSignOutError } = await supabase.auth.signOut({ scope: 'local' })
+        if (appSignOutError) throw appSignOutError
+      }
       setSuccess(true)
     } catch (err) {
       setError(err.message || '비밀번호 변경 중 오류가 발생했습니다.')
@@ -104,7 +147,7 @@ export default function ResetPasswordPage() {
         ) : !recoveryReady ? (
           <div className="space-y-4">
             <p className="text-center text-sm leading-relaxed text-gray-500">
-              비밀번호 재설정 이메일의 링크로 이 화면을 열어주세요.
+              비밀번호 재설정 이메일을 요청한 같은 브라우저에서 링크를 열어주세요.
             </p>
             <button type="button" onClick={() => navigate('/login')} className="w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white">
               로그인으로 이동
