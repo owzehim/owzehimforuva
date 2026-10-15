@@ -4,6 +4,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
 import { apiKeyOnlyFetch } from '../lib/apiKeyOnlyFetch'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -206,7 +207,13 @@ export async function sendPasswordResetEmail(email) {
       ? `${window.location.origin}/reset-password`
       : undefined
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+  const { error } = await passwordRecoverySupabase.auth.resetPasswordForEmail(email, { redirectTo })
+  if (error) throw new Error(error.message)
+}
+
+/** Change a password using only a verified PKCE recovery session. */
+export async function updatePasswordFromRecovery(password) {
+  const { error } = await passwordRecoverySupabase.auth.updateUser({ password })
   if (error) throw new Error(error.message)
 }
 

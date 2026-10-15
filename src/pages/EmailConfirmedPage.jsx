@@ -39,11 +39,10 @@ export default function EmailConfirmedPage() {
 
     const verifyEmail = async () => {
       try {
-        const url = new URL(window.location.href)
-        const code = url.searchParams.get('code')
-        const result = code
-          ? await supabase.auth.exchangeCodeForSession(code)
-          : await supabase.auth.getSession()
+        // Supabase's URL detection processes PKCE codes during client startup.
+        // Read that session after initialization instead of exchanging the same
+        // single-use code a second time here.
+        const result = await supabase.auth.getSession()
 
         if (cancelled) return
 

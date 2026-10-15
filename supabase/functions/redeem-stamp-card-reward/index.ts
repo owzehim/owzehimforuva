@@ -139,7 +139,7 @@ serve(async (req) => {
 
     const { data: restaurantById, error: restaurantLookupError } = await admin
       .from('restaurants')
-      .select('id, redeemed_at')
+      .select('id')
       .eq('id', storeId)
       .maybeSingle()
 

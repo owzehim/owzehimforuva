@@ -744,6 +744,50 @@ function ImageUploadPanel({
 
 // ─── MembersTab ───────────────────────────────────────────────────────────────
 
+const memberEditFields = [
+  'first_name',
+  'last_name',
+  'student_number',
+  'major',
+  'year_of_birth',
+  'gender',
+  'country_of_origin',
+  'University',
+  'education_level',
+  'year_number',
+  'is_member',
+  'membership_valid_until',
+]
+
+function normalizeMemberEditValue(field, value) {
+  if (field === 'is_member') return value === true
+  if (field === 'membership_valid_until') {
+    return value ? String(value).slice(0, 10) : null
+  }
+  if (field === 'year_of_birth' || field === 'year_number') {
+    if (value === '' || value == null) return null
+    const number = Number(value)
+    return Number.isInteger(number) ? number : value
+  }
+  if (field === 'student_number') {
+    return typeof value === 'string' && value.trim() ? value.trim() : null
+  }
+  return value === '' || value == null ? null : value
+}
+
+function getAmsterdamCalendarDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Amsterdam',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
+  return values.year && values.month && values.day
+    ? `${values.year}-${values.month}-${values.day}`
+    : null
+}
+
 function MembersTab() {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -790,26 +834,31 @@ function MembersTab() {
   }, [])
 
   const handleEdit = async () => {
-    const { error } = await supabase
-      .from('members')
-      .update({
-        first_name: form.first_name,
-        last_name: form.last_name,
-        student_number: form.student_number,
-        major: form.major,
-        year_of_birth: form.year_of_birth || null,
-        gender: form.gender || null,
-        country_of_origin: form.country_of_origin || null,
-        University: form.University || null,
-        education_level: form.education_level || null,
-        year_number: form.year_number || null,
-        is_member: form.is_member,
-        membership_valid_until: form.membership_valid_until || null,
-      })
-      .eq('id', editTarget.id)
+    const updates = Object.fromEntries(
+      memberEditFields
+        .map((field) => [
+          field,
+          normalizeMemberEditValue(field, form[field]),
+          normalizeMemberEditValue(field, editTarget[field]),
+        ])
+        .filter(([, nextValue, currentValue]) => !Object.is(nextValue, currentValue))
+        .map(([field, nextValue]) => [field, nextValue]),
+    )
 
-    if (error) {
-      alert('수정 실패: ' + error.message)
+    if (Object.keys(updates).length === 0) {
+      alert('변경한 내용이 없습니다.')
+      return
+    }
+
+    const { data, error } = await supabase.functions.invoke('admin-update-member', {
+      body: {
+        memberId: editTarget.id,
+        updates,
+      },
+    })
+
+    if (error || !data?.success) {
+      alert('수정 실패: ' + (data?.message || error?.message || '회원 정보를 수정하지 못했습니다.'))
       return
     }
     alert('수정 완료')
@@ -818,35 +867,29 @@ function MembersTab() {
     fetchMembers()
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('정말 삭제할까요?')) return
-    await supabase.from('members').delete().eq('id', id)
-    fetchMembers()
-  }
-
   const toggleMembership = async (member) => {
     const nextIsMember = !member.is_member
-    const nextValidUntil =
-      nextIsMember && !member.membership_valid_until
-        ? new Date(
-            new Date().getFullYear(),
-            11,
-            31
-          )
-            .toISOString()
-            .slice(0, 10)
-        : member.membership_valid_until
+    const todayAmsterdam = getAmsterdamCalendarDate()
+    const currentValidUntil = member.membership_valid_until
+      ? String(member.membership_valid_until).slice(0, 10)
+      : null
+    const nextValidUntil = nextIsMember &&
+      (!currentValidUntil || !todayAmsterdam || currentValidUntil < todayAmsterdam)
+      ? `${todayAmsterdam?.slice(0, 4) || new Date().getFullYear()}-12-31`
+      : currentValidUntil
 
-    const { error } = await supabase
-      .from('members')
-      .update({
-        is_member: nextIsMember,
-        membership_valid_until: nextValidUntil || null,
-      })
-      .eq('id', member.id)
+    const { data, error } = await supabase.functions.invoke('admin-update-member', {
+      body: {
+        memberId: member.id,
+        updates: {
+          is_member: nextIsMember,
+          membership_valid_until: nextValidUntil || null,
+        },
+      },
+    })
 
-    if (error) {
-      alert('멤버십 상태 변경 실패: ' + error.message)
+    if (error || !data?.success) {
+      alert('멤버십 상태 변경 실패: ' + (data?.message || error?.message || '회원 상태를 변경하지 못했습니다.'))
       return
     }
 
@@ -902,7 +945,7 @@ function MembersTab() {
                       {member.first_name} {member.last_name}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {member.student_number} · {member.major}
+                      학번: {member.student_number || '미확정'} · 제출: {member.pending_student_number || '없음'} · {member.major}
                     </p>
                     <p className="text-xs text-gray-400">
                       유효기간:{' '}
@@ -927,12 +970,6 @@ function MembersTab() {
                       className="text-xs text-blue-600 hover:underline whitespace-nowrap"
                     >
                       수정
-                    </button>
-                    <button
-                      onClick={() => handleDelete(member.id)}
-                      className="text-xs text-red-500 hover:underline whitespace-nowrap"
-                    >
-                      삭제
                     </button>
                   </div>
                 </div>
@@ -978,7 +1015,7 @@ function MembersTab() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-sm text-gray-700 block mb-1">
-                        학번 *
+                        학번 (확정)
                       </label>
                       <input
                         value={form.student_number}
@@ -990,6 +1027,21 @@ function MembersTab() {
                         }
                         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                       />
+                      {member.pending_student_number && (
+                        <div className="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                          <p>가입 시 제출한 학번: {member.pending_student_number}</p>
+                          <button
+                            type="button"
+                            onClick={() => setForm({
+                              ...form,
+                              student_number: member.pending_student_number,
+                            })}
+                            className="mt-2 font-medium text-amber-800 underline"
+                          >
+                            확인한 제출 학번을 확정 학번으로 사용
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm text-gray-700 block mb-1">

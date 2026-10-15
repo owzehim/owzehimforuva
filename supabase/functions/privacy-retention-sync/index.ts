@@ -5,6 +5,7 @@ import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 import { constantTimeSecretEquals } from '../_shared/constantTimeSecret.js'
+import { getMasterPrivacyEndpoint } from '../_shared/masterPrivacyEndpoint.ts'
 
 async function anonymizeMasterSheet(url: string, userId: string) {
   const response = await fetch(url, {
@@ -107,20 +108,15 @@ serve(async (req) => {
     const sheetUsers = users.filter((row) => row?.delete_auth_user !== true)
     let masterUrl: string | null = null
     if (sheetUsers.length > 0) {
-      const { data: integration, error: integrationError } = await admin
-        .from('partnership_integrations')
-        .select('master_apps_script_url')
-        .not('master_apps_script_url', 'is', null)
-        .limit(1)
-        .maybeSingle()
-      if (integrationError) {
+      try {
+        masterUrl = await getMasterPrivacyEndpoint(admin)
+      } catch {
         console.error('Master sheet configuration lookup failed')
         return new Response(
           JSON.stringify({ success: false, message: '개인정보 보존 작업을 처리하지 못했습니다.' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
       }
-      masterUrl = integration?.master_apps_script_url || null
     }
     let syncedCount = 0
     let deletedAuthAccountCount = 0
