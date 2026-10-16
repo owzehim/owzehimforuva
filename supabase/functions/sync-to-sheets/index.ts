@@ -201,47 +201,28 @@ serve(async (req) => {
       reviewPayload,
       'master',
     )
-    // The public RPC returns zeroed fields until at least five distinct members
-    // have reviewed this store. Never send IDs, redemption details, or comments.
     let partnerSync: { ok: boolean; skipped?: boolean; label: string } = {
       ok: true,
       skipped: true,
       label: 'partner',
     }
     if (integrations?.partner_apps_script_url) {
-      const { data: summaries, error: summaryError } = await admin.rpc(
-        'get_store_review_summaries',
-        { p_store_ids: [redemption.store_id] },
+      // Send the per-redemption rating and tags to the partner's Operations tab.
+      // Reviewer identity and comment stay in the internal Master sheet only.
+      partnerSync = await postJsonToAppsScript(
+        integrations.partner_apps_script_url,
+        {
+          type: 'review',
+          partnership_id: redemption.store_id,
+          redemption_id: String(redemption_id),
+          rating,
+          tags,
+          review_submitted_at_date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' }),
+        },
+        'partner',
       )
-      if (summaryError) {
-        console.error('Partner review aggregate lookup failed')
-        partnerSync = { ok: false, skipped: false, label: 'partner' }
-      } else {
-        const summary = Array.isArray(summaries)
-          ? summaries.find((item: Record<string, unknown>) => item.store_id === redemption.store_id)
-          : null
-        const tagCounts = summary?.tag_counts && typeof summary.tag_counts === 'object'
-          ? summary.tag_counts as Record<string, unknown>
-          : {}
-        partnerSync = await postJsonToAppsScript(
-          integrations.partner_apps_script_url,
-          {
-            type: 'review_summary',
-            partnership_id: redemption.store_id,
-            review_count: Number(summary?.review_count) || 0,
-            average_rating: Number(summary?.average_rating) || 0,
-            great_food: Number(tagCounts.GREAT_FOOD) || 0,
-            friendly_staff: Number(tagCounts.FRIENDLY_STAFF) || 0,
-            nice_atmosphere: Number(tagCounts.NICE_ATMOSPHERE) || 0,
-            good_value: Number(tagCounts.GOOD_VALUE) || 0,
-            updated_at: now.toISOString(),
-          },
-          'partner',
-        )
-      }
     }
-    const requiredSyncFailed = !masterSync.ok || !partnerSync.ok
-    if (requiredSyncFailed) {
+    if (!masterSync.ok || !partnerSync.ok) {
       return new Response(
         JSON.stringify({ success: false, message: '리뷰 기록을 모두 동기화하지 못했습니다.' }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
