@@ -23,6 +23,8 @@ function integerOrNull(value: unknown) {
   return Number.isInteger(parsed) ? parsed : undefined
 }
 
+const ALLOWED_EDUCATION_LEVELS = new Set(['foundation', 'bachelor', 'master', 'alumni'])
+
 function isValidRegistration(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
   const profile = value as Record<string, unknown>
@@ -40,7 +42,8 @@ function isValidRegistration(value: unknown) {
     (profile.country_of_origin === null || profile.country_of_origin === undefined ||
       profile.country_of_origin === '' || text(profile.country_of_origin, 100) !== null) &&
     text(profile.university, 160) &&
-    text(profile.education_level, 40) &&
+    typeof profile.education_level === 'string' &&
+    ALLOWED_EDUCATION_LEVELS.has(profile.education_level) &&
     (yearOfBirth === null || (yearOfBirth !== undefined && yearOfBirth >= 1900 && yearOfBirth <= new Date().getFullYear())) &&
     (yearNumber === null || (yearNumber !== undefined && yearNumber >= 1 && yearNumber <= 20)) &&
     typeof profile.privacy_policy_version === 'string' &&
@@ -216,7 +219,7 @@ serve(async (req) => {
         }
         return json({ success: false, message: '이미 사용 중인 학번 또는 회원 계정입니다. 정보를 확인하거나 지원팀에 문의해주세요.' }, 409)
       }
-      console.error('Member registration insert failed:', insertError)
+      console.error('Member registration insert failed:', { code: insertError.code })
       return json({ success: false, message: '회원 정보를 저장하지 못했습니다.' }, 500)
     }
 
