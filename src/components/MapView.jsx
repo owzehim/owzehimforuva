@@ -33,15 +33,6 @@ if (typeof window !== 'undefined' && !document.getElementById('map-view-performa
       line-height: 16px !important;
       padding: 0 4px !important;
     }
-    html.dark .maplibregl-ctrl-attrib {
-      background-color: rgba(255,255,255,0.94) !important;
-    }
-    html.dark .maplibregl-ctrl-attrib a[href*="maptiler"] {
-      color: #111827 !important;
-    }
-    html.dark .maptiler-brand-logo {
-      filter: grayscale(1) brightness(0.18);
-    }
     
     .custom-marker[data-selected="true"] .marker-circle {
       border: 3px solid #f97316 !important;
@@ -499,7 +490,6 @@ export default function MapView({ restaurants, selected, onSelect }) {
         }}
       >
         <img
-          className="maptiler-brand-logo"
           src="https://api.maptiler.com/resources/logo.svg"
           alt="MapTiler"
           style={{ display: 'block', width: '100%', height: 'auto' }}
