@@ -17,6 +17,7 @@ import StampCardModal from '../features/stampCard/components/StampCardModal'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
+import { isMembershipActive } from '../domain/member/membershipStatus'
 
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
 const MEMBER_TABS = ['qr', 'events', 'map']
@@ -192,10 +193,7 @@ export default function MemberPage() {
     )
   }
 
-  const isValid =
-    member?.is_member &&
-    member?.membership_valid_until &&
-    new Date(member.membership_valid_until) >= new Date()
+  const isValid = isMembershipActive(member)
 
   return (
     <div

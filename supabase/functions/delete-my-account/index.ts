@@ -18,9 +18,36 @@ async function anonymizeMasterSheet(admin: any, userId: string) {
       Deno.env.get('APPS_SCRIPT_SHARED_SECRET'),
     )),
   })
-  const body = await response.json().catch(() => null)
+  const contentType = response.headers.get('content-type') || ''
+  const responseText = await response.text().catch(() => '')
+  let body: Record<string, unknown> | null = null
+  try {
+    body = JSON.parse(responseText)
+  } catch {
+    // Google Apps Script can return an HTML error page even when fetch follows
+    // its redirect successfully. Keep the body out of logs because it is
+    // controlled by an external endpoint.
+  }
   if (!response.ok || body?.success !== true) {
-    throw new Error('Master Sheet anonymization was not confirmed')
+    const responseKind = body === null
+      ? (contentType.includes('text/html') ? 'html' : 'non_json')
+      : typeof body.success === 'boolean'
+        ? (body.success ? 'success_true' : 'success_false')
+        : 'success_flag_missing'
+    const remoteText = [body?.error, body?.message, body?.code]
+      .filter((value): value is string => typeof value === 'string')
+      .join(' ')
+      .toLowerCase()
+    const reasonKind = /secret|auth|forbidden|unauthor/.test(remoteText)
+      ? 'authorization_rejected'
+      : /not.?found|no.?match|missing.?user/.test(remoteText)
+        ? 'record_not_found'
+        : /unknown.?type|unsupported.?type|invalid.?type/.test(remoteText)
+          ? 'unsupported_request'
+          : responseKind === 'success_false'
+            ? 'remote_rejected'
+            : 'invalid_response'
+    throw new Error(`Master Sheet response rejected (http_${response.status}, ${reasonKind})`)
   }
 }
 
@@ -49,6 +76,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ success: false, message: '허용되지 않은 요청입니다.' }, 405)
 
+  let stage = 'request_validation'
   try {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
     const body = await req.json().catch(() => null)
@@ -67,6 +95,7 @@ serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
+    stage = 'auth_user_verification'
     const { data: userData, error: userError } = await admin.auth.getUser(token)
     const user = userData?.user
     const claims = decodeClaims(token)
@@ -74,11 +103,13 @@ serve(async (req) => {
       return json({ success: false, message: '다시 로그인하고 이메일 인증을 완료해 주세요.' }, 401)
     }
 
+    stage = 'active_session_verification'
     if (!hasVerifiedAppLogin(token, user.id)) return requireVerifiedLoginResponse(corsHeaders)
     if (!(await hasActiveDeviceSession(admin, user.id, token))) {
       return json({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }, 403)
     }
 
+    stage = 'administrator_guard'
     const { data: adminRole, error: adminRoleError } = await admin
       .from('admin_roles')
       .select('user_id')
@@ -97,8 +128,10 @@ serve(async (req) => {
 
     // The master sheet still has identifying fields. Anonymize it before the
     // member row and Auth identity are irreversibly removed.
+    stage = 'master_sheet_anonymization'
     await anonymizeMasterSheet(admin, user.id)
 
+    stage = 'profile_image_cleanup'
     const { error: imageError } = await admin.storage
       .from('profile-images')
       .remove([`avatars/${user.id}.jpg`])
@@ -106,18 +139,21 @@ serve(async (req) => {
 
     // These two operational tables intentionally have no Auth foreign key, so
     // Auth's ON DELETE CASCADE cannot clean them up.
+    stage = 'redemptions_cleanup'
     const { error: redemptionsError } = await admin
       .from('redemptions')
       .delete()
       .eq('user_id', user.id)
     if (redemptionsError) throw new Error('Redemption cleanup failed')
 
+    stage = 'analytics_cleanup'
     const { error: analyticsError } = await admin
       .from('member_analytics_profiles')
       .delete()
       .eq('user_id', user.id)
     if (analyticsError) throw new Error('Analytics cleanup failed')
 
+    stage = 'pending_email_changes_cleanup'
     const { error: pendingChangesError } = await admin
       .from('pending_email_changes')
       .delete()
@@ -126,6 +162,7 @@ serve(async (req) => {
 
     // This retry queue deliberately has no Auth foreign key. Remove any stale
     // retention entry so a later scheduled run does not revisit this account.
+    stage = 'privacy_queue_cleanup'
     const { error: privacyQueueError } = await admin
       .from('privacy_sheet_sync_queue')
       .delete()
@@ -134,15 +171,20 @@ serve(async (req) => {
 
     // Revoke refresh sessions before deleting the Auth user. Existing access
     // JWTs may remain valid until expiry, but all account-owned rows are gone.
+    stage = 'session_revocation'
     const { error: signOutError } = await admin.auth.admin.signOut(token, 'global')
     if (signOutError) throw new Error('Could not revoke account sessions')
 
+    stage = 'auth_user_deletion'
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id)
     if (deleteUserError) throw new Error('Auth account deletion failed')
 
     return json({ success: true })
-  } catch {
-    console.error('Account deletion did not complete')
+  } catch (error) {
+    console.error('Account deletion did not complete', {
+      stage,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
     return json({ success: false, message: '계정 삭제가 완료되지 않았습니다. 데이터가 일부 남아 있을 수 있으니 관리자에게 문의해 주세요.' }, 500)
   }
 })

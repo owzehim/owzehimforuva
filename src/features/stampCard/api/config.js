@@ -40,6 +40,9 @@ export async function upsertConfig(restaurantId, data) {
       { onConflict: 'restaurant_id' }
     )
 
+  if (error?.message?.includes('STAMP_CARD_TOTAL_STAMPS_LOCKED')) {
+    throw new Error('이미 스탬프 기록이 있는 카드의 총 칸 수는 바꿀 수 없습니다. 기록을 초기화한 뒤 다시 시도해 주세요.')
+  }
   if (error) throw error
 }
 

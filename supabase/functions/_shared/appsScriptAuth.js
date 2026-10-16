@@ -1,5 +1,5 @@
-// Matches the webhook field expected by the existing master and partner Apps Scripts.
-export const APPS_SCRIPT_AUTH_FIELD = 'shared_secret'
+// Matches the field read by the deployed Master Apps Script authorization guard.
+export const APPS_SCRIPT_AUTH_FIELD = '__uvain_shared_secret'
 
 export function withAppsScriptSecret(payload, secret) {
   if (typeof secret !== 'string' || secret.length < 32) {
