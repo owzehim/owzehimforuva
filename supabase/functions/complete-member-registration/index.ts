@@ -24,6 +24,21 @@ function integerOrNull(value: unknown) {
 }
 
 const ALLOWED_EDUCATION_LEVELS = new Set(['foundation', 'bachelor', 'master', 'alumni'])
+const REGISTRATION_METADATA_KEYS = [
+  'registration',
+  'registration_accepted_at',
+  'first_name',
+  'last_name',
+  'first_name_korean',
+  'last_name_korean',
+  'name',
+]
+
+function clearRegistrationMetadata(metadata: Record<string, unknown> | null | undefined) {
+  const nextMetadata = { ...(metadata || {}) }
+  for (const key of REGISTRATION_METADATA_KEYS) nextMetadata[key] = null
+  return nextMetadata
+}
 
 function isValidRegistration(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
@@ -114,14 +129,11 @@ serve(async (req) => {
       .maybeSingle()
 
     if (existingError) {
-      console.error('Member registration lookup failed:', existingError)
+      console.error('Member registration lookup failed')
       return json({ success: false, message: '회원가입 상태를 확인하지 못했습니다.' }, 500)
     }
     if (existingMember) {
-      if (registration !== undefined && registration !== null) {
-        if (!isValidRegistration(registration)) {
-          return json({ success: false, message: '회원가입 정보를 확인할 수 없습니다. 지원팀에 문의해주세요.' }, 400)
-        }
+      if (isValidRegistration(registration)) {
         const receipts = getConsentReceiptRows(user.id, registration, consentAcceptedAt)
         const { error: receiptError } = await admin
           .from('legal_consent_receipts')
@@ -130,17 +142,14 @@ serve(async (req) => {
             ignoreDuplicates: true,
           })
         if (receiptError) {
-          console.error('Existing member consent receipt recovery failed:', receiptError)
+          console.error('Existing member consent receipt recovery failed')
           return json({ success: false, message: '동의 기록을 저장하지 못했습니다.' }, 500)
         }
       }
-      const nextMetadata = { ...user.user_metadata }
-      delete nextMetadata.registration
-      delete nextMetadata.registration_accepted_at
       const { error: cleanupError } = await admin.auth.admin.updateUserById(user.id, {
-        user_metadata: nextMetadata,
+        user_metadata: clearRegistrationMetadata(user.user_metadata),
       })
-      if (cleanupError) console.error('Completed registration metadata cleanup failed:', cleanupError)
+      if (cleanupError) console.error('Completed registration metadata cleanup failed')
       const { error: pendingCleanupError } = await admin
         .from('pending_email_changes')
         .delete()
@@ -200,16 +209,13 @@ serve(async (req) => {
               ignoreDuplicates: true,
             })
           if (receiptError) {
-            console.error('Raced member consent receipt recovery failed:', receiptError)
+            console.error('Raced member consent receipt recovery failed')
             return json({ success: false, message: '동의 기록을 저장하지 못했습니다.' }, 500)
           }
-          const nextMetadata = { ...user.user_metadata }
-          delete nextMetadata.registration
-          delete nextMetadata.registration_accepted_at
           const { error: cleanupError } = await admin.auth.admin.updateUserById(user.id, {
-            user_metadata: nextMetadata,
+            user_metadata: clearRegistrationMetadata(user.user_metadata),
           })
-          if (cleanupError) console.error('Raced registration metadata cleanup failed:', cleanupError)
+          if (cleanupError) console.error('Raced registration metadata cleanup failed')
           const { error: pendingCleanupError } = await admin
             .from('pending_email_changes')
             .delete()
@@ -231,17 +237,14 @@ serve(async (req) => {
         ignoreDuplicates: true,
       })
     if (receiptError) {
-      console.error('Member consent receipt insert failed:', receiptError)
+      console.error('Member consent receipt insert failed')
       return json({ success: false, message: '동의 기록을 저장하지 못했습니다.' }, 500)
     }
 
-    const nextMetadata = { ...user.user_metadata }
-    delete nextMetadata.registration
-    delete nextMetadata.registration_accepted_at
     const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: nextMetadata,
+      user_metadata: clearRegistrationMetadata(user.user_metadata),
     })
-    if (metadataError) console.error('Completed registration metadata cleanup failed:', metadataError)
+    if (metadataError) console.error('Completed registration metadata cleanup failed')
 
     const { error: pendingCleanupError } = await admin
       .from('pending_email_changes')
@@ -251,7 +254,9 @@ serve(async (req) => {
 
     return json({ success: true })
   } catch (error) {
-    console.error('Unexpected member registration error:', error)
+    console.error('Unexpected member registration error', {
+      errorName: error instanceof Error ? error.name : 'unknown',
+    })
     return json({ success: false, message: '회원가입을 완료하지 못했습니다.' }, 500)
   }
 })

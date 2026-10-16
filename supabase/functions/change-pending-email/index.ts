@@ -176,7 +176,9 @@ serve(async (req) => {
 
     return json({ success: true, message: 'A confirmation link was sent to the new address.' })
   } catch (error) {
-    console.error('change-pending-email failed:', error)
+    console.error('change-pending-email failed', {
+      errorName: error instanceof Error ? error.name : 'unknown',
+    })
     return json({ success: false, message: genericFailure }, 500)
   }
 })
