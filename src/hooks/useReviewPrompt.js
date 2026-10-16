@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getPendingReviewPrompt, markPromptSubmitted, markPromptDismissed } from '../api/reviewPromptApi'
 import { createReview } from '../api/reviewApi'
+import { refreshStoreReviewSummary } from './useStoreReviewSummary'
 import { validateReviewInput } from '../domain/reviewDomain'
 import { isProductionEnv } from '../lib/appEnv'
 
@@ -116,6 +117,13 @@ export function useReviewPrompt() {
       setSubmitError('리뷰 저장에 실패했습니다. 다시 시도해주세요.')
       setSubmitting(false)
       return
+    }
+
+    try {
+      const { error: summaryError } = await refreshStoreReviewSummary(prompt.store_id)
+      if (summaryError) console.warn('Review summary refresh failed:', summaryError.message)
+    } catch (err) {
+      console.warn('Review summary refresh failed:', err?.message)
     }
 
     await markPromptSubmitted(prompt.id)

@@ -196,14 +196,15 @@ serve(async (req) => {
         timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit',
       }),
     }
-    const partnerPayload = { ...reviewPayload, comment: '' }
-    const syncResults = await Promise.all([
-      postJsonToAppsScript(integrations?.master_apps_script_url, reviewPayload, 'master'),
-      postJsonToAppsScript(integrations?.partner_apps_script_url, partnerPayload, 'partner'),
-    ])
-    const requiredSyncFailed = shouldUpdateReviewComment
-      ? !syncResults[0]?.ok
-      : syncResults.some(result => !result.ok)
+    // Keep individual review rows (including rating and tags) in the private
+    // master sheet only. Partner sheets receive no per-redemption review data;
+    // partner reporting must use a separate five-member aggregate export.
+    const masterSync = await postJsonToAppsScript(
+      integrations?.master_apps_script_url,
+      reviewPayload,
+      'master',
+    )
+    const requiredSyncFailed = !masterSync.ok
     if (requiredSyncFailed) {
       return new Response(
         JSON.stringify({ success: false, message: '리뷰 기록을 모두 동기화하지 못했습니다.' }),

@@ -472,6 +472,7 @@ export function SpotCard({
   currentUsername,
   canComment,
   isAdmin,
+  reviewAudience = 'public',
 }) {
   const [cardHeightValue, setCardHeightValue] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -499,6 +500,7 @@ export function SpotCard({
 
   const { summary } = useStoreReviewSummary(
     selected?.partnership_id,
+    reviewAudience,
   )
 
   const { WIN_H, WIN_W } = useMemo(

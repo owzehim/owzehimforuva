@@ -137,6 +137,7 @@ export default function MemberPage() {
       // for entering the app. Warm their cache after the main screen is already visible.
       void primeStoreReviewSummaries(
         loadedRestaurants.map((restaurant) => restaurant.partnership_id),
+        'member',
       ).catch((error) => {
         console.warn('Failed to pre-load store review summaries:', error)
       })
@@ -4217,6 +4218,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
             currentUsername={noteDisplayName}
             canComment={isValid || isAdmin}
             isAdmin={isAdmin}
+            reviewAudience="member"
           />
         )}
 
