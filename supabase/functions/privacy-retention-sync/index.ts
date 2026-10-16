@@ -82,6 +82,40 @@ serve(async (req) => {
       global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
+    const { data: expiredSignups, error: expiredSignupsError } = await admin.rpc(
+      'find_expired_signup_auth_users',
+      { p_batch_size: 100 },
+    )
+    if (expiredSignupsError) {
+      console.error('Expired signup lookup failed')
+      return new Response(
+        JSON.stringify({ success: false, message: '만료된 가입 계정 정리를 처리하지 못했습니다.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    let expiredSignupDeletedCount = 0
+    let expiredSignupFailedCount = 0
+    for (const row of Array.isArray(expiredSignups) ? expiredSignups : []) {
+      const userId = row?.user_id
+      if (typeof userId !== 'string') continue
+      try {
+        await deleteAuthAccount(admin, userId)
+        expiredSignupDeletedCount += 1
+      } catch {
+        console.error('Expired signup cleanup failed')
+        expiredSignupFailedCount += 1
+      }
+    }
+
+    const { data: cleanedPendingEmailMappings, error: pendingEmailCleanupError } = await admin.rpc(
+      'cleanup_orphaned_pending_email_changes',
+    )
+    if (pendingEmailCleanupError) {
+      console.error('Orphaned pending email cleanup failed')
+      expiredSignupFailedCount += 1
+    }
+
     const { data: newlyQueued, error: queueError } = await admin.rpc('queue_expired_member_anonymizations')
 
     if (queueError) {
@@ -174,13 +208,17 @@ serve(async (req) => {
 
     const overdueRecordCount = Number(overdueData) || 0
     const remainingQueueCount = Number(pendingQueueCount) || 0
-    const success = failedCount === 0 && overdueRecordCount === 0 && remainingQueueCount === 0
+    const success = failedCount === 0 && expiredSignupFailedCount === 0 &&
+      overdueRecordCount === 0 && remainingQueueCount === 0
 
     return new Response(
       JSON.stringify({
         success,
         newly_queued_count: Number(newlyQueued) || 0,
         attempted_count: users.length,
+        expired_signup_accounts_deleted_count: expiredSignupDeletedCount,
+        expired_signup_accounts_failed_count: expiredSignupFailedCount,
+        orphaned_pending_email_mappings_deleted_count: Number(cleanedPendingEmailMappings) || 0,
         sheet_synced_count: syncedCount,
         auth_accounts_deleted_count: deletedAuthAccountCount,
         sheet_failed_count: failedCount,

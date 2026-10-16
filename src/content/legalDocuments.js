@@ -157,7 +157,7 @@ The role of each provider depends on the service: a provider may process data on
 
 Personal identifying information needed to operate your membership is retained while your membership remains active. After your membership ends, we retain the identifying information needed for support, fraud prevention, and dispute resolution for up to 12 months, then delete or irreversibly anonymize it.
 
-If you confirm your account but do not become a member, we retain your account and profile information for up to 12 months after account creation. After that period, we delete the account and its identifying information.
+If you do not confirm your email address within 7 days of creating an account, we delete the unverified account and its registration information. If you confirm your account but do not become a member, we retain your account and profile information for up to 12 months after account creation. After that period, we delete the account and its identifying information.
 
 When you request account deletion, we delete or anonymize information directly linked to your account as part of the deletion process, subject to any specific legal obligation or unresolved legal claim that requires limited information to be retained.
 

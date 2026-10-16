@@ -79,7 +79,9 @@ serve(async (req) => {
 
     return json({ success: true, changed: true })
   } catch (error) {
-    console.error('Pending email change finalization failed:', error)
+    console.error('Pending email change finalization failed', {
+      errorName: error instanceof Error ? error.name : 'unknown',
+    })
     return json({ success: false, message: failureMessage }, 500)
   }
 })
