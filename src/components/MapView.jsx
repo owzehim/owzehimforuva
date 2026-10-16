@@ -33,6 +33,15 @@ if (typeof window !== 'undefined' && !document.getElementById('map-view-performa
       line-height: 16px !important;
       padding: 0 4px !important;
     }
+    .dark .maplibregl-ctrl-attrib {
+      color: #e5e7eb !important;
+      background: rgba(28, 30, 34, 0.94) !important;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+    }
+    .dark .maplibregl-ctrl-attrib a {
+      color: #f3f4f6 !important;
+    }
     
     .custom-marker[data-selected="true"] .marker-circle {
       border: 3px solid #f97316 !important;
@@ -486,7 +495,9 @@ export default function MapView({ restaurants, selected, onSelect }) {
           width: '68px',
           padding: '2px 4px',
           borderRadius: '4px',
-          background: 'rgba(255,255,255,0.9)',
+          background: darkMapControls ? 'rgba(28,30,34,0.94)' : 'rgba(255,255,255,0.9)',
+          border: darkMapControls ? '1px solid rgba(255,255,255,0.12)' : 'none',
+          transition: 'background-color 150ms ease, border-color 150ms ease',
         }}
       >
         <img
