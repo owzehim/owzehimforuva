@@ -23,7 +23,7 @@
 // E=5  Stamp Card Status
 // F=6  Claimed At [Date]
 // G=7  empty gap
-// H:M are retired. Reviews are shown only in the separate thresholded summary.
+// H:M store individual star/tag reviews, matched by redemption ID.
 // N=14 empty gap
 // O=15 Created At [Date]
 // P=16 Updated At [Date]
@@ -34,10 +34,8 @@
 const PARTNERSHIP_ID = 'REPLACE_WITH_PARTNERSHIP_ID';
 
 const SHEET_NAME = 'Operations';
-const SUMMARY_SHEET_NAME = 'Reviews Summary';
-const SCRIPT_VERSION = 'uvain-partner-owner-sheet-v8-aggregate-reviews';
+const SCRIPT_VERSION = 'uvain-partner-owner-sheet-v10-individual-reviews-no-summary';
 const COLUMN_COUNT = 16;
-const SUMMARY_COLUMN_COUNT = 8;
 const RETENTION_MONTHS = 12;
 const RETENTION_TIME_ZONE = 'Europe/Amsterdam';
 const RETENTION_TRIGGER_HANDLER = 'purgeExpiredPartnerRecords';
@@ -48,6 +46,12 @@ const COL = {
   stamp_card_progress: 4,
   stamp_card_status: 5,
   claimed_at_date: 6,
+  review_rating: 8,
+  great_food: 9,
+  friendly_staff: 10,
+  nice_atmosphere: 11,
+  good_value: 12,
+  review_submitted_at_date: 13,
   created_at_date: 15,
   updated_at_date: 16,
 };
@@ -122,13 +126,9 @@ function doPost(e) {
       return jsonResponse({ success: true, version: SCRIPT_VERSION, action: 'stamp_claim_updated' });
     }
 
-    if (data.type === 'review_summary') {
-      upsertReviewSummary(data);
-      return jsonResponse({ success: true, version: SCRIPT_VERSION, action: 'review_summary_updated' });
-    }
-
     if (data.type === 'review') {
-      throw new Error('Individual review rows are disabled for partner sheets');
+      updateReview(sheet, data);
+      return jsonResponse({ success: true, version: SCRIPT_VERSION, action: 'review_updated' });
     }
 
     throw new Error('Unknown request type: ' + data.type);
@@ -153,55 +153,6 @@ function setupPartnerSheetAndClearRows() {
   const sheet = getOperationsSheet();
   sheet.clearContents();
   setupPartnerSheetHeaders();
-}
-
-function setupReviewSummaryHeaders() {
-  const sheet = getReviewSummarySheet();
-  sheet.getRange(1, 1, 1, SUMMARY_COLUMN_COUNT).setValues([[
-    'Partnership ID', 'Average Rating', 'Reviews', 'Great Food',
-    'Friendly Staff', 'Nice Atmosphere', 'Good Value', 'Updated At',
-  ]]);
-  sheet.setFrozenRows(1);
-}
-
-function clearLegacyIndividualReviewData() {
-  const sheet = getOperationsSheet();
-  const lastRow = sheet.getLastRow();
-  if (lastRow > 1) sheet.getRange(2, 8, lastRow - 1, 6).clearContent();
-  return 'Cleared legacy per-redemption review values from Operations columns H:M.';
-}
-
-function upsertReviewSummary(data) {
-  const reviewCount = Number(data.review_count);
-  const summarySheet = getReviewSummarySheet();
-  setupReviewSummaryHeaders();
-
-  // The Edge Function sends a non-zero aggregate only when its database RPC
-  // confirms five distinct reviewers. Zero means suppress and clear the old row.
-  if (!Number.isFinite(reviewCount) || reviewCount < 5) {
-    const lastRow = summarySheet.getLastRow();
-    if (lastRow > 1) summarySheet.getRange(2, 1, lastRow - 1, SUMMARY_COLUMN_COUNT).clearContent();
-    return;
-  }
-
-  const averageRating = Number(data.average_rating);
-  const tagCounts = [data.great_food, data.friendly_staff, data.nice_atmosphere, data.good_value]
-    .map(value => Math.max(0, Math.floor(Number(value) || 0)));
-  const row = [
-    PARTNERSHIP_ID,
-    Number.isFinite(averageRating) ? Math.max(0, Math.min(5, averageRating)) : 0,
-    Math.floor(reviewCount),
-    ...tagCounts,
-    formatDate(new Date(data.updated_at || new Date())),
-  ];
-  summarySheet.getRange(2, 1, 1, SUMMARY_COLUMN_COUNT).setValues([row]);
-}
-
-function getReviewSummarySheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SUMMARY_SHEET_NAME);
-  if (!sheet) sheet = ss.insertSheet(SUMMARY_SHEET_NAME);
-  return sheet;
 }
 
 // Run once after updating this script. It moves rows from the old A:U layout into
@@ -409,6 +360,9 @@ function upsertScan(sheet, row) {
 
   if (existingRow !== -1) {
     const current = sheet.getRange(targetRow, 1, 1, COLUMN_COUNT).getValues()[0];
+    // A scan resync must not erase the individual review fields already stored
+    // in Operations columns H:M.
+    row.splice(7, 6, ...current.slice(7, 13));
     row[COL.created_at_date - 1] = current[COL.created_at_date - 1];
     setUpdatedValues(row, new Date());
   }
@@ -442,6 +396,41 @@ function updateStampClaim(sheet, data) {
   sheet.getRange(row, COL.stamp_card_status).setValue(value(data.stamp_status) || 'claimed');
   sheet.getRange(row, COL.claimed_at_date).setValue(value(data.claimed_at_date) || formatDate(now));
   setUpdatedRange(sheet, row, now);
+}
+
+function updateReview(sheet, data) {
+  if (!data.redemption_id) throw new Error('Missing redemption_id');
+
+  const now = new Date();
+  const tags = Array.isArray(data.tags) ? data.tags : [];
+  const rating = Number(data.rating);
+  if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+    throw new Error('Invalid review rating');
+  }
+  const reviewValues = [
+    rating,
+    tags.indexOf('GREAT_FOOD') >= 0 ? 1 : '',
+    tags.indexOf('FRIENDLY_STAFF') >= 0 ? 1 : '',
+    tags.indexOf('NICE_ATMOSPHERE') >= 0 ? 1 : '',
+    tags.indexOf('GOOD_VALUE') >= 0 ? 1 : '',
+    value(data.review_submitted_at_date) || formatDate(now),
+  ];
+
+  let rowNumber = findRowByRedemptionId(sheet, data.redemption_id);
+  if (rowNumber === -1) {
+    const row = blankRow();
+    row[COL.date - 1] = value(data.review_submitted_at_date) || formatDate(now);
+    row[COL.redemption_id - 1] = String(data.redemption_id);
+    row[COL.created_at_date - 1] = formatDate(now);
+    row[COL.updated_at_date - 1] = formatDate(now);
+    row.splice(COL.review_rating - 1, reviewValues.length, ...reviewValues);
+    rowNumber = Math.max(sheet.getLastRow() + 1, 2);
+    sheet.getRange(rowNumber, 1, 1, COLUMN_COUNT).setValues([row]);
+    return;
+  }
+
+  sheet.getRange(rowNumber, COL.review_rating, 1, reviewValues.length).setValues([reviewValues]);
+  setUpdatedRange(sheet, rowNumber, now);
 }
 
 function setAuditValues(rowValues, createdAt, updatedAt) {
