@@ -1,4 +1,4 @@
-export const LEGAL_DOCUMENT_VERSION = '2026-10-14-01';
+export const LEGAL_DOCUMENT_VERSION = '2026-10-16-01';
 
 export const legalDocuments = {
   terms: {
@@ -98,10 +98,10 @@ By creating an account, you confirm that you have read, understood, and agree to
   },
   privacy: {
     title: 'Privacy Policy',
-    effectiveDate: '14 October 2026',
+    effectiveDate: '16 October 2026',
     body: `UvA-IN Privacy Policy
 
-Effective Date: 14 October 2026
+Effective Date: 16 October 2026
 
 UvA-IN is committed to protecting your privacy and handling your personal information responsibly. This Privacy Policy explains how we collect, use, store, share, protect, and retain your personal data when you use the UvA-IN mobile application.
 
@@ -121,7 +121,7 @@ When creating an account, we collect your email address, first and last name, an
 
 To operate your membership, we may collect membership validity period, membership status, student verification status, and membership history.
 
-When you use the App, we may record QR code check-ins, visit date and time, participating partner location, digital stamp progress, reward redemption records, and operational usage records. We also process comments, notes, ratings, selected review tags, and reports you submit through the App. Comments and notes may be visible to other signed-in App members according to the feature's access rules. Your username and profile photo may be shown with a contribution unless you use an anonymous option where available.
+When you use the App, we may record QR code check-ins, visit date and time, participating partner location, digital stamp progress, reward redemption records, and operational usage records. We also process comments, notes, ratings, selected review tags, and reports you submit through the App. Live store-level rating and tag summaries are visible to signed-in active App members. A one-line review submitted before you set a username is shown as anonymous; setting a username later does not reveal that earlier contribution. Contributions made after you set a username may show that username unless you choose an anonymous option where available.
 
 The App stores authentication session information and limited app state in your browser's local or session storage (for example, your sign-in session, temporary sign-up state, and display preference). This supports sign-in and basic App operation. The current App code does not use advertising cookies or collect push-notification device tokens.
 
@@ -137,9 +137,9 @@ We do not sell your personal information.
 
 4. Information Shared with Partner Businesses
 
-For in-person check-in, the success screen shows the member's name, student number, university, scan time, and membership end date, and asks the member to show that screen and their student card to restaurant staff so they can verify eligibility. The automated partner record for that restaurant receives only a redemption identifier, visit date, reward or stamp progress, redemption status, review rating, and selected review tags. Exact visit times, free-text review comments, the full registration profile, and the Supabase account identifier are not sent to partner records.
+For in-person check-in, the success screen shows the member's name, student number, university, scan time, and membership end date, and asks the member to show that screen and their student card to restaurant staff so they can verify eligibility. A partner's operational record may contain the redemption identifier, visit date, reward or stamp progress, and redemption status needed to verify a transaction. Individual review ratings, selected tags, free-text review comments, member names, and Supabase account identifiers are not included in partner transaction rows. Review feedback may be shared with a partner only as a location-level aggregate after at least five distinct members have contributed; smaller groups are suppressed.
 
-Partner copies are limited to that partner's records and follow the 12-month transaction retention limit in Section 7. A partner may act as a separate controller for records it uses for its own reward administration; if so, it is responsible for providing its own privacy information and handling requests about that processing. You can also contact us using the details below and we will pass your request to the relevant partner.
+Partner copies are limited to that partner's records and follow the 12-month transaction retention limit in Section 7. Review ratings and selected tags are not added to individual transaction rows or shared with partners as individual reviews. Any partner review summary is limited to that location and is suppressed until at least five distinct members have contributed. Free-text review comments are not included in partner review summaries. A partner may act as a separate controller for records it uses for its own reward administration; if so, it is responsible for providing its own privacy information and handling requests about that processing. You can also contact us using the details below and we will pass your request to the relevant partner.
 
 When partner reports are introduced, each participating business may receive reports only about its own location. Reports may show weekly or monthly visit patterns by time-of-day band, broad origin region (for example, a country recorded as South Korea is grouped under East Asia), and broad faculty group. Reports will not contain member names, account identifiers, individual visit rows, or exact visit timestamps. Counts and percentages will be shown only for groups containing at least five distinct members; smaller groups and totals or overlapping breakdowns that could reveal them will be suppressed. Time bands will use Europe/Amsterdam local time.
 

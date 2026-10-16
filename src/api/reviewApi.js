@@ -50,7 +50,7 @@ export async function createReview({ redemptionId, storeId, rating, tags, commen
 
   // 2. Trigger Google Sheets update via Edge Function (fire and forget)
   // We don't await this — if it fails, the review is still saved in Supabase
-  syncReviewToSheets({ redemptionId, storeId, rating, tags, comment, userId: user.id })
+  syncReviewToSheets({ redemptionId, storeId, rating, tags, comment })
     .catch((err) => console.warn('Sheet sync failed (non-critical):', err?.message))
 
   if (comment?.trim()) {
@@ -99,7 +99,8 @@ export async function getReviewsByStore(storeId) {
 }
 
 /**
- * Fetches the review summary for a store (average rating, count, tag counts).
+ * Fetches a store summary. Member summaries are available to active members;
+ * public summaries are suppressed until at least five distinct members review.
  *
  * @param {string} storeId
  * @returns {Promise<{
@@ -107,8 +108,8 @@ export async function getReviewsByStore(storeId) {
  *   error: object|null
  * }>}
  */
-export async function getStoreReviewSummary(storeId) {
-  const { data, error } = await getStoreReviewSummaries([storeId])
+export async function getStoreReviewSummary(storeId, audience = 'public') {
+  const { data, error } = await getStoreReviewSummaries([storeId], audience)
   return { data: data?.[0] ?? null, error }
 }
 
@@ -117,9 +118,10 @@ export async function getStoreReviewSummary(storeId) {
  * ready before a SpotCard is opened.
  *
  * @param {string[]} storeIds
+ * @param {'member'|'public'} [audience='public']
  * @returns {Promise<{ data: object[]|null, error: object|null }>}
  */
-export async function getStoreReviewSummaries(storeIds) {
+export async function getStoreReviewSummaries(storeIds, audience = 'public') {
   const uniqueStoreIds = Array.from(new Set((storeIds || []).filter(Boolean)))
   if (uniqueStoreIds.length === 0) return { data: [], error: null }
 
@@ -130,7 +132,12 @@ export async function getStoreReviewSummaries(storeIds) {
 
   const results = await Promise.all(
     batches.map((batch) =>
-      supabase.rpc('get_store_review_summaries', { p_store_ids: batch }),
+      supabase.rpc(
+        audience === 'member'
+          ? 'get_member_store_review_summaries'
+          : 'get_store_review_summaries',
+        { p_store_ids: batch },
+      ),
     ),
   )
   const error = results.find((result) => result.error)?.error
@@ -173,11 +180,10 @@ export async function hasUserReviewedRedemption(redemptionId) {
  *   storeId: string,
  *   rating: number,
  *   tags: string[],
- *   comment?: string,
- *   userId: string
+ *   comment?: string
  * }} params
  */
-async function syncReviewToSheets({ redemptionId, storeId, rating, tags, comment, userId }) {
+async function syncReviewToSheets({ redemptionId, storeId, rating, tags, comment }) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return
 
@@ -185,7 +191,6 @@ async function syncReviewToSheets({ redemptionId, storeId, rating, tags, comment
     body: {
       redemption_id: redemptionId,
       store_id:      storeId,
-      user_id:       userId,
       rating,
       tags,          // ← raw array e.g. ['GREAT_FOOD', 'GOOD_VALUE']
       comment:       comment || '',
