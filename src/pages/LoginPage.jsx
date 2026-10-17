@@ -71,7 +71,7 @@ export default function LoginPage() {
             <>
               <div className="mb-3 flex justify-center">
                 <img
-                  src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png"
+                  src="/UvA-IN-logo-transparent.png"
                   alt="UvA-IN Logo"
                   draggable={false}
                   className="h-24 w-24 object-contain"
