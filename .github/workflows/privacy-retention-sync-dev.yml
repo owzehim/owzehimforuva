@@ -1,0 +1,44 @@
+name: DEV privacy retention test
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_dev:
+        description: Confirm this run targets the DEV Supabase project only
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-privacy-retention-test
+  cancel-in-progress: false
+
+jobs:
+  retention:
+    if: inputs.confirm_dev == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run the DEV privacy retention job
+        env:
+          SUPABASE_URL: https://smesebnighdcwqcgokhg.supabase.co
+          RETENTION_JOB_SECRET: ${{ secrets.DEV_RETENTION_JOB_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$RETENTION_JOB_SECRET" ]]; then
+            echo "Set DEV_RETENTION_JOB_SECRET in GitHub Actions secrets."
+            exit 1
+          fi
+
+          response="$(curl --fail-with-body --silent --show-error --max-time 120 \
+            --request POST "$SUPABASE_URL/functions/v1/privacy-retention-sync" \
+            --header 'content-type: application/json' \
+            --header "x-retention-secret: $RETENTION_JOB_SECRET" \
+            --data '{}')"
+
+          echo "$response" | jq -e '.success == true' >/dev/null
+          echo "$response" | jq '{success, newly_queued_count, attempted_count, expired_signup_accounts_deleted_count, expired_signup_accounts_failed_count, orphaned_pending_email_mappings_deleted_count, sheet_synced_count, auth_accounts_deleted_count, sheet_failed_count, overdue_record_count, pending_sync_count}'
