@@ -217,24 +217,50 @@ export async function updatePasswordFromRecovery(password) {
   if (error) throw new Error(error.message)
 }
 
-/** Change a password, optionally requiring the current password and reauthentication nonce. */
-export async function updatePassword(password, currentPassword, nonce) {
-  const attributes = { password }
-
-  if (currentPassword !== undefined || nonce !== undefined) {
-    if (typeof currentPassword !== 'string' || !currentPassword || typeof nonce !== 'string' || !nonce) {
-      throw new Error('현재 비밀번호와 이메일 확인 코드를 모두 입력해주세요.')
-    }
-    attributes.currentPassword = currentPassword
-    attributes.nonce = nonce
+/** Verify the current password in a non-persistent Auth client. */
+async function verifyCurrentPassword(currentPassword) {
+  if (typeof currentPassword !== 'string' || !currentPassword) {
+    throw new Error('현재 비밀번호를 입력해주세요.')
   }
 
-  const { error } = await supabase.auth.updateUser(attributes)
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  const email = user?.email?.trim().toLowerCase()
+  if (userError || !email) {
+    throw new Error('로그인 정보를 확인하지 못했습니다. 다시 로그인해주세요.')
+  }
+
+  const verifier = createEphemeralAuthClient()
+  let proofError = null
+  try {
+    const { error } = await verifier.auth.signInWithPassword({ email, password: currentPassword })
+    proofError = error
+  } finally {
+    // This client never persists a session. Local scope avoids revoking the
+    // member's OTP-authenticated session or any other device.
+    await verifier.auth.signOut({ scope: 'local' })
+  }
+
+  if (proofError) throw new Error('현재 비밀번호가 올바르지 않습니다.')
+}
+
+/** Change a password only after current-password proof and email reauthentication. */
+export async function updatePassword(password, currentPassword, nonce) {
+  if (typeof nonce !== 'string' || !nonce.trim()) {
+    throw new Error('이메일 확인 코드를 입력해주세요.')
+  }
+
+  await verifyCurrentPassword(currentPassword)
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+    currentPassword,
+    nonce: nonce.trim(),
+  })
   if (error) throw new Error(error.message)
 }
 
 /** Sign the current persisted app session out. */
 export async function signOut() {
-  const { error } = await supabase.auth.signOut()
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
   if (error) throw new Error(error.message)
 }

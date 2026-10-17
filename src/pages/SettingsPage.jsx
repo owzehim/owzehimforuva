@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LoadingIndicator from '../components/LoadingIndicator'
-import { updatePassword } from '../api/authRepository'
 import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X, Trash } from '@phosphor-icons/react'
 import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
@@ -68,12 +67,6 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
-  const [passwordPanelOpen, setPasswordPanelOpen] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [passwordLoading, setPasswordLoading] = useState(false)
-  const [passwordError, setPasswordError] = useState('')
-  const [passwordSuccess, setPasswordSuccess] = useState('')
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false)
   const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState('')
@@ -162,7 +155,7 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     navigate('/public', { replace: true })
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'local' })
   }
 
   const handleDeleteAccount = async () => {
@@ -197,42 +190,6 @@ export default function SettingsPage() {
     } catch (deleteError) {
       setDeleteAccountError(deleteError.message || '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.')
       setDeleteAccountLoading(false)
-    }
-  }
-
-  const handlePasswordPanelToggle = () => {
-    setPasswordPanelOpen((open) => !open)
-    setPasswordError('')
-    setPasswordSuccess('')
-    setNewPassword('')
-    setConfirmPassword('')
-  }
-
-  const handlePasswordChange = async (e) => {
-    e.preventDefault()
-    setPasswordError('')
-    setPasswordSuccess('')
-
-    if (newPassword.length < 8) {
-      setPasswordError('비밀번호는 최소 8자 이상이어야 합니다.')
-      return
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError('비밀번호가 일치하지 않습니다.')
-      return
-    }
-
-    setPasswordLoading(true)
-    try {
-      await updatePassword(newPassword)
-      setPasswordSuccess('비밀번호가 변경되었습니다.')
-      setNewPassword('')
-      setConfirmPassword('')
-    } catch (err) {
-      setPasswordError(err.message || '비밀번호 변경 중 오류가 발생했습니다.')
-    } finally {
-      setPasswordLoading(false)
     }
   }
 
@@ -626,46 +583,6 @@ export default function SettingsPage() {
             >
               비밀번호 바꾸기
             </button>
-
-            {passwordPanelOpen && (
-              <form
-                onSubmit={handlePasswordChange}
-                className="space-y-3 rounded-2xl border border-gray-100 bg-white p-4 dark:border-[#2c2c2e] dark:bg-[#111111]"
-              >
-                <label className="flex h-[54px] cursor-text flex-col justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-[#2c2c2e] dark:bg-[#121212]">
-                  <span className="text-xs font-normal leading-none text-gray-500 dark:text-gray-400">새 비밀번호</span>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full border-none bg-white p-0 text-sm text-gray-900 outline-none focus:outline-none dark:bg-[#121212] dark:text-white"
-                    required
-                  />
-                </label>
-
-                <label className="flex h-[54px] cursor-text flex-col justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-[#2c2c2e] dark:bg-[#121212]">
-                  <span className="text-xs font-normal leading-none text-gray-500 dark:text-gray-400">새 비밀번호 확인</span>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full border-none bg-white p-0 text-sm text-gray-900 outline-none focus:outline-none dark:bg-[#121212] dark:text-white"
-                    required
-                  />
-                </label>
-
-                {passwordError && <p className="text-xs text-red-500">{passwordError}</p>}
-                {passwordSuccess && <p className="text-xs text-green-600">{passwordSuccess}</p>}
-
-                <button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="w-full rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white text-center shadow-sm disabled:opacity-50"
-                >
-                  {passwordLoading ? '변경 중...' : '변경 완료'}
-                </button>
-              </form>
-            )}
 
             <button
               type="button"

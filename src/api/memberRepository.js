@@ -98,7 +98,7 @@ export async function registerMember(payload) {
     });
 
   if (existingLogin?.user) {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'local' });
     throw new Error(ALREADY_REGISTERED_MESSAGE);
   }
 
