@@ -60,7 +60,7 @@ export default function EmailConfirmedPage() {
               'Email was confirmed, but member registration could not be completed:',
               registrationError || registrationResult?.message,
             )
-            await supabase.auth.signOut()
+            await supabase.auth.signOut({ scope: 'local' })
             if (!cancelled) finish('registration_error')
             return
           }
@@ -72,13 +72,13 @@ export default function EmailConfirmedPage() {
               'Email was confirmed, but the pending email change could not be finalized:',
               emailChangeError || emailChangeResult?.message,
             )
-            await supabase.auth.signOut()
+            await supabase.auth.signOut({ scope: 'local' })
             if (!cancelled) finish('email_change_error')
             return
           }
         }
 
-        await supabase.auth.signOut()
+        await supabase.auth.signOut({ scope: 'local' })
         if (!cancelled) finish('success')
       } catch {
         if (!cancelled) finish('error')
