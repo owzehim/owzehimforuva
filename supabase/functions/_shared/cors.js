@@ -1,15 +1,39 @@
-const DEFAULT_ALLOWED_ORIGINS = [
+const DEV_SUPABASE_PROJECT_REF = 'smesebnighdcwqcgokhg'
+const PRODUCTION_SUPABASE_PROJECT_REF = 'npvcghdzrtqrlliprtnw'
+const PRODUCTION_ALLOWED_ORIGINS = [
   'https://app.uva-in.nl',
   'https://uvain-app.vercel.app',
   'http://localhost:5173',
 ]
 
+function currentProjectRef() {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    return new URL(supabaseUrl).hostname.split('.')[0]
+  } catch {
+    return ''
+  }
+}
+
+function defaultAllowedOrigins(projectRef) {
+  if (projectRef === DEV_SUPABASE_PROJECT_REF) return ['http://localhost:5173']
+  if (projectRef === PRODUCTION_SUPABASE_PROJECT_REF) return PRODUCTION_ALLOWED_ORIGINS
+
+  return ['http://localhost:5173']
+}
+
 function allowedOrigins(configuredOrigins) {
+  const projectRef = currentProjectRef()
   const configured = configuredOrigins
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean)
-  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured])
+  const devDisallowedOrigins = projectRef === DEV_SUPABASE_PROJECT_REF
+    ? new Set(PRODUCTION_ALLOWED_ORIGINS.filter((origin) => origin !== 'http://localhost:5173'))
+    : new Set()
+  const allowed = [...defaultAllowedOrigins(projectRef), ...configured]
+    .filter((origin) => !devDisallowedOrigins.has(origin))
+  return new Set(allowed)
 }
 
 export function isAllowedCorsOrigin(origin, configuredOrigins = '') {
