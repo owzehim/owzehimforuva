@@ -1,3 +1,5 @@
+import { getAllowedAppsScriptUrl } from './appsScriptAuth.js'
+
 /** Resolve the one configured Master Apps Script endpoint used for privacy work. */
 export async function getMasterPrivacyEndpoint(admin: any): Promise<string> {
   const { data, error } = await admin
@@ -21,15 +23,7 @@ export async function getMasterPrivacyEndpoint(admin: any): Promise<string> {
       : 'Master Sheet privacy endpoint configuration is ambiguous')
   }
 
-  let parsed: URL
-  try {
-    parsed = new URL(endpoints[0])
-  } catch {
-    throw new Error('Master Sheet privacy endpoint is invalid')
-  }
-  if (parsed.protocol !== 'https:' || parsed.hostname !== 'script.google.com') {
-    throw new Error('Master Sheet privacy endpoint is invalid')
-  }
-
-  return parsed.toString()
+  const allowedEndpoint = getAllowedAppsScriptUrl(endpoints[0])
+  if (!allowedEndpoint) throw new Error('Master Sheet privacy endpoint is invalid')
+  return allowedEndpoint
 }

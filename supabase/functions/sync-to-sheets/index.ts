@@ -6,15 +6,23 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { sheetText } from '../_shared/sheetText.js'
 import { readJsonBody, RequestBodyTooLargeError } from '../_shared/readJsonBody.js'
-import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
+import { getAllowedAppsScriptUrl, withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
 async function postJsonToAppsScript(url: string | null | undefined, payload: Record<string, unknown>, label: string) {
   if (!url) return { ok: false, skipped: true, label }
+  const endpoint = getAllowedAppsScriptUrl(url)
+  if (!endpoint) {
+    console.error(`${label} Apps Script URL is invalid`)
+    return { ok: false, errorCode: 'invalid_endpoint', label }
+  }
   try {
-    const response = await fetch(url, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(withAppsScriptSecret(payload, Deno.env.get('APPS_SCRIPT_SHARED_SECRET'))),
+      body: JSON.stringify(withAppsScriptSecret(
+        payload,
+        Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
+      )),
     })
     const text = await response.text().catch(() => '')
     if (!response.ok) {

@@ -89,7 +89,7 @@ function doGet() {
 function authorizeWebhook(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
 
-  const expected = PropertiesService.getScriptProperties().getProperty('APPS_SCRIPT_SHARED_SECRET');
+  const expected = PropertiesService.getScriptProperties().getProperty('PARTNER_APPS_SCRIPT_SECRET');
   const supplied = typeof data.__uvain_shared_secret === 'string' ? data.__uvain_shared_secret : '';
   if (!expected || expected.length < 32 || !supplied || supplied.length !== expected.length) return false;
 
