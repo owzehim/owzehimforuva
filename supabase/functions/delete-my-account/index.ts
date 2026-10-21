@@ -6,6 +6,7 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 import { getMasterPrivacyEndpoint } from '../_shared/masterPrivacyEndpoint.ts'
+import { hasRecentAuthTime } from '../_shared/recentAuth.js'
 
 async function anonymizeMasterSheet(admin: any, userId: string) {
   const url = await getMasterPrivacyEndpoint(admin)
@@ -15,7 +16,7 @@ async function anonymizeMasterSheet(admin: any, userId: string) {
     signal: AbortSignal.timeout(10_000),
     body: JSON.stringify(withAppsScriptSecret(
       { type: 'privacy_anonymize', user_id: userId },
-      Deno.env.get('APPS_SCRIPT_SHARED_SECRET'),
+      Deno.env.get('MASTER_APPS_SCRIPT_SECRET'),
     )),
   })
   const contentType = response.headers.get('content-type') || ''
@@ -101,6 +102,9 @@ serve(async (req) => {
     const claims = decodeClaims(token)
     if (userError || !user || claims?.sub !== user.id || claims?.app_access !== true) {
       return json({ success: false, message: '다시 로그인하고 이메일 인증을 완료해 주세요.' }, 401)
+    }
+    if (!hasRecentAuthTime(claims)) {
+      return json({ success: false, message: '계정 삭제를 위해 10분 이내에 다시 로그인해 주세요.' }, 401)
     }
 
     stage = 'active_session_verification'

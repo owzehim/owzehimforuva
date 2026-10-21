@@ -13,7 +13,7 @@ async function anonymizeMasterSheet(url: string, userId: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(withAppsScriptSecret(
       { type: 'privacy_anonymize', user_id: userId },
-      Deno.env.get('APPS_SCRIPT_SHARED_SECRET'),
+      Deno.env.get('MASTER_APPS_SCRIPT_SECRET'),
     )),
   })
   const body = await response.json().catch(() => null)
