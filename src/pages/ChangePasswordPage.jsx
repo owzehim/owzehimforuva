@@ -9,7 +9,8 @@ import { isCaptchaEnabled } from '../lib/captcha'
 const copy = {
   back: '\uC124\uC815\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30',
   title: '\uBE44\uBC00\uBC88\uD638 \uBC14\uAFB8\uAE30',
-  description: '\uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.',
+  description: '\uD604\uC7AC \uBE44\uBC00\uBC88\uD638\uB97C \uD655\uC778\uD558\uACE0 \uC774\uBA54\uC77C \uCF54\uB4DC\uB97C \uBC1B\uC73C\uC138\uC694.',
+  passwordStepDescription: '\uC774\uBA54\uC77C\uB85C \uBC1B\uC740 \uCF54\uB4DC\uC640 \uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.',
   newPassword: '\uC0C8 \uBE44\uBC00\uBC88\uD638',
   currentPassword: '\uD604\uC7AC \uBE44\uBC00\uBC88\uD638',
   reauthenticationCode: '\uC774\uBA54\uC77C \uD655\uC778 \uCF54\uB4DC',
@@ -48,15 +49,6 @@ export default function ChangePasswordPage() {
     setError('')
     setSuccess('')
 
-    if (newPassword.length < 8) {
-      setError(copy.tooShort)
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setError(copy.mismatch)
-      return
-    }
-
     if (!reauthenticationSent) {
       setLoading(true)
       try {
@@ -71,6 +63,15 @@ export default function ChangePasswordPage() {
         setLoading(false)
         if (isCaptchaEnabled) resetCaptcha()
       }
+      return
+    }
+
+    if (newPassword.length < 8) {
+      setError(copy.tooShort)
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError(copy.mismatch)
       return
     }
 
@@ -96,14 +97,25 @@ export default function ChangePasswordPage() {
     }
   }
 
+  const handleBack = () => {
+    if (reauthenticationSent) {
+      setReauthenticationSent(false)
+      setReauthenticationCode('')
+      setError('')
+      setSuccess('')
+      return
+    }
+    navigate('/settings')
+  }
+
   return (
     <main className="phone-app-shell scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]">
       <button
         type="button"
-        onClick={() => navigate('/settings')}
+        onClick={handleBack}
         className="absolute left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
         style={{ top: 'max(18px, calc(env(safe-area-inset-top) + 6px))' }}
-        aria-label={copy.back}
+        aria-label={reauthenticationSent ? '\uC774\uC804 \uB2E8\uACC4\uB85C' : copy.back}
       >
         <CaretLeft size={24} weight="bold" />
       </button>
@@ -112,18 +124,23 @@ export default function ChangePasswordPage() {
         <form onSubmit={handleSubmit} className="w-full -translate-y-[56px] space-y-4">
           <div className="mb-8 min-h-[176px] pt-[54px] text-left">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{copy.title}</h1>
-            <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{copy.description}</p>
+            <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+              {reauthenticationSent ? copy.passwordStepDescription : copy.description}
+            </p>
           </div>
 
           <div className="relative -translate-y-9 space-y-4">
-            <PasswordField label={copy.currentPassword} value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
-            {reauthenticationSent && (
+            {!reauthenticationSent ? (
+              <PasswordField label={copy.currentPassword} value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
+            ) : (
+              <>
               <PasswordField label={copy.reauthenticationCode} value={reauthenticationCode} onChange={setReauthenticationCode} autoComplete="one-time-code" />
+              <PasswordField label={copy.newPassword} value={newPassword} onChange={setNewPassword} />
+              <PasswordField label={copy.confirmPassword} value={confirmPassword} onChange={setConfirmPassword} />
+              </>
             )}
-            <PasswordField label={copy.newPassword} value={newPassword} onChange={setNewPassword} />
-            <PasswordField label={copy.confirmPassword} value={confirmPassword} onChange={setConfirmPassword} />
 
-            <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+            <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} appearance="always" />
 
             {error && <p className="text-sm text-red-500">{error}</p>}
             {success && <p className="text-sm leading-relaxed text-green-600">{success}</p>}
@@ -154,7 +171,7 @@ export default function ChangePasswordPage() {
                     if (isCaptchaEnabled) resetCaptcha()
                   }
                 }}
-                className="w-full py-2 text-sm text-gray-600 underline dark:text-gray-300"
+                className="w-full pt-1 text-center text-xs font-medium text-orange-500 hover:underline disabled:opacity-50"
               >
                 {copy.resendCode}
               </button>
