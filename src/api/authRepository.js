@@ -96,6 +96,30 @@ export async function signInWithPassword(email, password, captchaToken) {
   return { user: data.user, session: data.session }
 }
 
+/** Check whether a pending signup email was confirmed without persisting a session. */
+export async function checkSignupEmailConfirmation(email, password, captchaToken = '') {
+  const verifier = createEphemeralAuthClient()
+  try {
+    const options = captchaToken ? getCaptchaOptions(captchaToken) : {}
+    const { data, error } = await verifier.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+      options,
+    })
+
+    if (error) {
+      if (error.code === 'email_not_confirmed') return false
+      const checkError = new Error(error.message)
+      checkError.code = error.code
+      throw checkError
+    }
+
+    return Boolean(data.user?.email_confirmed_at)
+  } finally {
+    await verifier.auth.signOut({ scope: 'local' })
+  }
+}
+
 /** Persist an allowlisted test/admin password session after the Auth Hook grants it. */
 export async function completePasswordOnlyLogin() {
   if (!passwordProofSession || !passwordAuthClient) {
