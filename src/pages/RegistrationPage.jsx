@@ -1319,6 +1319,7 @@ function AccountStep({
           onVerify={onCaptchaVerify}
           resetKey={captchaResetKey}
           language={language}
+          appearance="always"
         />
       </div>
 

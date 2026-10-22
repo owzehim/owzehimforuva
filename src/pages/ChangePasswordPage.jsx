@@ -88,7 +88,7 @@ export default function ChangePasswordPage() {
             <PasswordField label={copy.newPassword} value={newPassword} onChange={setNewPassword} />
             <PasswordField label={copy.confirmPassword} value={confirmPassword} onChange={setConfirmPassword} />
 
-            <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} appearance="always" />
+            <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
             {error && <p className="text-sm text-red-500">{error}</p>}
             {success && <p className="text-sm leading-relaxed text-green-600">{success}</p>}
