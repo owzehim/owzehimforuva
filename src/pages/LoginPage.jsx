@@ -318,7 +318,7 @@ export default function LoginPage() {
                 disabled={!otpSent || loading || (isCaptchaEnabled && !captchaToken)}
                 aria-hidden={!otpSent}
                 tabIndex={otpSent ? 0 : -1}
-                className={`w-full pt-1 text-center text-xs font-medium text-orange-500 hover:underline transition-opacity duration-300 disabled:opacity-50 ${otpSent ? 'visible opacity-100' : 'invisible opacity-0'}`}
+                className={`w-full pt-1 text-center text-xs font-medium text-orange-500 hover:underline transition-opacity duration-300 ease-in-out ${otpSent ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
               >
                 코드 다시 보내기
               </button>
