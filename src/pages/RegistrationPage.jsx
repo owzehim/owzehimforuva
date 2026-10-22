@@ -762,7 +762,7 @@ export default function RegistrationPage() {
             </p>
           </div>
           <button type="button" onClick={() => navigate('/public')} style={s.submitBtn}>
-            {language === 'ko' ? '\uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30' : 'Return to public page'}
+            {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
           </button>
           <button
             type="button"
