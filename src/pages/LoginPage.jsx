@@ -276,8 +276,7 @@ export default function LoginPage() {
               <div className="mb-8 min-h-[176px] pt-[54px] text-left">
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">이메일 인증 코드</h2>
                 <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-900 dark:text-white">{email}</span>로<br />
-                  {otpSent ? '6자리 인증 코드를 보냈습니다.' : '인증 코드를 보내고 있습니다.'}
+                  <span className="font-medium text-gray-900 dark:text-white">{email}</span>
                 </p>
               </div>
 
@@ -304,19 +303,13 @@ export default function LoginPage() {
 
               <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
-              {otpSent ? (
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="mt-6 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
-                >
-                  {loading ? '확인 중...' : '인증하고 로그인'}
-                </button>
-              ) : (
-                <p role="status" aria-live="polite" className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                  {loading ? '인증 코드를 보내는 중...' : '인증 코드를 자동으로 보내고 있습니다.'}
-                </p>
-              )}
+              <button
+                type="submit"
+                disabled={loading || !otpSent || otp.length !== 6}
+                className="mt-6 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+              >
+                인증 완료하기
+              </button>
 
               {otpSent && <button
                 type="button"
