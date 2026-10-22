@@ -36,10 +36,21 @@ export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'k
   const widgetIdRef = useRef(null)
   const onVerifyRef = useRef(onVerify)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [theme, setTheme] = useState(() =>
+    document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+  )
 
   useEffect(() => {
     onVerifyRef.current = onVerify
   }, [onVerify])
+
+  useEffect(() => {
+    const root = document.documentElement
+    const syncTheme = () => setTheme(root.classList.contains('dark') ? 'dark' : 'light')
+    const observer = new MutationObserver(syncTheme)
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!siteKey || !containerRef.current) return undefined
@@ -51,6 +62,7 @@ export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'k
       turnstileApi = api
       widgetIdRef.current = api.render(containerRef.current, {
         sitekey: siteKey,
+        theme,
         appearance: 'interaction-only',
         callback: (token) => onVerifyRef.current(token),
         'expired-callback': () => onVerifyRef.current(''),
@@ -69,7 +81,7 @@ export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'k
         widgetIdRef.current = null
       }
     }
-  }, [])
+  }, [theme])
 
   useEffect(() => {
     if (widgetIdRef.current !== null) window.turnstile?.reset(widgetIdRef.current)
