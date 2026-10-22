@@ -152,6 +152,7 @@ export function useRegisterMember() {
           : null,
         legalDocumentsVersion: options.legalDocumentsVersion,
         ageConfirmed: options.ageConfirmed,
+        captchaToken: options.captchaToken,
       });
 
       // Account created — now tell user to check their email.

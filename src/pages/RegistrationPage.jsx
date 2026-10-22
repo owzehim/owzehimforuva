@@ -12,6 +12,8 @@ import { getYearOptions } from '../domain/member/memberRegistration';
 import { LEGAL_DOCUMENT_VERSION, legalDocuments } from '../content/legalDocuments';
 import { isProductionEnv } from '../lib/appEnv';
 import { getPastelColor } from '../lib/avatarColor';
+import CaptchaChallenge from '../components/CaptchaChallenge';
+import { isCaptchaEnabled } from '../lib/captcha';
 
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
@@ -564,6 +566,8 @@ export default function RegistrationPage() {
   });
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -653,15 +657,23 @@ export default function RegistrationPage() {
     setLegalAgreements((current) => ({ ...current, [name]: checked }));
   };
 
-  const handleAccountSubmit = (event) => {
-    handleSubmit(event, {
+  const handleAccountSubmit = async (event) => {
+    try {
+      await handleSubmit(event, {
       legalAccepted: Object.values(legalAgreements).every(Boolean),
       ageConfirmed,
+      captchaToken,
       ageConfirmationError: language === 'ko'
         ? '만 16세 이상만 가입할 수 있습니다.'
         : 'You must confirm that you are at least 16 years old.',
       legalDocumentsVersion: LEGAL_DOCUMENT_VERSION,
-    });
+      });
+    } finally {
+      if (isCaptchaEnabled) {
+        setCaptchaToken('');
+        setCaptchaResetKey((key) => key + 1);
+      }
+    }
   };
 
   const profileHeroProps = {
@@ -816,6 +828,9 @@ export default function RegistrationPage() {
             onAgreementChange={handleAgreementChange}
             onOpenLegalDocument={setActiveLegalDoc}
             profileHeroProps={profileHeroProps}
+            captchaToken={captchaToken}
+            captchaResetKey={captchaResetKey}
+            onCaptchaVerify={setCaptchaToken}
           />
         </div>
       )}
@@ -1174,6 +1189,9 @@ function AccountStep({
   onAgreementChange,
   onOpenLegalDocument,
   profileHeroProps,
+  captchaToken,
+  captchaResetKey,
+  onCaptchaVerify,
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -1296,20 +1314,26 @@ function AccountStep({
             {t.passwordMismatch}
           </p>
         )}
+
+        <CaptchaChallenge
+          onVerify={onCaptchaVerify}
+          resetKey={captchaResetKey}
+          language={language}
+        />
       </div>
 
       <div style={s.bottomAction}>
         <button
           type="submit"
-          disabled={loading || !isComplete}
+          disabled={loading || !isComplete || (isCaptchaEnabled && !captchaToken)}
           style={{
             ...s.submitBtn,
             flex: 1,
             background: !loading && isComplete
               ? 'linear-gradient(135deg, #fb923c 0%, #f97316 48%, #ea580c 100%)'
               : '#fb923c',
-            opacity: loading || !isComplete ? 0.6 : 1,
-            cursor: loading || !isComplete ? 'not-allowed' : 'pointer',
+            opacity: loading || !isComplete || (isCaptchaEnabled && !captchaToken) ? 0.6 : 1,
+            cursor: loading || !isComplete || (isCaptchaEnabled && !captchaToken) ? 'not-allowed' : 'pointer',
           }}
         >
           {loading ? t.creatingAccount : t.createAccount}

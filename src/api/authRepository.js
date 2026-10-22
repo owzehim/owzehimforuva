@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
 import { apiKeyOnlyFetch } from '../lib/apiKeyOnlyFetch'
+import { getCaptchaOptions } from '../lib/captcha'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
@@ -74,7 +75,7 @@ export async function clearLoginAttempt({ preserveClient = null } = {}) {
 }
 
 /** Verify credentials in a non-persistent client and keep the proof in memory. */
-export async function signInWithPassword(email, password) {
+export async function signInWithPassword(email, password, captchaToken) {
   await clearLoginAttempt()
   passwordAuthClient = createEphemeralAuthClient()
 
@@ -82,6 +83,7 @@ export async function signInWithPassword(email, password) {
   const { data, error } = await passwordAuthClient.auth.signInWithPassword({
     email: normalizedEmail,
     password,
+    options: getCaptchaOptions(captchaToken),
   })
 
   if (error) {
@@ -113,7 +115,7 @@ export async function completePasswordOnlyLogin() {
 }
 
 /** Send the built-in Supabase email OTP after password proof has been checked. */
-export async function sendLoginOtp(email) {
+export async function sendLoginOtp(email, captchaToken) {
   const normalizedEmail = email.trim().toLowerCase()
   if (!hasPendingLogin(normalizedEmail)) {
     throw new Error('비밀번호 확인이 만료되었습니다. 다시 로그인해주세요.')
@@ -122,7 +124,7 @@ export async function sendLoginOtp(email) {
   if (!otpAuthClient) otpAuthClient = createEphemeralAuthClient()
   const { error } = await otpAuthClient.auth.signInWithOtp({
     email: normalizedEmail,
-    options: { shouldCreateUser: false },
+    options: { shouldCreateUser: false, ...getCaptchaOptions(captchaToken) },
   })
 
   if (error) throw new Error(error.message)
@@ -183,17 +185,18 @@ export async function verifyLoginOtp(email, otp) {
 }
 
 /** Resend only while the same in-memory password proof is still pending. */
-export async function resendLoginOtp(email) {
-  return sendLoginOtp(email)
+export async function resendLoginOtp(email, captchaToken) {
+  return sendLoginOtp(email, captchaToken)
 }
 
 /** Resend the email confirmation link for an unconfirmed account. */
-export async function resendConfirmationEmail(email) {
+export async function resendConfirmationEmail(email, captchaToken) {
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email: email.trim().toLowerCase(),
     options: {
       emailRedirectTo: 'https://app.uva-in.nl/email-confirmed',
+      ...getCaptchaOptions(captchaToken),
     },
   })
 
@@ -201,13 +204,16 @@ export async function resendConfirmationEmail(email) {
 }
 
 /** Send a password reset link. */
-export async function sendPasswordResetEmail(email) {
+export async function sendPasswordResetEmail(email, captchaToken) {
   const redirectTo =
     typeof window !== 'undefined'
       ? `${window.location.origin}/reset-password`
       : undefined
 
-  const { error } = await passwordRecoverySupabase.auth.resetPasswordForEmail(email, { redirectTo })
+  const { error } = await passwordRecoverySupabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+    ...getCaptchaOptions(captchaToken),
+  })
   if (error) throw new Error(error.message)
 }
 
@@ -218,7 +224,7 @@ export async function updatePasswordFromRecovery(password) {
 }
 
 /** Verify the current password in a non-persistent Auth client. */
-export async function verifyCurrentPasswordForChange(currentPassword) {
+export async function verifyCurrentPasswordForChange(currentPassword, captchaToken) {
   if (typeof currentPassword !== 'string' || !currentPassword) {
     throw new Error('현재 비밀번호를 입력해주세요.')
   }
@@ -232,7 +238,11 @@ export async function verifyCurrentPasswordForChange(currentPassword) {
   const verifier = createEphemeralAuthClient()
   let proofError = null
   try {
-    const { error } = await verifier.auth.signInWithPassword({ email, password: currentPassword })
+    const { error } = await verifier.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+      options: getCaptchaOptions(captchaToken),
+    })
     proofError = error
   } finally {
     // This client never persists a session. Local scope avoids revoking the
@@ -244,12 +254,12 @@ export async function verifyCurrentPasswordForChange(currentPassword) {
 }
 
 /** Change a password only after current-password proof and email reauthentication. */
-export async function updatePassword(password, currentPassword, nonce) {
+export async function updatePassword(password, currentPassword, nonce, captchaToken) {
   if (typeof nonce !== 'string' || !nonce.trim()) {
     throw new Error('이메일 확인 코드를 입력해주세요.')
   }
 
-  await verifyCurrentPasswordForChange(currentPassword)
+  await verifyCurrentPasswordForChange(currentPassword, captchaToken)
 
   const { error } = await supabase.auth.updateUser({
     password,
