@@ -31,7 +31,7 @@ function loadTurnstile() {
   return turnstileLoader
 }
 
-export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'ko' }) {
+export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'ko', appearance = 'interaction-only' }) {
   const containerRef = useRef(null)
   const widgetIdRef = useRef(null)
   const onVerifyRef = useRef(onVerify)
@@ -63,7 +63,7 @@ export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'k
       widgetIdRef.current = api.render(containerRef.current, {
         sitekey: siteKey,
         theme,
-        appearance: 'interaction-only',
+        appearance,
         callback: (token) => onVerifyRef.current(token),
         'expired-callback': () => onVerifyRef.current(''),
         'error-callback': () => onVerifyRef.current(''),
@@ -81,7 +81,7 @@ export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'k
         widgetIdRef.current = null
       }
     }
-  }, [theme])
+  }, [theme, appearance])
 
   useEffect(() => {
     if (widgetIdRef.current !== null) window.turnstile?.reset(widgetIdRef.current)
