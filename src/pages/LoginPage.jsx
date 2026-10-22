@@ -312,14 +312,16 @@ export default function LoginPage() {
                 인증 완료하기
               </button>
 
-              {otpSent && <button
+              <button
                 type="button"
                 onClick={resendLoginOtp}
-                disabled={loading || (isCaptchaEnabled && !captchaToken)}
-                className="w-full pt-1 text-center text-xs font-medium text-orange-500 hover:underline disabled:opacity-50"
+                disabled={!otpSent || loading || (isCaptchaEnabled && !captchaToken)}
+                aria-hidden={!otpSent}
+                tabIndex={otpSent ? 0 : -1}
+                className={`w-full pt-1 text-center text-xs font-medium text-orange-500 hover:underline transition-opacity duration-300 disabled:opacity-50 ${otpSent ? 'visible opacity-100' : 'invisible opacity-0'}`}
               >
                 코드 다시 보내기
-              </button>}
+              </button>
             </form>
           )}
 
