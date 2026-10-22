@@ -1,6 +1,6 @@
 // src/api/authRepository.js
-// Owns the password + email OTP login attempt. Temporary Auth clients keep
-// either proof out of the app's persisted Supabase session until both pass.
+// Owns password and email OTP authentication operations. Temporary Auth clients
+// keep proof sessions out of the app's persisted session.
 
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -223,8 +223,8 @@ export async function updatePasswordFromRecovery(password) {
   if (error) throw new Error(error.message)
 }
 
-/** Verify the current password in a non-persistent Auth client. */
-export async function verifyCurrentPasswordForChange(currentPassword, captchaToken) {
+/** Change a password after verifying the current password in a fresh, non-persistent session. */
+export async function updatePassword(password, currentPassword, captchaToken) {
   if (typeof currentPassword !== 'string' || !currentPassword) {
     throw new Error('현재 비밀번호를 입력해주세요.')
   }
@@ -236,37 +236,23 @@ export async function verifyCurrentPasswordForChange(currentPassword, captchaTok
   }
 
   const verifier = createEphemeralAuthClient()
-  let proofError = null
   try {
-    const { error } = await verifier.auth.signInWithPassword({
+    const { error: proofError } = await verifier.auth.signInWithPassword({
       email,
       password: currentPassword,
       options: getCaptchaOptions(captchaToken),
     })
-    proofError = error
+    if (proofError) throw new Error('현재 비밀번호가 올바르지 않습니다.')
+
+    const { error } = await verifier.auth.updateUser({
+      password,
+      current_password: currentPassword,
+    })
+    if (error) throw new Error(error.message)
   } finally {
-    // This client never persists a session. Local scope avoids revoking the
-    // member's OTP-authenticated session or any other device.
+    // Keep the app's persisted session untouched and remove the temporary proof session.
     await verifier.auth.signOut({ scope: 'local' })
   }
-
-  if (proofError) throw new Error('현재 비밀번호가 올바르지 않습니다.')
-}
-
-/** Change a password only after current-password proof and email reauthentication. */
-export async function updatePassword(password, currentPassword, nonce, captchaToken) {
-  if (typeof nonce !== 'string' || !nonce.trim()) {
-    throw new Error('이메일 확인 코드를 입력해주세요.')
-  }
-
-  await verifyCurrentPasswordForChange(currentPassword, captchaToken)
-
-  const { error } = await supabase.auth.updateUser({
-    password,
-    currentPassword,
-    nonce: nonce.trim(),
-  })
-  if (error) throw new Error(error.message)
 }
 
 /** Sign the current persisted app session out. */

@@ -1,23 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CaretLeft, Eye, EyeSlash } from '@phosphor-icons/react'
-import { updatePassword, verifyCurrentPasswordForChange } from '../api/authRepository'
-import { supabase } from '../lib/supabase'
+import { updatePassword } from '../api/authRepository'
 import CaptchaChallenge from '../components/CaptchaChallenge'
 import { isCaptchaEnabled } from '../lib/captcha'
 
 const copy = {
   back: '\uC124\uC815\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30',
   title: '\uBE44\uBC00\uBC88\uD638 \uBC14\uAFB8\uAE30',
-  description: '\uD604\uC7AC \uBE44\uBC00\uBC88\uD638\uB97C \uD655\uC778\uD558\uACE0 \uC774\uBA54\uC77C \uCF54\uB4DC\uB97C \uBC1B\uC73C\uC138\uC694.',
-  passwordStepDescription: '\uC774\uBA54\uC77C\uB85C \uBC1B\uC740 \uCF54\uB4DC\uC640 \uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.',
+  description: '\uD604\uC7AC \uBE44\uBC00\uBC88\uD638\uC640 \uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.',
   newPassword: '\uC0C8 \uBE44\uBC00\uBC88\uD638',
   currentPassword: '\uD604\uC7AC \uBE44\uBC00\uBC88\uD638',
-  reauthenticationCode: '\uC774\uBA54\uC77C \uD655\uC778 \uCF54\uB4DC',
-  sendCode: '\uD655\uC778 \uCF54\uB4DC \uBC1B\uAE30',
-  resendCode: '\uCF54\uB4DC \uB2E4\uC2DC \uBC1B\uAE30',
-  codeSent: '\uC774\uBA54\uC77C\uB85C \uC778\uC99D\uCF54\uB4DC\uAC00 \uBC1C\uC1A1\uB418\uC5C8\uC2B5\uB2C8\uB2E4.',
-  codeRequired: '\uC774\uBA54\uC77C\uB85C \uBC1B\uC740 \uD655\uC778 \uCF54\uB4DC\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.',
   confirmPassword: '\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778',
   tooShort: '\uBE44\uBC00\uBC88\uD638\uB294 \uCD5C\uC18C 8\uC790 \uC774\uC0C1\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.',
   mismatch: '\uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
@@ -31,8 +24,6 @@ export default function ChangePasswordPage() {
   const navigate = useNavigate()
   const [newPassword, setNewPassword] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
-  const [reauthenticationCode, setReauthenticationCode] = useState('')
-  const [reauthenticationSent, setReauthenticationSent] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -49,23 +40,6 @@ export default function ChangePasswordPage() {
     setError('')
     setSuccess('')
 
-    if (!reauthenticationSent) {
-      setLoading(true)
-      try {
-        await verifyCurrentPasswordForChange(currentPassword, captchaToken)
-        const { error: reauthenticationError } = await supabase.auth.reauthenticate()
-        if (reauthenticationError) throw reauthenticationError
-        setReauthenticationSent(true)
-        setSuccess(copy.codeSent)
-      } catch (err) {
-        setError(err.message || copy.error)
-      } finally {
-        setLoading(false)
-        if (isCaptchaEnabled) resetCaptcha()
-      }
-      return
-    }
-
     if (newPassword.length < 8) {
       setError(copy.tooShort)
       return
@@ -75,20 +49,13 @@ export default function ChangePasswordPage() {
       return
     }
 
-    if (!reauthenticationCode.trim()) {
-      setError(copy.codeRequired)
-      return
-    }
-
     setLoading(true)
     try {
-      await updatePassword(newPassword, currentPassword, reauthenticationCode.trim(), captchaToken)
+      await updatePassword(newPassword, currentPassword, captchaToken)
       setSuccess(copy.success)
       setNewPassword('')
       setCurrentPassword('')
       setConfirmPassword('')
-      setReauthenticationCode('')
-      setReauthenticationSent(false)
     } catch (err) {
       setError(err.message || copy.error)
     } finally {
@@ -97,25 +64,14 @@ export default function ChangePasswordPage() {
     }
   }
 
-  const handleBack = () => {
-    if (reauthenticationSent) {
-      setReauthenticationSent(false)
-      setReauthenticationCode('')
-      setError('')
-      setSuccess('')
-      return
-    }
-    navigate('/settings')
-  }
-
   return (
     <main className="phone-app-shell scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]">
       <button
         type="button"
-        onClick={handleBack}
+        onClick={() => navigate('/settings')}
         className="absolute left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
         style={{ top: 'max(18px, calc(env(safe-area-inset-top) + 6px))' }}
-        aria-label={reauthenticationSent ? '\uC774\uC804 \uB2E8\uACC4\uB85C' : copy.back}
+        aria-label={copy.back}
       >
         <CaretLeft size={24} weight="bold" />
       </button>
@@ -124,21 +80,13 @@ export default function ChangePasswordPage() {
         <form onSubmit={handleSubmit} className="w-full -translate-y-[56px] space-y-4">
           <div className="mb-8 min-h-[176px] pt-[54px] text-left">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{copy.title}</h1>
-            <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-              {reauthenticationSent ? copy.passwordStepDescription : copy.description}
-            </p>
+            <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{copy.description}</p>
           </div>
 
           <div className="relative -translate-y-9 space-y-4">
-            {!reauthenticationSent ? (
-              <PasswordField label={copy.currentPassword} value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
-            ) : (
-              <>
-              <PasswordField label={copy.reauthenticationCode} value={reauthenticationCode} onChange={setReauthenticationCode} autoComplete="one-time-code" />
-              <PasswordField label={copy.newPassword} value={newPassword} onChange={setNewPassword} />
-              <PasswordField label={copy.confirmPassword} value={confirmPassword} onChange={setConfirmPassword} />
-              </>
-            )}
+            <PasswordField label={copy.currentPassword} value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
+            <PasswordField label={copy.newPassword} value={newPassword} onChange={setNewPassword} />
+            <PasswordField label={copy.confirmPassword} value={confirmPassword} onChange={setConfirmPassword} />
 
             <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} appearance="always" />
 
@@ -150,32 +98,8 @@ export default function ChangePasswordPage() {
               disabled={loading || (isCaptchaEnabled && !captchaToken)}
               className="mt-5 w-full rounded-full bg-orange-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
             >
-              {loading ? copy.changing : reauthenticationSent ? copy.submit : copy.sendCode}
+              {loading ? copy.changing : copy.submit}
             </button>
-            {reauthenticationSent && (
-              <button
-                type="button"
-                disabled={loading || (isCaptchaEnabled && !captchaToken)}
-                onClick={async () => {
-                  setLoading(true)
-                  setError('')
-                  try {
-                    await verifyCurrentPasswordForChange(currentPassword, captchaToken)
-                    const { error: reauthenticationError } = await supabase.auth.reauthenticate()
-                    if (reauthenticationError) throw reauthenticationError
-                    setSuccess(copy.codeSent)
-                  } catch (err) {
-                    setError(err.message || copy.error)
-                  } finally {
-                    setLoading(false)
-                    if (isCaptchaEnabled) resetCaptcha()
-                  }
-                }}
-                className="w-full pt-1 text-center text-xs font-medium text-orange-500 hover:underline disabled:opacity-50"
-              >
-                {copy.resendCode}
-              </button>
-            )}
           </div>
         </form>
       </div>
