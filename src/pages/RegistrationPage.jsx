@@ -3,7 +3,7 @@
 // Presentation only ??all logic lives in useRegisterMember hook.
 // ??Do NOT copy to React Native ??rewrite UI with RN components.
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, CaretDown, CaretLeft, CheckCircle, EnvelopeSimple, Eye, EyeSlash, UserCircle, XCircle } from '@phosphor-icons/react';
 import Cropper from 'react-easy-crop';
@@ -14,7 +14,7 @@ import { isProductionEnv } from '../lib/appEnv';
 import { getPastelColor } from '../lib/avatarColor';
 import CaptchaChallenge from '../components/CaptchaChallenge';
 import { isCaptchaEnabled } from '../lib/captcha';
-import { resendConfirmationEmail } from '../api/authRepository';
+import { checkSignupEmailConfirmation, resendConfirmationEmail } from '../api/authRepository';
 
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
@@ -570,6 +570,11 @@ export default function RegistrationPage() {
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [showSignupCaptcha, setShowSignupCaptcha] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState('');
+  const [confirmationCheckError, setConfirmationCheckError] = useState('');
+  const [confirmationCheckNeedsCaptcha, setConfirmationCheckNeedsCaptcha] = useState(false);
+  const [confirmationCheckCaptchaToken, setConfirmationCheckCaptchaToken] = useState('');
+  const [confirmationCheckCaptchaResetKey, setConfirmationCheckCaptchaResetKey] = useState(0);
+  const confirmationCheckStartedRef = useRef(false);
   const [retryEmail, setRetryEmail] = useState('');
   const [retryCaptchaToken, setRetryCaptchaToken] = useState('');
   const [retryCaptchaResetKey, setRetryCaptchaResetKey] = useState(0);
@@ -601,27 +606,6 @@ export default function RegistrationPage() {
     goBack,
     editEmail,
   } = useRegisterMember();
-
-  useEffect(() => {
-    if (step !== 'email') return undefined;
-
-    const handleConfirmationFinished = (event) => {
-      if (event.key === CONFIRMATION_EVENT_KEY && event.newValue) {
-        try {
-          const result = JSON.parse(event.newValue);
-          if (result.status) {
-            setConfirmationResult(result.status);
-            setRetryEmail(formData.email || '');
-          }
-        } catch {
-          // Ignore invalid data from local storage.
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleConfirmationFinished);
-    return () => window.removeEventListener('storage', handleConfirmationFinished);
-  }, [step, formData.email]);
 
   const yearOptions = getYearOptions(formData.educationLevel);
   const t = translations[language];
@@ -679,6 +663,7 @@ export default function RegistrationPage() {
     captchaSubmissionStartedRef.current = true;
 
     try {
+      try { window.localStorage.removeItem(CONFIRMATION_EVENT_KEY); } catch { /* Storage may be unavailable. */ }
       await handleSubmit({ preventDefault() {} }, {
         legalAccepted: Object.values(legalAgreements).every(Boolean),
         ageConfirmed,
@@ -742,6 +727,88 @@ export default function RegistrationPage() {
       }
     }
   };
+
+  const handleCheckConfirmation = useCallback(async (captchaToken = confirmationCheckCaptchaToken) => {
+    if (confirmationCheckStartedRef.current || !formData.email || !formData.password) return;
+    confirmationCheckStartedRef.current = true;
+    setConfirmationCheckError('');
+    try {
+      const confirmed = await checkSignupEmailConfirmation(
+        formData.email,
+        formData.password,
+        captchaToken,
+      );
+      if (confirmed) {
+        setConfirmationResult('success');
+        setRetryEmail(formData.email || '');
+        return;
+      }
+    } catch (checkError) {
+      if (checkError.code === 'captcha_failed' || checkError.code === 'captcha_required') {
+        setConfirmationCheckNeedsCaptcha(true);
+        setConfirmationCheckCaptchaToken('');
+        setConfirmationCheckCaptchaResetKey((key) => key + 1);
+        setConfirmationCheckError(language === 'ko'
+          ? '계속하려면 아래 보안 확인을 완료해 주세요.'
+          : 'Complete the security check below to continue.');
+      } else if (checkError.code === 'invalid_credentials') {
+        setConfirmationCheckError(language === 'ko'
+          ? '비밀번호를 확인할 수 없어요. 가입할 때 입력한 비밀번호로 다시 시도해 주세요.'
+          : 'The password could not be verified. Try the password used during sign-up.');
+      } else {
+        setConfirmationCheckError(checkError.message || (language === 'ko'
+          ? '인증 상태를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.'
+          : 'Could not check the verification status. Please try again.'));
+      }
+    } finally {
+      confirmationCheckStartedRef.current = false;
+      if (captchaToken) {
+        setConfirmationCheckCaptchaToken('');
+        setConfirmationCheckCaptchaResetKey((key) => key + 1);
+      }
+    }
+  }, [formData.email, formData.password, confirmationCheckCaptchaToken, language]);
+
+  useEffect(() => {
+    if (step !== 'email') return undefined;
+
+    const readConfirmationResult = (event) => {
+      if (event && event.key !== CONFIRMATION_EVENT_KEY) return;
+      try {
+        const rawResult = window.localStorage.getItem(CONFIRMATION_EVENT_KEY);
+        if (!rawResult) return;
+        const result = JSON.parse(rawResult);
+        if (result.status) {
+          setConfirmationResult(result.status);
+          setRetryEmail(formData.email || '');
+        }
+      } catch {
+        // Ignore unavailable storage or invalid data.
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        readConfirmationResult();
+        void handleCheckConfirmation();
+      }
+    };
+    const handleResume = () => {
+      readConfirmationResult();
+      void handleCheckConfirmation();
+    };
+
+    readConfirmationResult();
+    window.addEventListener('storage', readConfirmationResult);
+    window.addEventListener('focus', handleResume);
+    window.addEventListener('pageshow', handleResume);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('storage', readConfirmationResult);
+      window.removeEventListener('focus', handleResume);
+      window.removeEventListener('pageshow', handleResume);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [step, formData.email, handleCheckConfirmation]);
 
   const profileHeroProps = {
     fileInputRef,
@@ -873,6 +940,23 @@ export default function RegistrationPage() {
           <button type="button" onClick={() => navigate('/public')} style={s.submitBtn}>
             {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
           </button>
+          {confirmationCheckNeedsCaptcha && (
+            <div style={{ marginTop: '10px' }}>
+              <CaptchaChallenge
+                onVerify={(token) => {
+                  setConfirmationCheckCaptchaToken(token);
+                  if (token) void handleCheckConfirmation(token);
+                }}
+                resetKey={confirmationCheckCaptchaResetKey}
+                language={language}
+              />
+            </div>
+          )}
+          {confirmationCheckError && (
+            <p role="status" style={{ ...s.emailText, color: '#dc2626', marginTop: '10px' }}>
+              {confirmationCheckError}
+            </p>
+          )}
           <button
             type="button"
             onClick={handleEditEmail}
