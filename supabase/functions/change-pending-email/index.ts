@@ -56,6 +56,7 @@ serve(async (req) => {
     const oldEmail = normalizeEmail(body?.currentEmail)
     const newEmail = normalizeEmail(body?.newEmail)
     const password = typeof body?.password === 'string' ? body.password : ''
+    const captchaToken = typeof body?.captchaToken === 'string' ? body.captchaToken.trim() : ''
 
     if (!validEmail(oldEmail) || !validEmail(newEmail) || oldEmail === newEmail || !password || password.length > 256) {
       return json({ success: false, message: genericFailure }, 400)
@@ -97,6 +98,7 @@ serve(async (req) => {
     const { error: passwordError } = await passwordClient.auth.signInWithPassword({
       email: oldEmail,
       password,
+      options: captchaToken ? { captchaToken } : undefined,
     })
     if (!passwordError || passwordError.code !== 'email_not_confirmed') {
       return json({ success: false, message: genericFailure }, 400)

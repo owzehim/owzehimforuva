@@ -123,6 +123,7 @@ export function useRegisterMember() {
           currentEmail: pendingConfirmationEmail,
           newEmail: normalizedEmail,
           password: formData.password,
+          captchaToken: options.captchaToken,
         });
         setPendingConfirmationEmail(normalizedEmail);
         setStep('email');
