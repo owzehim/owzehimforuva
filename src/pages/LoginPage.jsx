@@ -36,8 +36,7 @@ export default function LoginPage() {
     handleBack,
   } = useLogin()
 
-  const isOtpSending = step === 'otp' && !otpSent
-  const isStandaloneStep = (step === 'otp' && otpSent) || step === 'forgot'
+  const isStandaloneStep = step === 'otp' || step === 'forgot'
   const resetCaptcha = () => {
     setCaptchaToken('')
     setCaptchaResetKey((key) => key + 1)
@@ -153,14 +152,13 @@ export default function LoginPage() {
             </>
           )}
 
-          {(step === 'credentials' || isOtpSending) && (
+          {step === 'credentials' && (
             <form onSubmit={submitCredentials} className="space-y-3">
               <LoginField label="이메일">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={isOtpSending}
                   className={inputClass}
                   placeholder=""
                   autoComplete="email"
@@ -174,7 +172,6 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    disabled={isOtpSending}
                     className={`${inputClass} pr-9`}
                     placeholder=""
                     autoComplete="current-password"
@@ -207,10 +204,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading || isOtpSending || (isCaptchaEnabled && !captchaToken)}
+                disabled={loading || (isCaptchaEnabled && !captchaToken)}
                 className="mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
               >
-                {isOtpSending ? '보안 확인 중...' : loading ? '확인 중...' : '로그인'}
+                {loading ? '확인 중...' : '로그인'}
               </button>
 
               <p className="pt-2 text-center text-xs text-gray-400 dark:text-gray-500">
@@ -274,17 +271,17 @@ export default function LoginPage() {
             </form>
           )}
 
-          {step === 'otp' && otpSent && (
+          {step === 'otp' && (
             <form onSubmit={handleOtpSubmit} className="space-y-4">
               <div className="mb-8 min-h-[176px] pt-[54px] text-left">
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">이메일 인증 코드</h2>
                 <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
                   <span className="font-medium text-gray-900 dark:text-white">{email}</span>로<br />
-                  {otpSent ? '6자리 인증 코드를 보냈습니다.' : '보안 확인 후 인증 코드를 자동으로 보냅니다.'}
+                  {otpSent ? '6자리 인증 코드를 보냈습니다.' : '인증 코드를 보내고 있습니다.'}
                 </p>
               </div>
 
-              {otpSent && <LoginField label="인증 코드">
+              <LoginField label="인증 코드">
                 <input
                   type="text"
                   inputMode="numeric"
@@ -296,7 +293,7 @@ export default function LoginPage() {
                   autoComplete="one-time-code"
                   required
                 />
-              </LoginField>}
+              </LoginField>
 
               {error && <p className="text-center text-sm text-red-500">{error}</p>}
               {resendSuccess && (
