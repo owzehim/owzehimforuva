@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CaretLeft, Eye, EyeSlash } from '@phosphor-icons/react'
 import { useLogin } from '../hooks/useLogin'
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
+  const otpRequestStartedRef = useRef(false)
   const {
     step,
     email,
@@ -40,6 +41,32 @@ export default function LoginPage() {
     setCaptchaToken('')
     setCaptchaResetKey((key) => key + 1)
   }
+  const handleRequestOtpRef = useRef(handleRequestOtp)
+  useEffect(() => {
+    handleRequestOtpRef.current = handleRequestOtp
+  }, [handleRequestOtp])
+
+  useEffect(() => {
+    if (step !== 'otp') {
+      otpRequestStartedRef.current = false
+      return
+    }
+    if (otpSent || loading || (isCaptchaEnabled && !captchaToken) || otpRequestStartedRef.current) return
+
+    otpRequestStartedRef.current = true
+    const token = captchaToken
+    void (async () => {
+      try {
+        await handleRequestOtpRef.current(token)
+      } finally {
+        otpRequestStartedRef.current = false
+        if (isCaptchaEnabled) {
+          setCaptchaToken('')
+          setCaptchaResetKey((key) => key + 1)
+        }
+      }
+    })()
+  }, [step, otpSent, loading, captchaToken])
   const submitCredentials = async (event) => {
     try {
       await handleCredentialsSubmit(event, captchaToken)
@@ -57,13 +84,6 @@ export default function LoginPage() {
   const resendLoginOtp = async () => {
     try {
       await handleResendOtp(captchaToken)
-    } finally {
-      if (isCaptchaEnabled) resetCaptcha()
-    }
-  }
-  const requestLoginOtp = async () => {
-    try {
-      await handleRequestOtp(captchaToken)
     } finally {
       if (isCaptchaEnabled) resetCaptcha()
     }
@@ -257,7 +277,7 @@ export default function LoginPage() {
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">이메일 인증 코드</h2>
                 <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
                   <span className="font-medium text-gray-900 dark:text-white">{email}</span>로<br />
-                  {otpSent ? '6자리 인증 코드를 보냈습니다.' : '비밀번호 확인을 마쳤습니다. 자동 확인 후 코드를 받으세요.'}
+                  {otpSent ? '6자리 인증 코드를 보냈습니다.' : '보안 확인 후 인증 코드를 자동으로 보냅니다.'}
                 </p>
               </div>
 
@@ -284,14 +304,19 @@ export default function LoginPage() {
 
               <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
-              <button
-                type={otpSent ? 'submit' : 'button'}
-                onClick={otpSent ? undefined : requestLoginOtp}
-                disabled={loading || (!otpSent && isCaptchaEnabled && !captchaToken)}
-                className="mt-6 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
-              >
-                {loading ? '확인 중...' : otpSent ? '인증하고 로그인' : '인증 코드 받기'}
-              </button>
+              {otpSent ? (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-6 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+                >
+                  {loading ? '확인 중...' : '인증하고 로그인'}
+                </button>
+              ) : (
+                <p role="status" aria-live="polite" className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                  {loading ? '인증 코드를 보내는 중...' : '인증 코드를 자동으로 보내고 있습니다.'}
+                </p>
+              )}
 
               {otpSent && <button
                 type="button"
