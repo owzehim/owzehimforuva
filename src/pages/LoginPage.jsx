@@ -2,12 +2,16 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CaretLeft, Eye, EyeSlash } from '@phosphor-icons/react'
 import { useLogin } from '../hooks/useLogin'
+import CaptchaChallenge from '../components/CaptchaChallenge'
+import { isCaptchaEnabled } from '../lib/captcha'
 
 const KEYBOARD_CLOSE_DELAY_MS = 360
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
   const {
     step,
     email,
@@ -15,6 +19,7 @@ export default function LoginPage() {
     password,
     setPassword,
     otp,
+    otpSent,
     setOtp,
     loading,
     error,
@@ -22,6 +27,7 @@ export default function LoginPage() {
     resetSuccess,
     handleCredentialsSubmit,
     handleOtpSubmit,
+    handleRequestOtp,
     handleResendOtp,
     handleResendConfirmation,
     handleForgotPassword,
@@ -30,6 +36,45 @@ export default function LoginPage() {
   } = useLogin()
 
   const isStandaloneStep = step === 'otp' || step === 'forgot'
+  const resetCaptcha = () => {
+    setCaptchaToken('')
+    setCaptchaResetKey((key) => key + 1)
+  }
+  const submitCredentials = async (event) => {
+    try {
+      await handleCredentialsSubmit(event, captchaToken)
+    } finally {
+      if (isCaptchaEnabled) resetCaptcha()
+    }
+  }
+  const submitPasswordReset = async (event) => {
+    try {
+      await handlePasswordResetSubmit(event, captchaToken)
+    } finally {
+      if (isCaptchaEnabled) resetCaptcha()
+    }
+  }
+  const resendLoginOtp = async () => {
+    try {
+      await handleResendOtp(captchaToken)
+    } finally {
+      if (isCaptchaEnabled) resetCaptcha()
+    }
+  }
+  const requestLoginOtp = async () => {
+    try {
+      await handleRequestOtp(captchaToken)
+    } finally {
+      if (isCaptchaEnabled) resetCaptcha()
+    }
+  }
+  const resendConfirmation = async () => {
+    try {
+      await handleResendConfirmation(captchaToken)
+    } finally {
+      if (isCaptchaEnabled) resetCaptcha()
+    }
+  }
 
   const closeLogin = () => {
     if (document.activeElement instanceof HTMLElement) {
@@ -88,7 +133,7 @@ export default function LoginPage() {
           )}
 
           {step === 'credentials' && (
-            <form onSubmit={handleCredentialsSubmit} className="space-y-3">
+            <form onSubmit={submitCredentials} className="space-y-3">
               <LoginField label="이메일">
                 <input
                   type="email"
@@ -135,9 +180,11 @@ export default function LoginPage() {
 
               {error && <p className="text-sm text-red-500">{error}</p>}
 
+              <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (isCaptchaEnabled && !captchaToken)}
                 className="mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
               >
                 {loading ? '확인 중...' : '로그인'}
@@ -157,7 +204,7 @@ export default function LoginPage() {
           )}
 
           {step === 'forgot' && (
-            <form onSubmit={handlePasswordResetSubmit} className="relative -translate-y-[56px] space-y-4">
+            <form onSubmit={submitPasswordReset} className="relative -translate-y-[56px] space-y-4">
               <div className="mb-8 min-h-[176px] pt-[54px] text-left">
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">비밀번호 재설정</h2>
                 <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
@@ -184,9 +231,11 @@ export default function LoginPage() {
                 </p>
               )}
 
+              <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (isCaptchaEnabled && !captchaToken)}
                 className="mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
               >
                 {loading ? '전송 중...' : '재설정 링크 보내기'}
@@ -208,11 +257,11 @@ export default function LoginPage() {
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">이메일 인증 코드</h2>
                 <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
                   <span className="font-medium text-gray-900 dark:text-white">{email}</span>로<br />
-                  6자리 인증 코드를 보냈습니다.
+                  {otpSent ? '6자리 인증 코드를 보냈습니다.' : '비밀번호 확인을 마쳤습니다. 자동 확인 후 코드를 받으세요.'}
                 </p>
               </div>
 
-              <LoginField label="인증 코드">
+              {otpSent && <LoginField label="인증 코드">
                 <input
                   type="text"
                   inputMode="numeric"
@@ -224,7 +273,7 @@ export default function LoginPage() {
                   autoComplete="one-time-code"
                   required
                 />
-              </LoginField>
+              </LoginField>}
 
               {error && <p className="text-center text-sm text-red-500">{error}</p>}
               {resendSuccess && (
@@ -233,22 +282,25 @@ export default function LoginPage() {
                 </p>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="mt-6 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
-              >
-                {loading ? '확인 중...' : '인증하고 로그인'}
-              </button>
+              <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
               <button
+                type={otpSent ? 'submit' : 'button'}
+                onClick={otpSent ? undefined : requestLoginOtp}
+                disabled={loading || (!otpSent && isCaptchaEnabled && !captchaToken)}
+                className="mt-6 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+              >
+                {loading ? '확인 중...' : otpSent ? '인증하고 로그인' : '인증 코드 받기'}
+              </button>
+
+              {otpSent && <button
                 type="button"
-                onClick={handleResendOtp}
-                disabled={loading}
+                onClick={resendLoginOtp}
+                disabled={loading || (isCaptchaEnabled && !captchaToken)}
                 className="w-full pt-1 text-center text-xs font-medium text-orange-500 hover:underline disabled:opacity-50"
               >
                 코드 다시 보내기
-              </button>
+              </button>}
             </form>
           )}
 
@@ -265,10 +317,12 @@ export default function LoginPage() {
                 <p className="text-sm text-green-600">인증 이메일을 다시 보냈습니다.</p>
               )}
 
+              <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+
               <button
                 type="button"
-                onClick={handleResendConfirmation}
-                disabled={loading}
+                onClick={resendConfirmation}
+                disabled={loading || (isCaptchaEnabled && !captchaToken)}
                 className="w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
               >
                 {loading ? '전송 중...' : '인증 이메일 다시 보내기'}

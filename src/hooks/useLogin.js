@@ -72,6 +72,7 @@ export function useLogin() {
     if (!pendingEmail && getOtpPendingEmail()) clearOtpPendingEmail()
   }, [pendingEmail])
   const [step, setStep] = useState(pendingEmail ? 'otp' : 'credentials') // 'credentials' | 'otp' | 'unconfirmed'
+  const [otpSent, setOtpSent] = useState(Boolean(pendingEmail))
 
   const [email, setEmail] = useState(pendingEmail)
   const [password, setPassword] = useState('')
@@ -82,7 +83,7 @@ export function useLogin() {
   const [resetSuccess, setResetSuccess] = useState(false)
 
   // ── Step 1: submit email + password ──────────────────────────────────────
-  const handleCredentialsSubmit = async (e) => {
+  const handleCredentialsSubmit = async (e, captchaToken) => {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -91,7 +92,7 @@ export function useLogin() {
       setOtpPendingEmail(email)
 
       // Always verify credentials first
-      await signInWithPassword(email, password)
+      await signInWithPassword(email, password, captchaToken)
 
       // OTP-exempt accounts (e.g. admin/test) are fully logged in now.
       // The Supabase Auth Hook, not this client-side email check, grants access.
@@ -102,10 +103,9 @@ export function useLogin() {
         return
       }
 
-      // Keep the short-lived password proof in memory while a separate
-      // non-persistent client requests the email OTP.
-      await sendLoginOtp(email)
+      // A fresh CAPTCHA token is required for the separate OTP email request.
       setStep('otp')
+      setOtpSent(false)
     } catch (err) {
       await clearLoginAttempt()
       clearOtpPendingEmail()
@@ -117,6 +117,22 @@ export function useLogin() {
       } else {
         setError(mapped)
       }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRequestOtp = async (captchaToken) => {
+    setError('')
+    setLoading(true)
+    try {
+      await sendLoginOtp(email, captchaToken)
+      setOtpSent(true)
+    } catch (err) {
+      await clearLoginAttempt()
+      clearOtpPendingEmail()
+      setStep('credentials')
+      setError(mapAuthError(err.message))
     } finally {
       setLoading(false)
     }
@@ -156,12 +172,12 @@ export function useLogin() {
   }
 
   // ── Resend OTP (on OTP screen) ───────────────────────────────────────────
-  const handleResendOtp = async () => {
+  const handleResendOtp = async (captchaToken) => {
     setError('')
     setLoading(true)
 
     try {
-      await sendLoginOtp(email)
+      await sendLoginOtp(email, captchaToken)
       setOtp('')
       setResendSuccess(true)
       setTimeout(() => setResendSuccess(false), 4000)
@@ -181,12 +197,12 @@ export function useLogin() {
   }
 
   // ── Resend confirmation email (on unconfirmed screen) ────────────────────
-  const handleResendConfirmation = async () => {
+  const handleResendConfirmation = async (captchaToken) => {
     setError('')
     setLoading(true)
 
     try {
-      await resendConfirmationEmail(email)
+      await resendConfirmationEmail(email, captchaToken)
       setResendSuccess(true)
       setTimeout(() => setResendSuccess(false), 4000)
     } catch (err) {
@@ -203,7 +219,7 @@ export function useLogin() {
     setResetSuccess(false)
   }
 
-  const handlePasswordResetSubmit = async (e) => {
+  const handlePasswordResetSubmit = async (e, captchaToken) => {
     e.preventDefault()
     setError('')
     setResetSuccess(false)
@@ -215,7 +231,7 @@ export function useLogin() {
 
     setLoading(true)
     try {
-      await sendPasswordResetEmail(email.trim().toLowerCase())
+      await sendPasswordResetEmail(email.trim().toLowerCase(), captchaToken)
       setResetSuccess(true)
     } catch (err) {
       setError(mapAuthError(err.message))
@@ -243,6 +259,7 @@ export function useLogin() {
     password,
     setPassword,
     otp,
+    otpSent,
     setOtp,
     loading,
     error,
@@ -251,6 +268,7 @@ export function useLogin() {
     // Actions
     handleCredentialsSubmit,
     handleOtpSubmit,
+    handleRequestOtp,
     handleResendOtp,
     handleResendConfirmation,
     handleForgotPassword,

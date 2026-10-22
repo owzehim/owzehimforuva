@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { CaretLeft, Eye, EyeSlash } from '@phosphor-icons/react'
 import { updatePassword, verifyCurrentPasswordForChange } from '../api/authRepository'
 import { supabase } from '../lib/supabase'
+import CaptchaChallenge from '../components/CaptchaChallenge'
+import { isCaptchaEnabled } from '../lib/captcha'
 
 const copy = {
   back: '\uC124\uC815\uC73C\uB85C \uB3CC\uC544\uAC00\uAE30',
@@ -34,6 +36,12 @@ export default function ChangePasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
+  const resetCaptcha = () => {
+    setCaptchaToken('')
+    setCaptchaResetKey((key) => key + 1)
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -52,7 +60,7 @@ export default function ChangePasswordPage() {
     if (!reauthenticationSent) {
       setLoading(true)
       try {
-        await verifyCurrentPasswordForChange(currentPassword)
+        await verifyCurrentPasswordForChange(currentPassword, captchaToken)
         const { error: reauthenticationError } = await supabase.auth.reauthenticate()
         if (reauthenticationError) throw reauthenticationError
         setReauthenticationSent(true)
@@ -61,6 +69,7 @@ export default function ChangePasswordPage() {
         setError(err.message || copy.error)
       } finally {
         setLoading(false)
+        if (isCaptchaEnabled) resetCaptcha()
       }
       return
     }
@@ -72,7 +81,7 @@ export default function ChangePasswordPage() {
 
     setLoading(true)
     try {
-      await updatePassword(newPassword, currentPassword, reauthenticationCode.trim())
+      await updatePassword(newPassword, currentPassword, reauthenticationCode.trim(), captchaToken)
       setSuccess(copy.success)
       setNewPassword('')
       setCurrentPassword('')
@@ -83,6 +92,7 @@ export default function ChangePasswordPage() {
       setError(err.message || copy.error)
     } finally {
       setLoading(false)
+      if (isCaptchaEnabled) resetCaptcha()
     }
   }
 
@@ -113,12 +123,14 @@ export default function ChangePasswordPage() {
             <PasswordField label={copy.newPassword} value={newPassword} onChange={setNewPassword} />
             <PasswordField label={copy.confirmPassword} value={confirmPassword} onChange={setConfirmPassword} />
 
+            <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+
             {error && <p className="text-sm text-red-500">{error}</p>}
             {success && <p className="text-sm leading-relaxed text-green-600">{success}</p>}
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (isCaptchaEnabled && !captchaToken)}
               className="mt-5 w-full rounded-full bg-orange-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
             >
               {loading ? copy.changing : reauthenticationSent ? copy.submit : copy.sendCode}
@@ -126,12 +138,12 @@ export default function ChangePasswordPage() {
             {reauthenticationSent && (
               <button
                 type="button"
-                disabled={loading}
+                disabled={loading || (isCaptchaEnabled && !captchaToken)}
                 onClick={async () => {
                   setLoading(true)
                   setError('')
                   try {
-                    await verifyCurrentPasswordForChange(currentPassword)
+                    await verifyCurrentPasswordForChange(currentPassword, captchaToken)
                     const { error: reauthenticationError } = await supabase.auth.reauthenticate()
                     if (reauthenticationError) throw reauthenticationError
                     setSuccess(copy.codeSent)
@@ -139,6 +151,7 @@ export default function ChangePasswordPage() {
                     setError(err.message || copy.error)
                   } finally {
                     setLoading(false)
+                    if (isCaptchaEnabled) resetCaptcha()
                   }
                 }}
                 className="w-full py-2 text-sm text-gray-600 underline dark:text-gray-300"
