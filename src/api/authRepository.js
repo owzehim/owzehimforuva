@@ -218,7 +218,7 @@ export async function updatePasswordFromRecovery(password) {
 }
 
 /** Verify the current password in a non-persistent Auth client. */
-async function verifyCurrentPassword(currentPassword) {
+export async function verifyCurrentPasswordForChange(currentPassword) {
   if (typeof currentPassword !== 'string' || !currentPassword) {
     throw new Error('현재 비밀번호를 입력해주세요.')
   }
@@ -249,7 +249,7 @@ export async function updatePassword(password, currentPassword, nonce) {
     throw new Error('이메일 확인 코드를 입력해주세요.')
   }
 
-  await verifyCurrentPassword(currentPassword)
+  await verifyCurrentPasswordForChange(currentPassword)
 
   const { error } = await supabase.auth.updateUser({
     password,

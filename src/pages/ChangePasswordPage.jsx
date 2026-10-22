@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CaretLeft, Eye, EyeSlash } from '@phosphor-icons/react'
-import { updatePassword } from '../api/authRepository'
+import { updatePassword, verifyCurrentPasswordForChange } from '../api/authRepository'
 import { supabase } from '../lib/supabase'
 
 const copy = {
@@ -52,6 +52,7 @@ export default function ChangePasswordPage() {
     if (!reauthenticationSent) {
       setLoading(true)
       try {
+        await verifyCurrentPasswordForChange(currentPassword)
         const { error: reauthenticationError } = await supabase.auth.reauthenticate()
         if (reauthenticationError) throw reauthenticationError
         setReauthenticationSent(true)
@@ -130,6 +131,7 @@ export default function ChangePasswordPage() {
                   setLoading(true)
                   setError('')
                   try {
+                    await verifyCurrentPasswordForChange(currentPassword)
                     const { error: reauthenticationError } = await supabase.auth.reauthenticate()
                     if (reauthenticationError) throw reauthenticationError
                     setSuccess(copy.codeSent)
