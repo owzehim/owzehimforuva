@@ -276,7 +276,8 @@ export default function LoginPage() {
               <div className="mb-8 min-h-[176px] pt-[54px] text-left">
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">이메일 인증 코드</h2>
                 <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-                  <span className="font-medium text-gray-900 dark:text-white">{email}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{email}</span>로<br />
+                  {otpSent && '6자리 인증 코드를 보냈습니다.'}
                 </p>
               </div>
 
