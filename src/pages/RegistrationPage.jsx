@@ -566,8 +566,9 @@ export default function RegistrationPage() {
   });
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [activeLegalDoc, setActiveLegalDoc] = useState(null);
-  const [captchaToken, setCaptchaToken] = useState('');
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
+  const [showSignupCaptcha, setShowSignupCaptcha] = useState(false);
+  const captchaSubmissionStartedRef = useRef(false);
 
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
@@ -657,23 +658,52 @@ export default function RegistrationPage() {
     setLegalAgreements((current) => ({ ...current, [name]: checked }));
   };
 
-  const handleAccountSubmit = async (event) => {
+  const submitRegistration = async (token = '') => {
+    if (captchaSubmissionStartedRef.current) return;
+    captchaSubmissionStartedRef.current = true;
+
     try {
-      await handleSubmit(event, {
-      legalAccepted: Object.values(legalAgreements).every(Boolean),
-      ageConfirmed,
-      captchaToken,
-      ageConfirmationError: language === 'ko'
-        ? '만 16세 이상만 가입할 수 있습니다.'
-        : 'You must confirm that you are at least 16 years old.',
-      legalDocumentsVersion: LEGAL_DOCUMENT_VERSION,
+      await handleSubmit({ preventDefault() {} }, {
+        legalAccepted: Object.values(legalAgreements).every(Boolean),
+        ageConfirmed,
+        captchaToken: token,
+        ageConfirmationError: language === 'ko'
+          ? '만 16세 이상만 가입할 수 있습니다.'
+          : 'You must confirm that you are at least 16 years old.',
+        legalDocumentsVersion: LEGAL_DOCUMENT_VERSION,
       });
     } finally {
+      captchaSubmissionStartedRef.current = false;
       if (isCaptchaEnabled) {
-        setCaptchaToken('');
         setCaptchaResetKey((key) => key + 1);
       }
     }
+  };
+
+  const handleAccountSubmit = (event) => {
+    event.preventDefault();
+    if (!isCaptchaEnabled) {
+      void submitRegistration();
+      return;
+    }
+    setCaptchaResetKey((key) => key + 1);
+    setShowSignupCaptcha(true);
+  };
+
+  const handleSignupCaptchaVerify = (token) => {
+    if (token && showSignupCaptcha && !loading) {
+      void submitRegistration(token);
+    }
+  };
+
+  const returnToAccountForm = () => {
+    setShowSignupCaptcha(false);
+    setCaptchaResetKey((key) => key + 1);
+  };
+
+  const handleEditEmail = () => {
+    returnToAccountForm();
+    editEmail();
   };
 
   const profileHeroProps = {
@@ -736,11 +766,64 @@ export default function RegistrationPage() {
           </button>
           <button
             type="button"
-            onClick={editEmail}
+            onClick={handleEditEmail}
             style={{ ...s.ghostBtn, width: '100%', marginTop: '10px' }}
           >
             {language === 'ko' ? '\uC774\uBA54\uC77C \uC8FC\uC18C \uBCC0\uACBD' : 'Change email address'}
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showSignupCaptcha) {
+    return (
+      <div
+        className="phone-app-shell registration-page-enter"
+        onDragStart={(event) => event.preventDefault()}
+        style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+      >
+        <style>{registrationMotionCss}</style>
+        <div style={s.topBar}>
+          <button
+            type="button"
+            onClick={returnToAccountForm}
+            style={s.backButton}
+            title={language === 'ko' ? '뒤로' : 'Back'}
+          >
+            <CaretLeft size={24} weight="bold" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage(language === 'en' ? 'ko' : 'en')}
+            style={s.languageToggle}
+          >
+            {language === 'en' ? '한국어' : 'English'}
+          </button>
+        </div>
+        <div style={s.emailCard}>
+          <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+            <div style={s.emailIcon}>
+              <EnvelopeSimple size={28} weight="fill" color="#f97316" />
+            </div>
+            <h1 style={s.title}>
+              {language === 'ko' ? '이메일 확인 링크 보내기' : 'Send email verification link'}
+            </h1>
+            <p style={s.emailText}>
+              {language === 'ko'
+                ? '아래 보안 확인을 완료한 뒤 가입 확인 이메일을 보냅니다.'
+                : 'Complete the security check below to receive your signup verification email.'}
+              <br />
+              <strong style={{ color: 'var(--reg-text)' }}>{formData.email}</strong>
+            </p>
+          </div>
+          <CaptchaChallenge
+            onVerify={handleSignupCaptchaVerify}
+            resetKey={captchaResetKey}
+            language={language}
+            appearance="always"
+          />
+          {error && <div style={{ ...s.errorBanner, marginTop: '12px' }}>{error}</div>}
         </div>
       </div>
     );
@@ -828,9 +911,6 @@ export default function RegistrationPage() {
             onAgreementChange={handleAgreementChange}
             onOpenLegalDocument={setActiveLegalDoc}
             profileHeroProps={profileHeroProps}
-            captchaToken={captchaToken}
-            captchaResetKey={captchaResetKey}
-            onCaptchaVerify={setCaptchaToken}
           />
         </div>
       )}
@@ -1189,9 +1269,6 @@ function AccountStep({
   onAgreementChange,
   onOpenLegalDocument,
   profileHeroProps,
-  captchaToken,
-  captchaResetKey,
-  onCaptchaVerify,
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -1315,26 +1392,20 @@ function AccountStep({
           </p>
         )}
 
-        <CaptchaChallenge
-          onVerify={onCaptchaVerify}
-          resetKey={captchaResetKey}
-          language={language}
-          appearance="always"
-        />
       </div>
 
       <div style={s.bottomAction}>
         <button
           type="submit"
-          disabled={loading || !isComplete || (isCaptchaEnabled && !captchaToken)}
+          disabled={loading || !isComplete}
           style={{
             ...s.submitBtn,
             flex: 1,
             background: !loading && isComplete
               ? 'linear-gradient(135deg, #fb923c 0%, #f97316 48%, #ea580c 100%)'
               : '#fb923c',
-            opacity: loading || !isComplete || (isCaptchaEnabled && !captchaToken) ? 0.6 : 1,
-            cursor: loading || !isComplete || (isCaptchaEnabled && !captchaToken) ? 'not-allowed' : 'pointer',
+            opacity: loading || !isComplete ? 0.6 : 1,
+            cursor: loading || !isComplete ? 'not-allowed' : 'pointer',
           }}
         >
           {loading ? t.creatingAccount : t.createAccount}
