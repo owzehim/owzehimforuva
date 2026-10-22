@@ -39,10 +39,10 @@ async function deleteAuthAccount(admin: ReturnType<typeof createClient>, userId:
   const { error: imageError } = await admin.storage
     .from('profile-images')
     .remove([`avatars/${userId}.jpg`])
-  if (imageError) throw new Error('Inactive account profile image cleanup failed')
+  if (imageError) throw new Error('Profile image cleanup failed')
 
   const { error } = await admin.auth.admin.deleteUser(userId)
-  if (error && error.status !== 404) throw new Error('Inactive Auth account deletion failed')
+  if (error && error.status !== 404) throw new Error('Auth account deletion failed')
 }
 
 serve(async (req) => {
@@ -139,7 +139,7 @@ serve(async (req) => {
     }
 
     const users = Array.isArray(queuedUsers) ? queuedUsers : []
-    const sheetUsers = users.filter((row) => row?.delete_auth_user !== true)
+    const sheetUsers = users.filter((row) => row?.sync_master_sheet !== false)
     let masterUrl: string | null = null
     if (sheetUsers.length > 0) {
       try {
@@ -159,17 +159,29 @@ serve(async (req) => {
     for (const row of users) {
       const userId = typeof row === 'string' ? row : row?.anonymized_user_id || row?.user_id
       if (!userId) continue
-      const deleteAuthUser = typeof row === 'object' && row?.delete_auth_user === true
+      const hasExplicitSheetSync = typeof row === 'object' &&
+        typeof row?.sync_master_sheet === 'boolean'
+      // Older DB versions returned only delete_auth_user. There, false meant
+      // an expired member (sync Master first, then delete); true meant an
+      // unverified/inactive signup with no Master Sheet row.
+      const deleteAuthUser = typeof row === 'object' &&
+        (row?.delete_auth_user === true ||
+          (!hasExplicitSheetSync && row?.delete_auth_user === false))
+      const syncMasterSheet = hasExplicitSheetSync
+        ? row.sync_master_sheet
+        : typeof row !== 'object' || row?.delete_auth_user !== true
 
       try {
+        if (syncMasterSheet) {
+          if (!masterUrl) throw new Error('Master sheet endpoint is not configured')
+          await anonymizeMasterSheet(masterUrl, userId)
+          syncedCount += 1
+        }
         if (deleteAuthUser) {
           await deleteAuthAccount(admin, userId)
           deletedAuthAccountCount += 1
         } else {
-          if (!masterUrl) throw new Error('Master sheet endpoint is not configured')
-          await anonymizeMasterSheet(masterUrl, userId)
           await clearAuthPersonalMetadata(admin, userId)
-          syncedCount += 1
         }
         const { data: completed, error: completionError } = await admin.rpc('complete_privacy_sheet_sync', {
           p_user_id: userId,
