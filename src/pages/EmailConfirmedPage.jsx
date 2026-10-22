@@ -2,6 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle, XCircle, SpinnerGap } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
+import { resendConfirmationEmail } from '../api/authRepository'
+import CaptchaChallenge from '../components/CaptchaChallenge'
+import { isCaptchaEnabled } from '../lib/captcha'
 
 const copy = {
   verifyingTitle: '\uC774\uBA54\uC77C \uC778\uC99D \uC911',
@@ -28,6 +31,12 @@ function announceConfirmationFinished(status) {
 export default function EmailConfirmedPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('verifying')
+  const [email, setEmail] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
+  const [resending, setResending] = useState(false)
+  const [resendMessage, setResendMessage] = useState('')
+  const [resendError, setResendError] = useState('')
 
   const finish = useCallback((nextStatus) => {
     announceConfirmationFinished(nextStatus)
@@ -39,19 +48,31 @@ export default function EmailConfirmedPage() {
 
     const verifyEmail = async () => {
       try {
-        // Supabase's URL detection processes PKCE codes during client startup.
-        // Read that session after initialization instead of exchanging the same
-        // single-use code a second time here.
+        const params = new URLSearchParams(window.location.search)
+        const cameFromVerifiedLink = params.has('code')
+
+        // Supabase's URL detection processes the existing PKCE link during
+        // client startup. Read its session instead of exchanging the code twice.
         const result = await supabase.auth.getSession()
+        if (result.error && !cameFromVerifiedLink) throw result.error
+        const session = result.data?.session || null
 
         if (cancelled) return
 
-        if (result.error || !result.data?.session) {
-          finish('error')
+        if (!session) {
+          if (cameFromVerifiedLink) {
+            // Supabase only redirects here with a code after confirming the
+            // email. A different browser has no PKCE verifier to create a
+            // session, so the user can finish the pending registration by logging in.
+            window.history.replaceState({}, document.title, window.location.pathname)
+            finish('success')
+          } else {
+            finish('error')
+          }
           return
         }
 
-        if (result.data.session.user?.user_metadata?.registration) {
+        if (session.user?.user_metadata?.registration) {
           const { data: registrationResult, error: registrationError } =
             await supabase.functions.invoke('complete-member-registration')
 
@@ -89,14 +110,6 @@ export default function EmailConfirmedPage() {
     return () => { cancelled = true }
   }, [finish])
 
-  useEffect(() => {
-    if (status === 'verifying') return undefined
-    const timeout = window.setTimeout(() => {
-      navigate('/public', { replace: true })
-    }, 5000)
-    return () => window.clearTimeout(timeout)
-  }, [status, navigate])
-
   const isVerifying = status === 'verifying'
   const isSuccess = status === 'success'
   const title = isVerifying
@@ -131,13 +144,77 @@ export default function EmailConfirmedPage() {
         <h1 style={styles.title}>{title}</h1>
         <p style={styles.message}>{message}</p>
         {!isVerifying && (
-          <button
-            type="button"
-            onClick={() => navigate('/public', { replace: true })}
-            style={styles.returnButton}
-          >
-            {'홈 화면으로 이동'}
-          </button>
+          isSuccess ? (
+            <button
+              type="button"
+              onClick={() => navigate('/public', { replace: true })}
+              style={styles.returnButton}
+            >
+              홈 화면으로 이동
+            </button>
+          ) : (
+            <div style={styles.actions}>
+              <label htmlFor="confirmation-email" style={styles.emailLabel}>이메일 주소</label>
+              <input
+                id="confirmation-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@example.com"
+                style={styles.emailInput}
+              />
+              {isCaptchaEnabled && (
+                <CaptchaChallenge
+                  onVerify={setCaptchaToken}
+                  resetKey={captchaResetKey}
+                />
+              )}
+              {resendMessage && <p style={styles.successMessage}>{resendMessage}</p>}
+              {resendError && <p style={styles.errorMessage}>{resendError}</p>}
+              <button
+                type="button"
+                disabled={resending || !email.trim() || (isCaptchaEnabled && !captchaToken)}
+                onClick={async () => {
+                  setResending(true)
+                  setResendMessage('')
+                  setResendError('')
+                  try {
+                    await resendConfirmationEmail(email, captchaToken)
+                    setResendMessage('인증 이메일을 다시 보냈습니다.')
+                  } catch (error) {
+                    setResendError(error.message || '인증 이메일을 다시 보내지 못했습니다.')
+                  } finally {
+                    setResending(false)
+                    if (isCaptchaEnabled) {
+                      setCaptchaToken('')
+                      setCaptchaResetKey((key) => key + 1)
+                    }
+                  }
+                }}
+                style={{ ...styles.returnButton, opacity: resending || !email.trim() || (isCaptchaEnabled && !captchaToken) ? 0.55 : 1 }}
+              >
+                {resending ? '전송 중...' : '인증 이메일 다시 보내기'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('')
+                  document.getElementById('confirmation-email')?.focus()
+                }}
+                style={styles.secondaryButton}
+              >
+                이메일 주소 다시 입력하기
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/public', { replace: true })}
+                style={styles.secondaryButton}
+              >
+                홈 화면으로 이동
+              </button>
+            </div>
+          )
         )}
       </div>
     </div>
@@ -193,4 +270,39 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
   },
+  actions: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    marginTop: '8px',
+  },
+  emailLabel: {
+    alignSelf: 'flex-start',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#374151',
+  },
+  emailInput: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '13px 14px',
+    border: '1px solid #d1d5db',
+    borderRadius: '12px',
+    fontSize: '15px',
+    color: '#111827',
+  },
+  secondaryButton: {
+    width: '100%',
+    padding: '12px 18px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '14px',
+    background: '#fff',
+    color: '#374151',
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  successMessage: { margin: 0, color: '#15803d', fontSize: '13px' },
+  errorMessage: { margin: 0, color: '#dc2626', fontSize: '13px' },
 }
