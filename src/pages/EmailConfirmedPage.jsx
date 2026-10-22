@@ -2,12 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle, XCircle, SpinnerGap } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
+import { resendConfirmationEmail } from '../api/authRepository'
+import CaptchaChallenge from '../components/CaptchaChallenge'
+import { isCaptchaEnabled } from '../lib/captcha'
 
 const copy = {
   verifyingTitle: '\uC774\uBA54\uC77C \uC778\uC99D \uC911',
   verifyingMessage: '\uC7A0\uC2DC\uB9CC \uAE30\uB2E4\uB824\uC8FC\uC138\uC694.',
-  successTitle: '\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.',
-  successMessage: '\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uC774\uB3D9\uD569\uB2C8\uB2E4.',
+  successTitle: '\uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC5B4\uC694.',
+  successMessage: '\uC571\uC5D0\uC11C \uB85C\uADF8\uC778\uC744 \uC9C4\uD589\uD574 \uC8FC\uC138\uC694.',
   errorTitle: '\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC2E4\uD328\uD558\uC600\uC2B5\uB2C8\uB2E4.',
   errorMessage: '\uC778\uC99D \uB9C1\uD06C\uAC00 \uB9CC\uB8CC\uB418\uC5C8\uAC70\uB098 \uC774\uBBF8 \uC0AC\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4.\n\uC0C8 \uC778\uC99D \uB9C1\uD06C\uB97C \uC694\uCCAD\uD55C \uB4A4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.',
 }
@@ -28,6 +31,12 @@ function announceConfirmationFinished(status) {
 export default function EmailConfirmedPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('verifying')
+  const [email, setEmail] = useState('')
+  const [captchaToken, setCaptchaToken] = useState('')
+  const [captchaResetKey, setCaptchaResetKey] = useState(0)
+  const [resending, setResending] = useState(false)
+  const [resendMessage, setResendMessage] = useState('')
+  const [resendError, setResendError] = useState('')
 
   const finish = useCallback((nextStatus) => {
     announceConfirmationFinished(nextStatus)
@@ -39,19 +48,31 @@ export default function EmailConfirmedPage() {
 
     const verifyEmail = async () => {
       try {
-        // Supabase's URL detection processes PKCE codes during client startup.
-        // Read that session after initialization instead of exchanging the same
-        // single-use code a second time here.
+        const params = new URLSearchParams(window.location.search)
+        const cameFromVerifiedLink = params.has('code')
+
+        // Supabase's URL detection processes the existing PKCE link during
+        // client startup. Read its session instead of exchanging the code twice.
         const result = await supabase.auth.getSession()
+        if (result.error && !cameFromVerifiedLink) throw result.error
+        const session = result.data?.session || null
 
         if (cancelled) return
 
-        if (result.error || !result.data?.session) {
-          finish('error')
+        if (!session) {
+          if (cameFromVerifiedLink) {
+            // Supabase only redirects here with a code after confirming the
+            // email. A different browser has no PKCE verifier to create a
+            // session, so the user can finish the pending registration by logging in.
+            window.history.replaceState({}, document.title, window.location.pathname)
+            finish('success')
+          } else {
+            finish('error')
+          }
           return
         }
 
-        if (result.data.session.user?.user_metadata?.registration) {
+        if (session.user?.user_metadata?.registration) {
           const { data: registrationResult, error: registrationError } =
             await supabase.functions.invoke('complete-member-registration')
 
@@ -89,14 +110,6 @@ export default function EmailConfirmedPage() {
     return () => { cancelled = true }
   }, [finish])
 
-  useEffect(() => {
-    if (status === 'verifying') return undefined
-    const timeout = window.setTimeout(() => {
-      navigate('/public', { replace: true })
-    }, 5000)
-    return () => window.clearTimeout(timeout)
-  }, [status, navigate])
-
   const isVerifying = status === 'verifying'
   const isSuccess = status === 'success'
   const title = isVerifying
@@ -131,13 +144,77 @@ export default function EmailConfirmedPage() {
         <h1 style={styles.title}>{title}</h1>
         <p style={styles.message}>{message}</p>
         {!isVerifying && (
-          <button
-            type="button"
-            onClick={() => navigate('/public', { replace: true })}
-            style={styles.returnButton}
-          >
-            {'공개 페이지로 돌아가기'}
-          </button>
+          isSuccess ? (
+            <button
+              type="button"
+              onClick={() => navigate('/public', { replace: true })}
+              style={styles.returnButton}
+            >
+              홈 화면으로 이동
+            </button>
+          ) : (
+            <div style={styles.actions}>
+              <label htmlFor="confirmation-email" style={styles.emailLabel}>이메일 주소</label>
+              <input
+                id="confirmation-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@example.com"
+                style={styles.emailInput}
+              />
+              {isCaptchaEnabled && (
+                <CaptchaChallenge
+                  onVerify={setCaptchaToken}
+                  resetKey={captchaResetKey}
+                />
+              )}
+              {resendMessage && <p style={styles.successMessage}>{resendMessage}</p>}
+              {resendError && <p style={styles.errorMessage}>{resendError}</p>}
+              <button
+                type="button"
+                disabled={resending || !email.trim() || (isCaptchaEnabled && !captchaToken)}
+                onClick={async () => {
+                  setResending(true)
+                  setResendMessage('')
+                  setResendError('')
+                  try {
+                    await resendConfirmationEmail(email, captchaToken)
+                    setResendMessage('인증 이메일을 다시 보냈습니다.')
+                  } catch (error) {
+                    setResendError(error.message || '인증 이메일을 다시 보내지 못했습니다.')
+                  } finally {
+                    setResending(false)
+                    if (isCaptchaEnabled) {
+                      setCaptchaToken('')
+                      setCaptchaResetKey((key) => key + 1)
+                    }
+                  }
+                }}
+                style={{ ...styles.returnButton, opacity: resending || !email.trim() || (isCaptchaEnabled && !captchaToken) ? 0.55 : 1 }}
+              >
+                {resending ? '전송 중...' : '인증 이메일 다시 보내기'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('')
+                  document.getElementById('confirmation-email')?.focus()
+                }}
+                style={styles.secondaryButton}
+              >
+                이메일 주소 다시 입력하기
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/public', { replace: true })}
+                style={styles.secondaryButton}
+              >
+                홈 화면으로 이동
+              </button>
+            </div>
+          )
         )}
       </div>
     </div>
@@ -193,4 +270,39 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
   },
+  actions: {
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    marginTop: '8px',
+  },
+  emailLabel: {
+    alignSelf: 'flex-start',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#374151',
+  },
+  emailInput: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '13px 14px',
+    border: '1px solid #d1d5db',
+    borderRadius: '12px',
+    fontSize: '15px',
+    color: '#111827',
+  },
+  secondaryButton: {
+    width: '100%',
+    padding: '12px 18px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '14px',
+    background: '#fff',
+    color: '#374151',
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  successMessage: { margin: 0, color: '#15803d', fontSize: '13px' },
+  errorMessage: { margin: 0, color: '#dc2626', fontSize: '13px' },
 }

@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, CaretDown, CaretLeft, EnvelopeSimple, Eye, EyeSlash, UserCircle } from '@phosphor-icons/react';
+import { Camera, CaretDown, CaretLeft, CheckCircle, EnvelopeSimple, Eye, EyeSlash, UserCircle, XCircle } from '@phosphor-icons/react';
 import Cropper from 'react-easy-crop';
 import { useRegisterMember } from '../hooks/useRegisterMember';
 import { getYearOptions } from '../domain/member/memberRegistration';
@@ -14,6 +14,7 @@ import { isProductionEnv } from '../lib/appEnv';
 import { getPastelColor } from '../lib/avatarColor';
 import CaptchaChallenge from '../components/CaptchaChallenge';
 import { isCaptchaEnabled } from '../lib/captcha';
+import { resendConfirmationEmail } from '../api/authRepository';
 
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
@@ -568,6 +569,13 @@ export default function RegistrationPage() {
   const [activeLegalDoc, setActiveLegalDoc] = useState(null);
   const [captchaResetKey, setCaptchaResetKey] = useState(0);
   const [showSignupCaptcha, setShowSignupCaptcha] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState('');
+  const [retryEmail, setRetryEmail] = useState('');
+  const [retryCaptchaToken, setRetryCaptchaToken] = useState('');
+  const [retryCaptchaResetKey, setRetryCaptchaResetKey] = useState(0);
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
+  const [resendConfirmationMessage, setResendConfirmationMessage] = useState('');
+  const [resendConfirmationError, setResendConfirmationError] = useState('');
   const captchaSubmissionStartedRef = useRef(false);
 
   useEffect(() => {
@@ -599,13 +607,21 @@ export default function RegistrationPage() {
 
     const handleConfirmationFinished = (event) => {
       if (event.key === CONFIRMATION_EVENT_KEY && event.newValue) {
-        navigate('/public', { replace: true });
+        try {
+          const result = JSON.parse(event.newValue);
+          if (result.status) {
+            setConfirmationResult(result.status);
+            setRetryEmail(formData.email || '');
+          }
+        } catch {
+          // Ignore invalid data from local storage.
+        }
       }
     };
 
     window.addEventListener('storage', handleConfirmationFinished);
     return () => window.removeEventListener('storage', handleConfirmationFinished);
-  }, [step, navigate]);
+  }, [step, formData.email]);
 
   const yearOptions = getYearOptions(formData.educationLevel);
   const t = translations[language];
@@ -702,8 +718,29 @@ export default function RegistrationPage() {
   };
 
   const handleEditEmail = () => {
+    setConfirmationResult('');
+    setResendConfirmationMessage('');
+    setResendConfirmationError('');
     returnToAccountForm();
     editEmail();
+  };
+
+  const handleResendConfirmation = async () => {
+    setResendingConfirmation(true);
+    setResendConfirmationMessage('');
+    setResendConfirmationError('');
+    try {
+      await resendConfirmationEmail(retryEmail, retryCaptchaToken);
+      setResendConfirmationMessage(language === 'ko' ? '인증 이메일을 다시 보냈습니다.' : 'The confirmation email has been sent again.');
+    } catch (resendError) {
+      setResendConfirmationError(resendError.message || (language === 'ko' ? '인증 이메일을 다시 보내지 못했습니다.' : 'Could not resend the confirmation email.'));
+    } finally {
+      setResendingConfirmation(false);
+      if (isCaptchaEnabled) {
+        setRetryCaptchaToken('');
+        setRetryCaptchaResetKey((key) => key + 1);
+      }
+    }
   };
 
   const profileHeroProps = {
@@ -725,6 +762,78 @@ export default function RegistrationPage() {
 
   // Final step: after successful registration, tell user to check email
   if (step === 'email') {
+    if (confirmationResult) {
+      const isConfirmationSuccess = confirmationResult === 'success';
+      const resultTitle = isConfirmationSuccess
+        ? (language === 'ko' ? '이메일 인증이 완료되었어요.' : 'Email verification is complete.')
+        : (language === 'ko' ? '이메일 인증을 완료하지 못했어요.' : 'Email verification could not be completed.');
+      const resultMessage = isConfirmationSuccess
+        ? (language === 'ko' ? '이제 로그인할 수 있어요.' : 'You can now log in.')
+        : (language === 'ko' ? '이메일 주소를 확인하고 인증 링크를 다시 받아보세요.' : 'Check your email address and request a new confirmation link.');
+
+      return (
+        <div className="phone-app-shell registration-page-enter" style={{ ...s.page, height: '100dvh', overflowY: 'auto', boxSizing: 'border-box', padding: '24px 16px', fontFamily: 'var(--font-app)' }}>
+          <style>{registrationMotionCss}</style>
+          <div style={{ ...s.emailCard, position: 'relative', top: 'auto', transform: 'none', margin: 'auto 0' }}>
+            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+              {isConfirmationSuccess
+                ? <CheckCircle size={54} weight="fill" color="#f97316" />
+                : <XCircle size={54} weight="fill" color="#ef4444" />}
+              <h1 style={s.title}>{resultTitle}</h1>
+              <p style={s.emailText}>{resultMessage}</p>
+            </div>
+            {isConfirmationSuccess ? (
+              <button type="button" onClick={() => navigate('/public')} style={s.submitBtn}>
+                {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <label htmlFor="retry-confirmation-email" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--reg-text)' }}>
+                  {language === 'ko' ? '이메일 주소' : 'Email address'}
+                </label>
+                <input
+                  id="retry-confirmation-email"
+                  type="email"
+                  autoComplete="email"
+                  value={retryEmail}
+                  onChange={(event) => setRetryEmail(event.target.value)}
+                  style={{ ...s.input, padding: '12px', border: '1px solid var(--reg-border)', borderRadius: '12px', minHeight: '44px' }}
+                />
+                {isCaptchaEnabled && (
+                  <CaptchaChallenge onVerify={setRetryCaptchaToken} resetKey={retryCaptchaResetKey} />
+                )}
+                {resendConfirmationMessage && <p style={{ ...s.emailText, color: '#15803d' }}>{resendConfirmationMessage}</p>}
+                {resendConfirmationError && <p style={{ ...s.emailText, color: '#dc2626' }}>{resendConfirmationError}</p>}
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={resendingConfirmation || !retryEmail.trim() || (isCaptchaEnabled && !retryCaptchaToken)}
+                  style={{ ...s.submitBtn, opacity: resendingConfirmation || !retryEmail.trim() || (isCaptchaEnabled && !retryCaptchaToken) ? 0.55 : 1 }}
+                >
+                  {resendingConfirmation
+                    ? (language === 'ko' ? '전송 중...' : 'Sending...')
+                    : (language === 'ko' ? '인증 이메일 다시 보내기' : 'Resend confirmation email')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRetryEmail('');
+                    document.getElementById('retry-confirmation-email')?.focus();
+                  }}
+                  style={s.ghostBtn}
+                >
+                  {language === 'ko' ? '이메일 주소 다시 입력하기' : 'Enter email address again'}
+                </button>
+                <button type="button" onClick={() => navigate('/public')} style={s.ghostBtn}>
+                  {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div
         className="phone-app-shell registration-page-enter"
