@@ -16,6 +16,10 @@ import CaptchaChallenge from '../components/CaptchaChallenge';
 import { isCaptchaEnabled } from '../lib/captcha';
 import { checkSignupEmailConfirmation, resendConfirmationEmail } from '../api/authRepository';
 
+const isMobileChromeBrowser = typeof navigator !== 'undefined'
+  && /(?:Chrome|CriOS)\//.test(navigator.userAgent)
+  && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
   'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia',
@@ -1275,7 +1279,7 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
         </div>
       </div>
 
-      <div style={s.bottomAction}>
+      <div style={getBottomActionStyle()}>
         <button type="button" onClick={goNext} disabled={!isComplete} style={getNextButtonStyle(isComplete)}>
           {t.next}
         </button>
@@ -1433,7 +1437,7 @@ function AcademicStep({
         </div>
       </div>
 
-      <div style={s.bottomAction}>
+      <div style={getBottomActionStyle()}>
         <button
           type="button"
           onClick={goNext}
@@ -1589,7 +1593,7 @@ function AccountStep({
 
       </div>
 
-      <div style={s.bottomAction}>
+      <div style={getBottomActionStyle()}>
         <button
           type="submit"
           disabled={loading || !isComplete}
@@ -2619,5 +2623,16 @@ const s = {
     cursor: 'pointer',
   },
 };
+
+function getBottomActionStyle() {
+  if (!isMobileChromeBrowser) return s.bottomAction;
+  return {
+    ...s.bottomAction,
+    position: 'sticky',
+    bottom: 0,
+    zIndex: 20,
+    backgroundColor: 'var(--reg-page-bg)',
+  };
+}
 
 

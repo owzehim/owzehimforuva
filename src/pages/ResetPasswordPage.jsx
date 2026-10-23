@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeSlash } from '@phosphor-icons/react'
-import { updatePasswordFromRecovery } from '../api/authRepository'
+import { sendPasswordResetReturnSignal, updatePasswordFromRecovery } from '../api/authRepository'
 import { supabase } from '../lib/supabase'
 import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
 
@@ -40,12 +40,16 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [recoveryReady, setRecoveryReady] = useState(false)
+  const [resetCompleted, setResetCompleted] = useState(false)
+  const returnTokenRef = useRef('')
+  const returnHomeTimerRef = useRef(null)
 
   useEffect(() => {
     let active = true
     const verifyRecoverySession = async () => {
       try {
         const url = new URL(window.location.href)
+        returnTokenRef.current = url.searchParams.get('returnToken') || ''
         const hash = new URLSearchParams(url.hash.slice(1))
         const accessToken = hash.get('access_token')
         const refreshToken = hash.get('refresh_token')
@@ -107,6 +111,7 @@ export default function ResetPasswordPage() {
     })
     return () => {
       active = false
+      if (returnHomeTimerRef.current) window.clearTimeout(returnHomeTimerRef.current)
       subscription.unsubscribe()
     }
   }, [])
@@ -139,6 +144,17 @@ export default function ResetPasswordPage() {
       }
 
       await updatePasswordFromRecovery(password)
+      if (returnTokenRef.current) {
+        try {
+          await sendPasswordResetReturnSignal(
+            'complete',
+            returnTokenRef.current,
+            recoverySession.access_token,
+          )
+        } catch (signalError) {
+          console.error('Could not notify the app about password reset completion:', signalError?.message || 'unknown error')
+        }
+      }
       const { error: otherSessionsError } =
         await passwordRecoverySupabase.auth.signOut({ scope: 'others' })
       const { error: localSignOutError } =
@@ -151,12 +167,19 @@ export default function ResetPasswordPage() {
         const { error: appSignOutError } = await supabase.auth.signOut({ scope: 'local' })
         if (appSignOutError) throw appSignOutError
       }
-      navigate('/public', { replace: true })
+      setResetCompleted(true)
+      returnHomeTimerRef.current = window.setTimeout(() => {
+        navigate('/public', { replace: true })
+      }, 5000)
     } catch (err) {
       setError(err.message || '비밀번호 변경 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (resetCompleted) {
+    return <main className="min-h-[100dvh] bg-white dark:bg-[#121212]" aria-hidden="true" />
   }
 
   return (

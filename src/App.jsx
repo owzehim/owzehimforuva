@@ -144,7 +144,7 @@ function App() {
     const previousViewport = viewport?.getAttribute('content')
     viewport?.setAttribute(
       'content',
-      'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no',
+      'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content',
     )
 
     const preventPinch = (e) => {

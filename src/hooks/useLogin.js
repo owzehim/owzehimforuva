@@ -20,12 +20,30 @@ import {
   hasPendingLogin,
   resendConfirmationEmail,
   sendPasswordResetEmail,
+  sendPasswordResetReturnSignal,
 } from '../api/authRepository'
 
 const OTP_PENDING_KEY = 'uvain_otp_pending_email'
 const OTP_PENDING_EVENT = 'uvain-otp-pending-change'
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
 const MEMBER_EVENT_LIST_OPEN_KEY = 'uvain_member_event_list_open'
+const PASSWORD_RESET_RETURN_KEY = 'uvain_password_reset_return_token'
+
+function getPasswordResetReturnToken() {
+  try {
+    return window.localStorage.getItem(PASSWORD_RESET_RETURN_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function clearPasswordResetReturnToken() {
+  try {
+    window.localStorage.removeItem(PASSWORD_RESET_RETURN_KEY)
+  } catch {
+    // The in-memory flow can still finish when storage is unavailable.
+  }
+}
 
 function emitOtpPendingChange() {
   if (typeof window !== 'undefined') {
@@ -81,6 +99,47 @@ export function useLogin() {
   const [error, setError] = useState('')
   const [resendSuccess, setResendSuccess] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
+  const [resetReturnToken, setResetReturnToken] = useState(getPasswordResetReturnToken)
+
+  useEffect(() => {
+    if (!resetReturnToken) return undefined
+
+    let active = true
+    let checking = false
+    const checkForCompletedReset = async () => {
+      if (checking || document.visibilityState === 'hidden') return
+      checking = true
+      try {
+        const completed = await sendPasswordResetReturnSignal('check', resetReturnToken)
+        if (!active || !completed) return
+        clearPasswordResetReturnToken()
+        setResetReturnToken('')
+        setStep('credentials')
+        setResetSuccess(false)
+        setError('')
+      } catch (err) {
+        console.error('Password reset completion check failed:', err?.message || 'unknown error')
+      } finally {
+        checking = false
+      }
+    }
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void checkForCompletedReset()
+    }
+    void checkForCompletedReset()
+    const interval = window.setInterval(() => void checkForCompletedReset(), 5000)
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('pageshow', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('pageshow', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [resetReturnToken])
 
   // ── Step 1: submit email + password ──────────────────────────────────────
   const handleCredentialsSubmit = async (e, captchaToken) => {
@@ -231,7 +290,14 @@ export function useLogin() {
 
     setLoading(true)
     try {
-      await sendPasswordResetEmail(email.trim().toLowerCase(), captchaToken)
+      const returnToken = window.crypto.randomUUID()
+      await sendPasswordResetEmail(email.trim().toLowerCase(), captchaToken, returnToken)
+      try {
+        window.localStorage.setItem(PASSWORD_RESET_RETURN_KEY, returnToken)
+      } catch {
+        // The current page can still observe completion from memory.
+      }
+      setResetReturnToken(returnToken)
       setResetSuccess(true)
     } catch (err) {
       setError(mapAuthError(err.message))
