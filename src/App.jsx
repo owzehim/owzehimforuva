@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { hasAdminRole } from './lib/adminRoles'
@@ -15,7 +15,7 @@ import ChangePasswordPage from './pages/ChangePasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import { useSingleDeviceSession } from './hooks/useSingleDeviceSession'
 import { useTheme } from './hooks/useTheme'
-import { DeviceRotate, WifiX } from '@phosphor-icons/react'
+import { WifiX } from '@phosphor-icons/react'
 import LoadingIndicator from './components/LoadingIndicator'
 import { hasAppAccessClaim } from './domain/auth/authRules'
 
@@ -201,7 +201,6 @@ function App() {
   return (
     <BrowserRouter>
       <InstallBanner />
-      <PortraitOrientationBlocker />
       <Routes>
         <Route
           path="/login"
@@ -258,56 +257,6 @@ function App() {
         />
       </Routes>
     </BrowserRouter>
-  )
-}
-
-function PortraitOrientationBlocker() {
-  const { pathname } = useLocation()
-  const [mounted, setMounted] = useState(false)
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(
-      '(orientation: landscape) and (max-width: 767px), (orientation: landscape) and (max-height: 639px), (orientation: landscape) and (pointer: coarse)',
-    )
-    let hideTimer
-
-    const updateOrientation = () => {
-      if (mediaQuery.matches) {
-        window.clearTimeout(hideTimer)
-        setMounted(true)
-        window.requestAnimationFrame(() => setVisible(true))
-        return
-      }
-
-      setVisible(false)
-      hideTimer = window.setTimeout(() => setMounted(false), 240)
-    }
-
-    updateOrientation()
-    mediaQuery.addEventListener('change', updateOrientation)
-
-    return () => {
-      window.clearTimeout(hideTimer)
-      mediaQuery.removeEventListener('change', updateOrientation)
-    }
-  }, [])
-
-  if (!mounted || ['/reset-password', '/login', '/register'].includes(pathname)) return null
-
-  return (
-    <div
-      className={`portrait-orientation-blocker${visible ? ' is-visible' : ''}`}
-      role="alert"
-    >
-      <DeviceRotate
-        className="portrait-orientation-icon"
-        size={64}
-        weight="duotone"
-        aria-hidden="true"
-      />
-      <h1>세로 모드로 전환해 주세요</h1>
-    </div>
   )
 }
 
