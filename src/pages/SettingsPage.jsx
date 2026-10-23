@@ -7,6 +7,7 @@ import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X, Trash } from
 import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
+import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { legalDocuments } from '../content/legalDocuments'
 
 function isValidUsername(value) {
@@ -64,6 +65,7 @@ async function getCroppedImgAsBlob(imageSrc, pixelCrop) {
 export default function SettingsPage() {
   const navigate = useNavigate()
   const [member, setMember] = useState(null)
+  const [profileImageDisplayUrl, setProfileImageDisplayUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -96,6 +98,23 @@ export default function SettingsPage() {
     }
     load()
   }, [navigate])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    if (!member?.profile_image_url) return undefined
+
+    createProfileImageSignedUrl(member.profile_image_url)
+      .then((url) => {
+        if (isCurrent) setProfileImageDisplayUrl(url)
+      })
+      .catch((error) => {
+        console.warn('Could not load the profile image:', error)
+        if (isCurrent) setProfileImageDisplayUrl(null)
+      })
+
+    return () => { isCurrent = false }
+  }, [member?.profile_image_url])
 
   useEffect(() => {
     const edgeWidth = 30
@@ -287,6 +306,7 @@ export default function SettingsPage() {
       if (updateError) throw updateError
 
       const nextMember = { ...member, profile_image_url: null }
+      setProfileImageDisplayUrl(null)
       await syncRestaurantNotesProfile(nextMember)
       setMember((prev) => prev ? { ...prev, profile_image_url: null } : prev)
     } catch (err) {
@@ -357,7 +377,7 @@ export default function SettingsPage() {
     )
   }
 
-  const hasProfileImage = !!member?.profile_image_url
+  const hasProfileImage = !!profileImageDisplayUrl
   const avatarSeed = getMemberAvatarSeed(member)
   const pastelBg = getPastelColor(avatarSeed)
   const koreanDisplayName = [
@@ -447,7 +467,7 @@ export default function SettingsPage() {
               >
                 {hasProfileImage ? (
                   <img
-                    src={member.profile_image_url}
+                    src={profileImageDisplayUrl}
                     alt="Profile"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                   />

@@ -17,6 +17,7 @@ import StampCardModal from '../features/stampCard/components/StampCardModal'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
+import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { isMembershipActive } from '../domain/member/membershipStatus'
 
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
@@ -40,6 +41,7 @@ function getStoredEventListOpen() {
 export default function MemberPage() {
   const [authUserId, setAuthUserId] = useState(null)
   const [member, setMember] = useState(null)
+  const [profileImageDisplayUrl, setProfileImageDisplayUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const [activeTab, setActiveTab] = useState(getStoredMemberTab)
@@ -145,6 +147,23 @@ export default function MemberPage() {
 
     fetchData()
   }, [])
+
+  useEffect(() => {
+    let isCurrent = true
+
+    if (!member?.profile_image_url) return undefined
+
+    createProfileImageSignedUrl(member.profile_image_url)
+      .then((url) => {
+        if (isCurrent) setProfileImageDisplayUrl(url)
+      })
+      .catch((error) => {
+        console.warn('Could not load the profile image:', error)
+        if (isCurrent) setProfileImageDisplayUrl(null)
+      })
+
+    return () => { isCurrent = false }
+  }, [member?.profile_image_url])
 
   // Prevent iOS edge-swipe back gesture
   useEffect(() => {
@@ -1136,6 +1155,7 @@ function TourBottomTab({ activeIndex, style, lift = 5 }) {
 // Membership Card
 function MembershipCard({
   member,
+  profileImageDisplayUrl,
   isValid,
   onQRScanned,
   disabled = false,
@@ -1172,7 +1192,7 @@ function MembershipCard({
     .filter(Boolean)
     .join(' ')
   const avatarSize = `calc(${W} * 0.21)`
-  const hasProfileImage = !!member?.profile_image_url
+  const hasProfileImage = !!profileImageDisplayUrl
   // Keep the membership-card guide proportional to QRScanner's real scan box.
   const qrOutlineSize = `min(220px, calc(${W} * 0.55))`
   const qrIconSize = `clamp(30px, calc(${W} * 0.1), 42px)`
@@ -1240,7 +1260,7 @@ function MembershipCard({
         >
           {hasProfileImage ? (
             <img
-              src={member.profile_image_url}
+              src={profileImageDisplayUrl}
               alt="Profile"
               style={{
                 width: '100%',
@@ -1774,6 +1794,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
         >
           <MembershipCard
             member={member}
+            profileImageDisplayUrl={profileImageDisplayUrl}
             isValid={isValid}
             onQRScanned={handleQRScanned}
             disabled={lifted}
