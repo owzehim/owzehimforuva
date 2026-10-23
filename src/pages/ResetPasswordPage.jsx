@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeSlash } from '@phosphor-icons/react'
 import { updatePasswordFromRecovery } from '../api/authRepository'
-import { isPasswordRecoveryClaims } from '../domain/auth/recovery'
 import { supabase } from '../lib/supabase'
 import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
 
@@ -17,6 +16,16 @@ function exchangeRecoveryCodeOnce(code) {
   recoveryExchangeCode = code
   recoveryExchangePromise = passwordRecoverySupabase.auth.exchangeCodeForSession(code)
   return recoveryExchangePromise
+}
+
+async function getVerifiedRecoverySession() {
+  const { data: { session }, error: sessionError } =
+    await passwordRecoverySupabase.auth.getSession()
+  if (sessionError || !session) return null
+
+  const { data, error } = await passwordRecoverySupabase.auth.getClaims()
+  if (error || data?.claims?.sub !== session.user?.id) return null
+  return session
 }
 
 export default function ResetPasswordPage() {
@@ -40,7 +49,7 @@ export default function ResetPasswordPage() {
           const { data: exchangeData, error: exchangeError } = await exchangeRecoveryCodeOnce(code)
           if (exchangeError) {
             console.error('Password recovery link exchange failed:', exchangeError.message)
-          } else if (exchangeData?.redirectType === 'recovery') {
+          } else if (exchangeData?.session) {
             url.searchParams.delete('code')
             window.history.replaceState(
               window.history.state,
@@ -52,8 +61,8 @@ export default function ResetPasswordPage() {
           }
         }
 
-        const { data, error } = await passwordRecoverySupabase.auth.getClaims()
-        if (active) setRecoveryReady(!error && isPasswordRecoveryClaims(data?.claims))
+        const session = await getVerifiedRecoverySession()
+        if (active) setRecoveryReady(Boolean(session))
       } catch (error) {
         console.error('Password recovery session check failed:', error?.message || 'unknown error')
         if (active) setRecoveryReady(false)
@@ -79,7 +88,7 @@ export default function ResetPasswordPage() {
     setError('')
 
     if (!recoveryReady) {
-      setError('이 화면은 비밀번호 재설정 이메일의 링크로만 사용할 수 있습니다.')
+      setError('재설정 링크가 만료되었거나 유효하지 않습니다. 새 링크를 요청해주세요.')
       return
     }
 
@@ -95,15 +104,12 @@ export default function ResetPasswordPage() {
 
     setLoading(true)
     try {
-      const { data, error: claimsError } = await passwordRecoverySupabase.auth.getClaims()
-      if (claimsError) throw claimsError
-      if (!isPasswordRecoveryClaims(data?.claims)) {
+      const recoverySession = await getVerifiedRecoverySession()
+      if (!recoverySession) {
         setRecoveryReady(false)
-        throw new Error('이 화면은 비밀번호 재설정 이메일의 링크로만 사용할 수 있습니다.')
+        throw new Error('재설정 링크가 만료되었거나 유효하지 않습니다. 새 링크를 요청해주세요.')
       }
 
-      const { data: { session: recoverySession } } =
-        await passwordRecoverySupabase.auth.getSession()
       await updatePasswordFromRecovery(password)
       const { error: otherSessionsError } =
         await passwordRecoverySupabase.auth.signOut({ scope: 'others' })
