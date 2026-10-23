@@ -729,7 +729,12 @@ export default function RegistrationPage() {
   };
 
   const handleCheckConfirmation = useCallback(async (captchaToken = confirmationCheckCaptchaToken) => {
-    if (confirmationCheckStartedRef.current || !formData.email || !formData.password) return;
+    if (
+      confirmationCheckStartedRef.current ||
+      !formData.email ||
+      !formData.password ||
+      (confirmationCheckNeedsCaptcha && !captchaToken)
+    ) return;
     confirmationCheckStartedRef.current = true;
     setConfirmationCheckError('');
     try {
@@ -748,9 +753,6 @@ export default function RegistrationPage() {
         setConfirmationCheckNeedsCaptcha(true);
         setConfirmationCheckCaptchaToken('');
         setConfirmationCheckCaptchaResetKey((key) => key + 1);
-        setConfirmationCheckError(language === 'ko'
-          ? '계속하려면 아래 보안 확인을 완료해 주세요.'
-          : 'Complete the security check below to continue.');
       } else if (checkError.code === 'invalid_credentials') {
         setConfirmationCheckError(language === 'ko'
           ? '비밀번호를 확인할 수 없어요. 가입할 때 입력한 비밀번호로 다시 시도해 주세요.'
@@ -767,7 +769,7 @@ export default function RegistrationPage() {
         setConfirmationCheckCaptchaResetKey((key) => key + 1);
       }
     }
-  }, [formData.email, formData.password, confirmationCheckCaptchaToken, language]);
+  }, [formData.email, formData.password, confirmationCheckCaptchaToken, confirmationCheckNeedsCaptcha, language]);
 
   useEffect(() => {
     if (step !== 'email') return undefined;
@@ -832,10 +834,10 @@ export default function RegistrationPage() {
     if (confirmationResult) {
       const isConfirmationSuccess = confirmationResult === 'success';
       const resultTitle = isConfirmationSuccess
-        ? (language === 'ko' ? '이메일 인증이 완료되었어요.' : 'Email verification is complete.')
+        ? (language === 'ko' ? '인증이 완료되었습니다' : 'Email verification is complete')
         : (language === 'ko' ? '이메일 인증을 완료하지 못했어요.' : 'Email verification could not be completed.');
       const resultMessage = isConfirmationSuccess
-        ? (language === 'ko' ? '이제 로그인할 수 있어요.' : 'You can now log in.')
+        ? (language === 'ko' ? '홈 화면에서 로그인을 진행해 주세요' : 'Go to the home screen to log in')
         : (language === 'ko' ? '이메일 주소를 확인하고 인증 링크를 다시 받아보세요.' : 'Check your email address and request a new confirmation link.');
 
       return (
@@ -844,7 +846,7 @@ export default function RegistrationPage() {
           <div style={{ ...s.emailCard, position: 'relative', top: 'auto', transform: 'none', margin: 'auto 0' }}>
             <div style={{ textAlign: 'center', marginBottom: '12px' }}>
               {isConfirmationSuccess
-                ? <CheckCircle size={54} weight="fill" color="#f97316" />
+                ? <CheckCircle size={54} weight="fill" color="#f97316" style={{ display: 'block', margin: '0 auto 12px' }} />
                 : <XCircle size={54} weight="fill" color="#ef4444" />}
               <h1 style={s.title}>{resultTitle}</h1>
               <p style={s.emailText}>{resultMessage}</p>
