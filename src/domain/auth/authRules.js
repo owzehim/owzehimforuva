@@ -19,19 +19,28 @@ export function isOtpExempt(email) {
   return OTP_EXEMPT_EMAILS.includes(email.trim().toLowerCase())
 }
 
-/** UI routing hint only. RLS and Edge Functions enforce this signed server claim. */
-export function hasAppAccessClaim(accessToken) {
+/** Read claims from a signed access token. */
+function getAccessTokenClaims(accessToken) {
   try {
     const payload = accessToken?.split('.')[1]
-    if (!payload) return false
+    if (!payload) return null
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
     const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
-    return JSON.parse(atob(padded))?.app_access === true
+    return JSON.parse(atob(padded))
   } catch {
-    return false
+    return null
   }
 }
 
+export function getSessionId(accessToken) {
+  const sessionId = getAccessTokenClaims(accessToken)?.session_id
+  return typeof sessionId === 'string' && sessionId ? sessionId : null
+}
+
+/** UI routing hint only. RLS and Edge Functions enforce this signed server claim. */
+export function hasAppAccessClaim(accessToken) {
+  return getAccessTokenClaims(accessToken)?.app_access === true
+}
 /**
  * Validates a 6-digit OTP string entered by the user.
  * Returns an error string, or '' if valid.

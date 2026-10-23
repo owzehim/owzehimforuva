@@ -17,10 +17,13 @@ async function syncClaimToAppsScript(url: string | null | undefined, label: stri
     console.error(`${label} Apps Script URL is invalid`)
     return { ok: false, errorCode: 'invalid_endpoint', label }
   }
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 8000)
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify(withAppsScriptSecret(
         payload,
         Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
@@ -38,9 +41,15 @@ async function syncClaimToAppsScript(url: string | null | undefined, label: stri
       // Apps Script may return plain text on deployment errors.
     }
     return { ok: true, label }
-  } catch {
+  } catch (error) {
     console.error(`${label} reward claim sync failed unexpectedly`)
-    return { ok: false, label }
+    return {
+      ok: false,
+      errorCode: error instanceof DOMException && error.name === 'AbortError' ? 'timeout' : undefined,
+      label,
+    }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 

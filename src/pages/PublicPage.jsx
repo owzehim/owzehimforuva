@@ -1,12 +1,13 @@
-import { useCallback, useState, useEffect, useMemo, useRef } from 'react'
+import { lazy, Suspense, useCallback, useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import MapView from '../components/MapView'
 import { supabase } from '../lib/supabase'
 import { SpotCard } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
 import { MapPin, Lock, ForkKnife, Calendar, CalendarDots, Users } from '@phosphor-icons/react'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
+
+const MapView = lazy(() => import('../components/MapView'))
 
 const PUBLIC_ACTIVE_TAB_KEY = 'uvain_public_active_tab'
 const PUBLIC_BOTTOM_TAB_PADDING = 'clamp(28px, 9.8vw, 42px)'
@@ -308,7 +309,9 @@ function PublicMapTab({ restaurants }) {
         </div>
       ) : (
         <div className="flex-1 relative overflow-hidden no-highlight-zone">
-          <MapView restaurants={filtered} selected={selected} onSelect={setSelected} />
+          <Suspense fallback={null}>
+            <MapView restaurants={filtered} selected={selected} onSelect={setSelected} />
+          </Suspense>
           {selected && (
             <SpotCard
               selected={selected}

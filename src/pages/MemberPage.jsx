@@ -1,9 +1,8 @@
-﻿import { useEffect, useState, useMemo, useRef } from 'react'
+﻿import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { hasAdminRole } from '../lib/adminRoles'
 import { getSafeHttpsUrl, richTextToPlainText } from '../lib/sanitizeHtml'
-import MapView from '../components/MapView'
 import { SpotCard, RichText } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
@@ -11,7 +10,6 @@ import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, 
 import { useReviewPrompt } from '../hooks/useReviewPrompt'
 import ReviewModal from '../components/ReviewModal'
 import ActivityStatsCard from '../components/ActivityStatsCard'
-import QRScanner from '../components/QRScanner'
 import StampCardMini from '../features/stampCard/components/StampCardMini'
 import StampCardModal from '../features/stampCard/components/StampCardModal'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
@@ -19,6 +17,9 @@ import LoadingIndicator from '../components/LoadingIndicator'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { isMembershipActive } from '../domain/member/membershipStatus'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
+
+const MapView = lazy(() => import('../components/MapView'))
+const QRScanner = lazy(() => import('../components/QRScanner'))
 
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
 const MEMBER_TABS = ['qr', 'events', 'map']
@@ -55,6 +56,29 @@ export default function MemberPage() {
   const reopenWelcomeSlides =
     location.state?.reopenWelcomeSlides === true ||
     window.sessionStorage.getItem(REOPEN_WELCOME_SLIDES_KEY) === '1'
+
+  useEffect(() => {
+    if (!navigator.onLine) return undefined
+
+    const prefetchScanner = () => {
+      void import('../components/QRScanner').catch((error) => {
+        console.warn('Failed to pre-load QR scanner:', error)
+      })
+    }
+
+    let idleHandle
+    let timeoutHandle
+    if ('requestIdleCallback' in window) {
+      idleHandle = window.requestIdleCallback(prefetchScanner, { timeout: 2000 })
+    } else {
+      timeoutHandle = window.setTimeout(prefetchScanner, 1000)
+    }
+
+    return () => {
+      if (idleHandle !== undefined) window.cancelIdleCallback?.(idleHandle)
+      if (timeoutHandle !== undefined) window.clearTimeout(timeoutHandle)
+    }
+  }, [])
 
   // Review prompt hook
   const {
@@ -122,7 +146,13 @@ export default function MemberPage() {
       setLoading(false)
 
       const [eventResult, restaurantResult] = await Promise.all([
-        supabase.from('events').select('*').order('event_date', { ascending: true }),
+        supabase
+          .from('events')
+          .select(
+            'id, created_at, event_date, event_dates, event_end_date, title, description, location, location_description, participation_url, instagram_url, image_urls, is_registration_closed',
+          )
+          .eq('is_archived', false)
+          .order('event_date', { ascending: true }),
         supabase.from('restaurants').select('*').order('created_at', { ascending: false }),
       ])
 
@@ -1570,7 +1600,11 @@ function MembershipCard({
               justifyContent: 'center',
             }}
           >
-            {flipped && <QRScanner onScan={onQRScanned} darkMode={darkMode} />}
+            {flipped && (
+              <Suspense fallback={null}>
+                <QRScanner onScan={onQRScanned} darkMode={darkMode} />
+              </Suspense>
+            )}
           </div>
         </div>
       </div>
@@ -2141,70 +2175,88 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   )
 }
 
+function toLocalDateKey(value) {
+  if (!value) return ''
+  const s = String(value)
+  if (s.includes('T') || s.includes('Z') || /[+-]\d{2}:\d{2}$/.test(s)) {
+    const d = new Date(s)
+    if (!Number.isNaN(d.getTime())) {
+      return String(d.getFullYear()) + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0')
+    }
+  }
+  return s.slice(0, 10)
+}
+
+function parseLocalDate(value) {
+  if (!value) return new Date(NaN)
+  const key = toLocalDateKey(value)
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function getEventDates(ev) {
+  if (!ev) return []
+  const dates = Array.isArray(ev.event_dates) ? ev.event_dates : []
+  const allDates = [...dates, ev.event_date].filter(Boolean)
+  const unique = Array.from(new Set(allDates.map(toLocalDateKey)))
+  return unique.length ? unique : []
+}
+
+function getPrimaryEventDate(ev) {
+  return getEventDates(ev)[0] || ev?.event_date
+}
+
+function getPrimaryEventDateTime(ev) {
+  const dates = Array.isArray(ev?.event_dates) ? ev.event_dates : []
+  return dates[0] || ev?.event_date
+}
+
 // Events Tab
 function EventsTab({ events }) {
-  const now = new Date()
+  const now = useMemo(() => new Date(), [])
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-  const toLocalDateKey = (value) => {
-    if (!value) return ''
-    const s = String(value)
-    if (s.includes('T') || s.includes('Z') || /[+-]\d{2}:\d{2}$/.test(s)) {
-      const d = new Date(s)
-      if (!Number.isNaN(d.getTime())) {
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-          2,
-          '0',
-        )}-${String(d.getDate()).padStart(2, '0')}`
-      }
-    }
-    return s.slice(0, 10)
-  }
-
-  const parseLocalDate = (value) => {
-    if (!value) return new Date(NaN)
-    const key = toLocalDateKey(value)
-    const [year, month, day] = key.split('-').map(Number)
-    return new Date(year, month - 1, day)
-  }
-
-  const getEventDates = (ev) => {
-    if (!ev) return []
-    const dates = Array.isArray(ev.event_dates) ? ev.event_dates : []
-    const allDates = [...dates, ev.event_date].filter(Boolean)
-    const unique = Array.from(new Set(allDates.map((date) => toLocalDateKey(date))))
-    return unique.length ? unique : []
-  }
-
-  const getPrimaryEventDate = (ev) => getEventDates(ev)[0] || ev?.event_date
-  const getPrimaryEventDateTime = (ev) => {
-    const dates = Array.isArray(ev?.event_dates) ? ev.event_dates : []
-    return dates[0] || ev?.event_date
-  }
-
   // Split & sort
-  const datedEvents = events.filter((ev) => getPrimaryEventDate(ev))
+  const datedEvents = useMemo(
+    () => events.filter((ev) => getPrimaryEventDate(ev)),
+    [events],
+  )
 
-  const tbdEvents = events
-    .filter((ev) => !getPrimaryEventDate(ev))
-    .sort((a, b) =>
-      a.created_at && b.created_at
-        ? new Date(a.created_at) - new Date(b.created_at)
-        : 0,
-    )
+  const tbdEvents = useMemo(
+    () =>
+      events
+        .filter((ev) => !getPrimaryEventDate(ev))
+        .sort((a, b) =>
+          a.created_at && b.created_at
+            ? new Date(a.created_at) - new Date(b.created_at)
+            : 0,
+        ),
+    [events],
+  )
 
-  const futureEvents = datedEvents
-    .filter((ev) => new Date(getPrimaryEventDateTime(ev)) >= now)
-    .sort((a, b) => new Date(getPrimaryEventDateTime(a)) - new Date(getPrimaryEventDateTime(b)))
+  const futureEvents = useMemo(
+    () =>
+      datedEvents
+        .filter((ev) => new Date(getPrimaryEventDateTime(ev)) >= now)
+        .sort((a, b) => new Date(getPrimaryEventDateTime(a)) - new Date(getPrimaryEventDateTime(b))),
+    [datedEvents, now],
+  )
 
-  const pastEvents = datedEvents
-    .filter((ev) => new Date(getPrimaryEventDateTime(ev)) < now)
-    .sort((a, b) => new Date(getPrimaryEventDateTime(b)) - new Date(getPrimaryEventDateTime(a)))
+  const pastEvents = useMemo(
+    () =>
+      datedEvents
+        .filter((ev) => new Date(getPrimaryEventDateTime(ev)) < now)
+        .sort((a, b) => new Date(getPrimaryEventDateTime(b)) - new Date(getPrimaryEventDateTime(a))),
+    [datedEvents, now],
+  )
 
   const nextEvent = futureEvents[0] || null
-  const otherUpcomingEvents = nextEvent ? futureEvents.slice(1) : futureEvents
-  const eventTabEvents = [...futureEvents.slice().reverse(), ...pastEvents, ...tbdEvents]
-  const allEvents = eventTabEvents
+  const allEvents = useMemo(
+    () => [...futureEvents.slice().reverse(), ...pastEvents, ...tbdEvents],
+    [futureEvents, pastEvents, tbdEvents],
+  )
   const initialEvent = nextEvent || allEvents[0] || null
 
   const [selectedEvent, setSelectedEvent] = useState(initialEvent)
@@ -2229,7 +2281,6 @@ function EventsTab({ events }) {
   const [lightboxIndex, setLightboxIndex] = useState(null)
 
   const [imageAspectRatios, setImageAspectRatios] = useState({})
-  const [frontPanelTextColor, setFrontPanelTextColor] = useState('#1f2937')
   const [calMonth, setCalMonth] = useState(() => {
     const base = getPrimaryEventDate(initialEvent)
       ? parseLocalDate(getPrimaryEventDate(initialEvent))
@@ -2396,39 +2447,6 @@ function EventsTab({ events }) {
       cancelled = true
     }
   }, [selectedEvent?.id])
-
-  useEffect(() => {
-    if (typeof Image === 'undefined' || !allEvents.length) return undefined
-
-    let cancelled = false
-    const missingImageEvents = allEvents.filter((event) => {
-      const firstImage = event?.image_urls?.[0]
-      return event?.id && firstImage && !imageAspectRatios[event.id]?.[0]
-    })
-
-    missingImageEvents.forEach((event) => {
-      const img = new Image()
-      img.decoding = 'async'
-      img.onload = () => {
-        if (cancelled) return
-        const ratio = img.naturalWidth / img.naturalHeight
-        if (!Number.isFinite(ratio) || ratio <= 0) return
-
-        setImageAspectRatios((previous) => {
-          if (previous[event.id]?.[0]) return previous
-          return {
-            ...previous,
-            [event.id]: [ratio],
-          }
-        })
-      }
-      img.src = event.image_urls[0]
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [allEvents, imageAspectRatios])
 
   const isPortrait = (aspectRatio) =>
     aspectRatio >= 0.75 && aspectRatio <= 0.85
@@ -3276,67 +3294,6 @@ const effectiveDateColor = isDragging
   const eventListMutedColor = darkMode ? 'rgba(255,255,255,0.56)' : '#6b7280'
   const eventListDividerColor = darkMode ? 'rgba(255,255,255,0.12)' : '#e5e7eb'
   const eventListChevronColor = darkMode ? 'rgba(255,255,255,0.76)' : '#111827'
-
-  const getTextColorFromImage = (imageUrl) =>
-    new Promise((resolve) => {
-      const img = new Image()
-      img.crossOrigin = 'Anonymous'
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas')
-          const size = 48
-          canvas.width = size
-          canvas.height = size
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0, size, size)
-
-          const imageData = ctx.getImageData(0, 0, size, size).data
-          let luminanceTotal = 0
-          let samples = 0
-
-          for (let y = 6; y < 34; y += 4) {
-            for (let x = 6; x < 42; x += 4) {
-              const idx = (y * size + x) * 4
-              const r = imageData[idx]
-              const g = imageData[idx + 1]
-              const b = imageData[idx + 2]
-              const srgb = [r, g, b].map((value) => {
-                const channel = value / 255
-                return channel <= 0.03928
-                  ? channel / 12.92
-                  : ((channel + 0.055) / 1.055) ** 2.4
-              })
-              luminanceTotal +=
-                0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2]
-              samples += 1
-            }
-          }
-
-          const avgLuminance = luminanceTotal / Math.max(samples, 1)
-          resolve(avgLuminance > 0.42 ? '#111827' : '#ffffff')
-        } catch {
-          resolve('#111827')
-        }
-      }
-      img.onerror = () => resolve('#111827')
-      img.src = imageUrl
-    })
-
-  useEffect(() => {
-    let cancelled = false
-    const update = async () => {
-      if (displayImages.length > 0) {
-        const color = await getTextColorFromImage(displayImages[0])
-        if (!cancelled) setFrontPanelTextColor(color)
-      } else {
-        if (!cancelled) setFrontPanelTextColor('#111827')
-      }
-    }
-    update()
-    return () => {
-      cancelled = true
-    }
-  }, [displayImages])
 
   const detailImages = displayEvent?.image_urls || []
   const eventDateParts = getPrimaryEventDate(displayEvent)
@@ -4208,11 +4165,13 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
           WebkitTapHighlightColor: 'transparent',
         }}
       >
-        <MapView
-          restaurants={filtered}
-          selected={selected}
-          onSelect={setSelected}
-        />
+        <Suspense fallback={null}>
+          <MapView
+            restaurants={filtered}
+            selected={selected}
+            onSelect={setSelected}
+          />
+        </Suspense>
         {selected && (
           <SpotCard
             selected={selected}

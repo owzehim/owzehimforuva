@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from '@phosphor-icons/react'
-import { supabase } from '../lib/supabase'
 import { logRedemption } from '../lib/redemption'
-import QRScanner from '../components/QRScanner'
+import LoadingIndicator from '../components/LoadingIndicator'
 import ScanPageStampBox from '../features/stampCard/components/ScanPageStampBox'
+
+const QRScanner = lazy(() => import('../components/QRScanner'))
 
 const STATE = {
   SCANNING: 'scanning',
@@ -57,37 +58,13 @@ export default function ScanPage() {
     setState(STATE.LOADING)
 
     try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-
-      if (authError || !user) {
-        setState(STATE.ERROR)
-        setErrorMsg('로그인이 필요합니다.')
-        handlingRef.current = false
-        return
-      }
-
-      // Fetch user profile from members table
-      const { data: memberRow, error: memberError } = await supabase
-        .from('members')
-        .select('first_name, last_name, student_number, "University", membership_valid_until, is_member')
-        .eq('user_id', user.id)
-        .single()
-
-      if (memberError) {
-        console.warn('members fetch error:', memberError)
-      }
-
-      // Log the redemption
       const result = await logRedemption({ storeId })
 
       if (result.success) {
         setStoreName(result.storeName || '매장')
-        setMember(memberRow || null)
+        setMember(result.member || null)
         setScanTime(new Date())
-        setScannedUserId(user.id)
+        setScannedUserId(result.userId || null)
 
         // Stamp card logic — runs after logRedemption succeeds
         if (result.stampResult?.enabled && result.stampResult?.restaurantId) {
@@ -256,7 +233,11 @@ export default function ScanPage() {
           </>
         )}
 
-        {state === STATE.SCANNING && <QRScanner onScan={handleScan} />}
+        {state === STATE.SCANNING && (
+          <Suspense fallback={null}>
+            <QRScanner onScan={handleScan} />
+          </Suspense>
+        )}
 
         {state === STATE.LOADING && (
           <div className="flex flex-col items-center gap-4">

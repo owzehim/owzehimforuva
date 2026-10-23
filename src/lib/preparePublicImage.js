@@ -1,6 +1,6 @@
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 const MAX_IMAGE_PIXELS = 40_000_000
-const MAX_EDGE = 2560
+const MAX_EDGE = 1600
 
 /** Re-encode public admin uploads so EXIF/GPS metadata and original formats are removed. */
 export async function preparePublicImage(file) {
@@ -29,7 +29,7 @@ export async function preparePublicImage(file) {
       canvas.toBlob((result) => {
         if (result) resolve(result)
         else reject(new Error('이미지를 변환하지 못했습니다.'))
-      }, 'image/webp', 0.9)
+      }, 'image/webp', 0.8)
     })
     return new File([blob], `${crypto.randomUUID()}.webp`, { type: 'image/webp' })
   } finally {

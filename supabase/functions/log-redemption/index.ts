@@ -26,10 +26,13 @@ async function postJsonToAppsScript(
     console.error(`${label} Apps Script URL is invalid`)
     return { ok: false, errorCode: 'invalid_endpoint', label }
   }
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 8000)
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify(withAppsScriptSecret(
         payload,
         Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
@@ -63,9 +66,15 @@ async function postJsonToAppsScript(
     }
 
     return { ok: true, scriptVersion, label }
-  } catch {
+  } catch (error) {
     console.error(`${label} sheet sync failed unexpectedly`)
-    return { ok: false, label }
+    return {
+      ok: false,
+      errorCode: error instanceof DOMException && error.name === 'AbortError' ? 'timeout' : undefined,
+      label,
+    }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
@@ -87,14 +96,17 @@ function formatStampProgress(stampResult: any) {
 }
 
 async function findStampRestaurant(admin: any, storeId: string) {
-  const { data: byId, error: byIdError } = await admin
-    .from('restaurants')
-    .select('id, stamp_card_enabled')
-    .eq('id', storeId)
-    .maybeSingle()
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId)
+  if (isUuid) {
+    const { data: byId, error: byIdError } = await admin
+      .from('restaurants')
+      .select('id, stamp_card_enabled')
+      .eq('id', storeId)
+      .maybeSingle()
 
-  if (byIdError) console.error('Stamp restaurant by id fetch error:', byIdError)
-  if (byId) return byId
+    if (byIdError) console.error('Stamp restaurant by id fetch error:', byIdError)
+    if (byId) return byId
+  }
 
   const { data: byPartnership, error: byPartnershipError } = await admin
     .from('restaurants')
@@ -195,13 +207,26 @@ serve(async (req) => {
     }
 
     // ── Fetch member profile ───────────────────────────────────────────────
-    const { data: member, error: memberError } = await admin
-      .from('members')
-      .select(
-        'first_name, last_name, first_name_korean, last_name_korean, University, student_number, major, education_level, year_number, year_of_birth, country_of_origin, gender, membership_valid_until, membership_ended_at, identity_anonymized_at, account_status, is_member, is_test_account',
-      )
-      .eq('user_id', user.id)
-      .single()
+    const [memberResult, partnershipResult, integrationsResult] = await Promise.all([
+      admin
+        .from('members')
+        .select(
+          'first_name, last_name, first_name_korean, last_name_korean, University, student_number, major, education_level, year_number, year_of_birth, country_of_origin, gender, membership_valid_until, membership_ended_at, identity_anonymized_at, account_status, is_member, is_test_account',
+        )
+        .eq('user_id', user.id)
+        .single(),
+      admin
+        .from('partnerships')
+        .select('name, sheet_name')
+        .eq('id', storeId)
+        .single(),
+      admin
+        .from('partnership_integrations')
+        .select('master_apps_script_url, partner_apps_script_url')
+        .eq('partnership_id', storeId)
+        .maybeSingle(),
+    ])
+    const { data: member, error: memberError } = memberResult
 
     if (memberError || !member) {
       console.error('Member error:', memberError)
@@ -228,16 +253,21 @@ serve(async (req) => {
     }
 
     // ── Fetch partnership ──────────────────────────────────────────────────
-    const { data: partnership, error: partnershipError } = await admin
-      .from('partnerships')
-      .select('name, sheet_name')
-      .eq('id', storeId)
-      .single()
+    const { data: partnership, error: partnershipError } = partnershipResult
 
     if (!partnershipError && partnership && member.is_test_account) {
       return new Response(
         JSON.stringify({
           success: true,
+          userId: user.id,
+          member: {
+            first_name: member.first_name,
+            last_name: member.last_name,
+            student_number: member.student_number,
+            University: member.University,
+            membership_valid_until: member.membership_valid_until,
+            is_member: member.is_member,
+          },
           storeName: partnership.name,
           redemptionId: '',
           testMode: true,
@@ -256,11 +286,7 @@ serve(async (req) => {
       )
     }
 
-    const { data: integrations, error: integrationsError } = await admin
-      .from('partnership_integrations')
-      .select('master_apps_script_url, partner_apps_script_url')
-      .eq('partnership_id', storeId)
-      .maybeSingle()
+    const { data: integrations, error: integrationsError } = integrationsResult
     if (integrationsError) {
       console.error('Partnership integration lookup failed')
       return new Response(
@@ -371,6 +397,15 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        userId: user.id,
+        member: {
+          first_name: member.first_name,
+          last_name: member.last_name,
+          student_number: member.student_number,
+          University: member.University,
+          membership_valid_until: member.membership_valid_until,
+          is_member: member.is_member,
+        },
         storeName: partnership.name,
         redemptionId,
         stampResult,
