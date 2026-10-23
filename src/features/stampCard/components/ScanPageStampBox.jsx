@@ -22,6 +22,7 @@ export default function ScanPageStampBox({
 
   const [redeeming, setRedeeming] = useState(false)
   const [redeemedScanId, setRedeemedScanId] = useState(null)
+  const [failedScanId, setFailedScanId] = useState(null)
   const currentScanId = getScanResultIdentity(scanResult)
 
   useEffect(() => {
@@ -34,6 +35,8 @@ export default function ScanPageStampBox({
   const accentColor = CLAIM_ORANGE
   const effectivePendingReward = hookPendingReward || stampState.pendingReward
   const redeemedThisSession = didRedeemRewardForCurrentScan(scanResult, redeemedScanId)
+  const claimFailedThisSession = !redeemedThisSession &&
+    didRedeemRewardForCurrentScan(scanResult, failedScanId)
   const isBenefitReady = !redeemedThisSession &&
     !!(
       effectivePendingReward ||
@@ -41,14 +44,24 @@ export default function ScanPageStampBox({
       scanResult?.cycleCompleted ||
       stampState.hasPendingReward
     )
-  const count = isBenefitReady ? total : stampState.stampsInCurrentCycle
+  const count = isBenefitReady || redeemedThisSession
+    ? total
+    : stampState.stampsInCurrentCycle
   const remaining = Math.max(total - count, 0)
+  const cardColor = redeemedThisSession
+    ? '#16a34a'
+    : claimFailedThisSession
+      ? '#dc2626'
+      : isBenefitReady
+        ? CLAIM_ORANGE
+        : null
 
   const handleRedeem = async () => {
     if (!effectivePendingReward) return
     if (!window.confirm('Confirm applying benefits?')) return
 
     setRedeeming(true)
+    setFailedScanId(null)
     try {
       const result = await redeemReward(effectivePendingReward.id, {
         redemptionId: scanResult?.redemptionId,
@@ -62,7 +75,7 @@ export default function ScanPageStampBox({
       onRewardRedeemed?.()
     } catch (e) {
       console.error('redeemReward error:', e)
-      alert(e?.message || 'Failed to complete benefit application.')
+      setFailedScanId(currentScanId ?? null)
     } finally {
       setRedeeming(false)
     }
@@ -76,8 +89,14 @@ export default function ScanPageStampBox({
         disabled={!isBenefitReady || redeeming || !effectivePendingReward}
         className="w-full rounded-2xl border px-4 py-3 transition-transform active:scale-[0.99]"
         style={{
-          borderColor: isBenefitReady ? CLAIM_ORANGE : '#e5e7eb',
-          backgroundColor: isBenefitReady ? CLAIM_ORANGE : '#ffffff',
+          borderColor: cardColor || '#e5e7eb',
+          backgroundColor: redeemedThisSession
+            ? '#f0fdf4'
+            : claimFailedThisSession
+              ? '#fef2f2'
+              : isBenefitReady
+                ? CLAIM_ORANGE
+                : '#ffffff',
           cursor: isBenefitReady && effectivePendingReward ? 'pointer' : 'default',
           opacity: redeeming ? 0.75 : 1,
         }}
@@ -86,27 +105,27 @@ export default function ScanPageStampBox({
           <StampIcons
             count={count}
             total={total}
-            accentColor={isBenefitReady ? CLAIM_ORANGE : accentColor}
-            inverted={isBenefitReady}
+            accentColor={cardColor || accentColor}
+            inverted={isBenefitReady && !claimFailedThisSession}
           />
           <div className="text-right shrink-0">
             <p
               className="text-sm font-bold leading-none"
-              style={{ color: isBenefitReady ? '#ffffff' : '#374151' }}
+              style={{ color: isBenefitReady && !claimFailedThisSession ? '#ffffff' : redeemedThisSession ? '#15803d' : claimFailedThisSession ? '#b91c1c' : '#374151' }}
             >
               {count} / {total}
             </p>
             <p
               className="text-[11px] mt-1 leading-none"
-              style={{ color: isBenefitReady ? 'rgba(255,255,255,0.86)' : '#9ca3af' }}
+              style={{ color: isBenefitReady && !claimFailedThisSession ? 'rgba(255,255,255,0.86)' : redeemedThisSession ? '#16a34a' : claimFailedThisSession ? '#dc2626' : '#9ca3af' }}
             >
-              {isBenefitReady ? '혜택 준비 완료' : `남은 스탬프 ${remaining}개`}
+              {redeemedThisSession ? '\u00a0' : isBenefitReady ? '혜택 준비 완료' : `남은 스탬프 ${remaining}개`}
             </p>
           </div>
         </div>
 
         <div className="mt-2 min-h-[16px] flex items-center justify-center">
-          {scanResult?.alreadyStamped && !isBenefitReady && (
+          {scanResult?.alreadyStamped && !isBenefitReady && !redeemedThisSession && (
             <p className="text-xs text-gray-400 text-center">
               오늘은 이미 포인트가 적립되었어요
             </p>
@@ -120,6 +139,19 @@ export default function ScanPageStampBox({
                 : effectivePendingReward
                   ? 'Staff Only: Tap to Complete Applying Benefits'
                   : '혜택 정보 불러오는 중...'}
+            </div>
+          )}
+
+          {redeemedThisSession && (
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-green-700">
+              <CheckCircle size={15} weight="fill" />
+              Benefits Claimed!
+            </div>
+          )}
+
+          {claimFailedThisSession && (
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600">
+              Benefits Claim Failed
             </div>
           )}
         </div>
