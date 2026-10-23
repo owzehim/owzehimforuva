@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
+  const otpInputRef = useRef(null)
   const otpRequestStartedRef = useRef(false)
   const {
     step,
@@ -67,6 +68,13 @@ export default function LoginPage() {
       }
     })()
   }, [step, otpSent, loading, captchaToken])
+
+  useEffect(() => {
+    if (step !== 'otp' || !otpSent || loading) return undefined
+    const frame = requestAnimationFrame(() => otpInputRef.current?.focus({ preventScroll: true }))
+    return () => cancelAnimationFrame(frame)
+  }, [step, otpSent, loading, captchaResetKey])
+
   const submitCredentials = async (event) => {
     try {
       await handleCredentialsSubmit(event, captchaToken)
@@ -283,6 +291,7 @@ export default function LoginPage() {
 
               <LoginField label="인증 코드">
                 <input
+                  ref={otpInputRef}
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
