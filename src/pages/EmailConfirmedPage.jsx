@@ -9,8 +9,10 @@ import { isCaptchaEnabled } from '../lib/captcha'
 const copy = {
   verifyingTitle: '\uC774\uBA54\uC77C \uC778\uC99D \uC911',
   verifyingMessage: '\uC7A0\uC2DC\uB9CC \uAE30\uB2E4\uB824\uC8FC\uC138\uC694.',
-  successTitle: '\uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC5B4\uC694.',
-  successMessage: '\uC571\uC5D0\uC11C \uB85C\uADF8\uC778\uC744 \uC9C4\uD589\uD574 \uC8FC\uC138\uC694.',
+  successTitle: '인증이 완료되었습니다',
+  successMessage: '앱에서 로그인을 진행해 주세요',
+  successTitleEn: 'Email verification is complete',
+  successMessageEn: 'Please log in in the app',
   errorTitle: '\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC2E4\uD328\uD558\uC600\uC2B5\uB2C8\uB2E4.',
   errorMessage: '\uC778\uC99D \uB9C1\uD06C\uAC00 \uB9CC\uB8CC\uB418\uC5C8\uAC70\uB098 \uC774\uBBF8 \uC0AC\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4.\n\uC0C8 \uC778\uC99D \uB9C1\uD06C\uB97C \uC694\uCCAD\uD55C \uB4A4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.',
 }
@@ -112,10 +114,11 @@ export default function EmailConfirmedPage() {
 
   const isVerifying = status === 'verifying'
   const isSuccess = status === 'success'
+  const isEnglish = navigator.language?.toLowerCase().startsWith('en')
   const title = isVerifying
     ? copy.verifyingTitle
     : isSuccess
-      ? copy.successTitle
+      ? (isEnglish ? copy.successTitleEn : copy.successTitle)
       : status === 'registration_error'
         ? '이메일 인증은 완료됐지만 회원가입 저장에 실패했습니다.'
         : status === 'email_change_error'
@@ -124,7 +127,7 @@ export default function EmailConfirmedPage() {
   const message = isVerifying
     ? copy.verifyingMessage
     : isSuccess
-      ? copy.successMessage
+      ? (isEnglish ? copy.successMessageEn : copy.successMessage)
       : status === 'registration_error'
         ? '로그인하면 회원가입 저장을 다시 시도합니다. 문제가 계속되면 지원팀에 문의해주세요.'
         : status === 'email_change_error'
@@ -150,7 +153,7 @@ export default function EmailConfirmedPage() {
               onClick={() => navigate('/public', { replace: true })}
               style={styles.returnButton}
             >
-              홈 화면으로 이동
+              {isEnglish ? 'Return to homepage' : '홈 화면으로 이동'}
             </button>
           ) : (
             <div style={styles.actions}>
