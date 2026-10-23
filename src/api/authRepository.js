@@ -241,7 +241,7 @@ export async function sendPasswordResetEmail(email, captchaToken) {
   if (error) throw new Error(error.message)
 }
 
-/** Change a password using only a verified PKCE recovery session. */
+/** Change a password using the verified recovery session. */
 export async function updatePasswordFromRecovery(password) {
   const { error } = await passwordRecoverySupabase.auth.updateUser({ password })
   if (error) throw new Error(error.message)
