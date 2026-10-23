@@ -3,7 +3,6 @@ const PRODUCTION_SUPABASE_PROJECT_REF = 'npvcghdzrtqrlliprtnw'
 const PRODUCTION_ALLOWED_ORIGINS = [
   'https://app.uva-in.nl',
   'https://uvain-app.vercel.app',
-  'http://localhost:5173',
 ]
 
 function currentProjectRef() {
@@ -28,11 +27,13 @@ function allowedOrigins(configuredOrigins) {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean)
-  const devDisallowedOrigins = projectRef === DEV_SUPABASE_PROJECT_REF
-    ? new Set(PRODUCTION_ALLOWED_ORIGINS.filter((origin) => origin !== 'http://localhost:5173'))
-    : new Set()
+  const disallowedOrigins = projectRef === DEV_SUPABASE_PROJECT_REF
+    ? new Set(PRODUCTION_ALLOWED_ORIGINS)
+    : projectRef === PRODUCTION_SUPABASE_PROJECT_REF
+      ? new Set(['http://localhost:5173'])
+      : new Set()
   const allowed = [...defaultAllowedOrigins(projectRef), ...configured]
-    .filter((origin) => !devDisallowedOrigins.has(origin))
+    .filter((origin) => !disallowedOrigins.has(origin))
   return new Set(allowed)
 }
 

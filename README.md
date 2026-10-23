@@ -30,7 +30,10 @@ Requirements: Node.js and npm.
    VITE_SUPABASE_URL=
    VITE_SUPABASE_PUBLISHABLE_KEY=
    VITE_MAPTILER_API_KEY=
+   VITE_APP_ENV=development
    ```
+
+   For local development, use the **DEV Supabase project** values. In Vercel, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` separately for Preview and Production; Preview should use DEV and Production should use the production project. Set `VITE_MAPTILER_API_KEY` for both environments. `VITE_APP_ENV=development` only enables development-only behavior when running Vite's local dev server.
 
 3. Start the development server:
 
