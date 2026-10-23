@@ -58,6 +58,7 @@ export default function LoginPage() {
     const token = captchaToken
     void (async () => {
       try {
+        otpInputRef.current?.focus({ preventScroll: true })
         await handleRequestOtpRef.current(token)
       } finally {
         otpRequestStartedRef.current = false
