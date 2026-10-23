@@ -2648,6 +2648,7 @@ function getBottomActionStyle() {
     width: AUTH_BOX_WIDTH,
     maxWidth: AUTH_BOX_WIDTH,
     margin: '0 auto',
+    paddingBottom: 'calc(env(safe-area-inset-bottom) + 84px)',
     zIndex: 20,
     backgroundColor: 'var(--reg-page-bg)',
   };
