@@ -293,7 +293,7 @@ function PortraitOrientationBlocker() {
     }
   }, [])
 
-  if (!mounted || pathname === '/reset-password') return null
+  if (!mounted || ['/reset-password', '/login', '/register'].includes(pathname)) return null
 
   return (
     <div
