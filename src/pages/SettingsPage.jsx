@@ -9,10 +9,19 @@ import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { legalDocuments } from '../content/legalDocuments'
+import { hasAdminRole } from '../lib/adminRoles'
+import AdminBadge from '../components/AdminBadge'
 
 function isValidUsername(value) {
-  const trimmed = value.trim()
-  return trimmed.length >= 2 && trimmed.length <= 20 && !/[\s\p{C}]/u.test(trimmed)
+  const normalized = value.trim().normalize('NFKC').toLowerCase()
+  const compact = normalized.replace(/_+/g, '')
+  const reserved = /(admin|administrator|moderator|support|uvain|운영|관리|익명)/u
+
+  return normalized.length >= 2
+    && normalized.length <= 20
+    && /^[a-z0-9_가-힣]+$/u.test(normalized)
+    && !reserved.test(compact)
+    && compact !== 'mod'
 }
 
 // ─── Image helpers ────────────────────────────────────────────────────────────
@@ -77,6 +86,7 @@ export default function SettingsPage() {
   const [usernameDraft, setUsernameDraft] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
   const [usernameError, setUsernameError] = useState('')
+  const [isAdminUser, setIsAdminUser] = useState(false)
   const fileInputRef = useRef(null)
 
   const [cropImageSrc, setCropImageSrc] = useState(null)
@@ -89,13 +99,16 @@ export default function SettingsPage() {
     const load = async () => {
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       if (userError || !user) { navigate('/login'); return }
-      const { data: memberData, error: memberError } = await supabase
-        .from('members').select('*').eq('user_id', user.id).maybeSingle()
+      const [{ data: memberData, error: memberError }, adminRole] = await Promise.all([
+        supabase.from('members').select('*').eq('user_id', user.id).maybeSingle(),
+        hasAdminRole(user.id),
+      ])
       if (memberError) console.error('load member error:', memberError)
       const memberWithSignedImage = memberData?.profile_image_url
         ? { ...memberData, profile_image_url: await createProfileImageSignedUrl(memberData.profile_image_url) }
         : memberData
       setMember(memberWithSignedImage || null)
+      setIsAdminUser(adminRole)
       setLoading(false)
     }
     load()
@@ -319,7 +332,7 @@ export default function SettingsPage() {
     setUsernameError('')
 
     if (trimmedUsername && !isValidUsername(trimmedUsername)) {
-      setUsernameError('2-20자, 공백 없이 입력해 주세요.')
+      setUsernameError('2-20자, 영문·숫자·한글·밑줄만 사용할 수 있으며 운영진 관련 단어는 사용할 수 없습니다.')
       return
     }
 
@@ -522,6 +535,7 @@ export default function SettingsPage() {
                     <span className={`text-xs font-medium text-gray-500 dark:text-gray-400 ${username ? '' : 'italic'}`}>
                       {usernameDisplay}
                     </span>
+                    {isAdminUser && <AdminBadge size={14} />}
                     <button
                       type="button"
                       onClick={handleUsernameEditStart}
