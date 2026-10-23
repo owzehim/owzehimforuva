@@ -18,6 +18,7 @@ import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { isMembershipActive } from '../domain/member/membershipStatus'
+import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 
 const MEMBER_ACTIVE_TAB_KEY = 'uvain_member_active_tab'
 const MEMBER_TABS = ['qr', 'events', 'map']
@@ -103,7 +104,10 @@ export default function MemberPage() {
         )
       }
 
-      setMember(memberData || null)
+      const memberWithSignedImage = memberData?.profile_image_url
+        ? { ...memberData, profile_image_url: await createProfileImageSignedUrl(memberData.profile_image_url) }
+        : memberData
+      setMember(memberWithSignedImage || null)
       setIsAdmin(isAdminUser)
       const shouldShowWelcomeSlides =
         reopenWelcomeSlides ||
