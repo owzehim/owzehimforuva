@@ -300,13 +300,13 @@ function ReportsTab() {
       supabase
         .from('restaurant_comment_reports')
         .select('id, comment_id, created_at, reviewed_at')
-        .order('created_at', { ascending: false })
-        .limit(100),
+        .order('reviewed_at', { ascending: true, nullsFirst: true })
+        .order('created_at', { ascending: false }),
       supabase
         .from('restaurant_note_reports')
         .select('id, note_id, created_at, reviewed_at')
+        .order('reviewed_at', { ascending: true, nullsFirst: true })
         .order('created_at', { ascending: false })
-        .limit(100),
     ])
 
     if (commentResult.error || noteResult.error) {
@@ -353,7 +353,10 @@ function ReportsTab() {
         kind: '한마디',
         target: notesById.get(report.note_id),
       })),
-    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+    ].sort((a, b) => {
+      const reviewStateOrder = Number(Boolean(a.reviewed_at)) - Number(Boolean(b.reviewed_at))
+      return reviewStateOrder || new Date(b.created_at) - new Date(a.created_at)
+    }))
     setLoading(false)
   }, [])
 
