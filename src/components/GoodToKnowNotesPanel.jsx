@@ -4,6 +4,7 @@ import { ChatDots, Flag, PencilSimple, Plus, Trash, UserCircle, X } from '@phosp
 import { supabase } from '../lib/supabase'
 import { getPastelColor } from '../lib/avatarColor'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
+import AdminBadge from './AdminBadge'
 
 const MAX_NOTE_LENGTH = 200
 
@@ -82,7 +83,7 @@ export function GoodToKnowNotesPanel({
 
     const { data, error: loadError } = await supabase
       .from('restaurant_notes_safe')
-      .select('id, restaurant_id, is_mine, username, profile_image_url, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags')
+      .select('id, restaurant_id, is_mine, username, profile_image_url, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags, author_is_admin')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -383,8 +384,9 @@ export function GoodToKnowNotesPanel({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-[11px] font-semibold text-gray-700">
-                    {note.is_anonymous ? '익명' : note.username}
+                  <p className="flex min-w-0 items-center gap-1 truncate text-[11px] font-semibold text-gray-700">
+                    <span className="truncate">{note.is_anonymous ? '익명' : note.username}</span>
+                    {!note.is_anonymous && note.author_is_admin && <AdminBadge size={13} />}
                   </p>
                   <div className="flex flex-shrink-0 items-center gap-1.5">
                     <span className="text-[10px] text-gray-400">{formatNoteDate(note.created_at)}</span>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Flag, PencilSimple, Plus, Trash } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
+import AdminBadge from './AdminBadge'
 
 const MAX_COMMENT_LENGTH = 200
 
@@ -40,7 +41,7 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
     if (!restaurantId) return
     const { data, error: loadError } = await supabase
       .from('restaurant_comments_safe')
-      .select('id, restaurant_id, is_mine, username, is_anonymous, body, created_at, updated_at')
+      .select('id, restaurant_id, is_mine, username, is_anonymous, body, created_at, updated_at, author_is_admin')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -159,8 +160,9 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
           return (
             <article key={comment.id} className="rounded-xl bg-white px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-[11px] font-semibold text-gray-700">
-                  {comment.is_anonymous ? '익명' : comment.username}
+                <p className="flex min-w-0 items-center gap-1 truncate text-[11px] font-semibold text-gray-700">
+                  <span className="truncate">{comment.is_anonymous ? '익명' : comment.username}</span>
+                  {!comment.is_anonymous && comment.author_is_admin && <AdminBadge size={13} />}
                 </p>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] text-gray-400">{formatCommentDate(comment.created_at)}</span>
