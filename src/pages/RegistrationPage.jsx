@@ -1966,7 +1966,7 @@ const s = {
   },
   bottomAction: {
     flexShrink: 0,
-    paddingBottom: 'calc(env(safe-area-inset-bottom) + 122px)',
+    paddingBottom: 'calc(env(safe-area-inset-bottom) + 84px)',
   },
   formTitle: {
     fontSize: '18px',
@@ -2636,11 +2636,10 @@ const s = {
 };
 
 function getBottomActionStyle() {
-  if (!isMobileChromeBrowser) return s.bottomAction;
   return {
     ...s.bottomAction,
-    // Chrome moves sticky and fixed controls with the visual viewport when
-    // the keyboard opens. Anchor the action to the stable registration shell.
+    // Keep the action at the same screen position across browsers and prevent
+    // keyboard-driven viewport resizing from moving it.
     position: 'absolute',
     left: 0,
     right: 0,
