@@ -146,9 +146,6 @@ export default function ResetPasswordPage() {
           </div>
         ) : !recoveryReady ? (
           <div className="space-y-4">
-            <p className="text-center text-sm leading-relaxed text-gray-500">
-              비밀번호 재설정 이메일을 요청한 같은 브라우저에서 링크를 열어주세요.
-            </p>
             <button type="button" onClick={() => navigate('/login')} className="w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white">
               로그인으로 이동
             </button>
