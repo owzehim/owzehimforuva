@@ -114,7 +114,11 @@ export function useReviewPrompt() {
     })
 
     if (reviewError) {
-      setSubmitError('리뷰 저장에 실패했습니다. 다시 시도해주세요.')
+      setSubmitError(
+        reviewError.message?.includes('one review per restaurant per visit day')
+          ? '이 매장에는 하루에 한 번만 리뷰를 작성할 수 있습니다.'
+          : '리뷰 저장에 실패했습니다. 다시 시도해주세요.',
+      )
       setSubmitting(false)
       return
     }

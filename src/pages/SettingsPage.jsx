@@ -7,6 +7,7 @@ import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X, Trash } from
 import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
+import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { legalDocuments } from '../content/legalDocuments'
 
 function isValidUsername(value) {
@@ -91,7 +92,10 @@ export default function SettingsPage() {
       const { data: memberData, error: memberError } = await supabase
         .from('members').select('*').eq('user_id', user.id).maybeSingle()
       if (memberError) console.error('load member error:', memberError)
-      setMember(memberData || null)
+      const memberWithSignedImage = memberData?.profile_image_url
+        ? { ...memberData, profile_image_url: await createProfileImageSignedUrl(memberData.profile_image_url) }
+        : memberData
+      setMember(memberWithSignedImage || null)
       setLoading(false)
     }
     load()
@@ -253,16 +257,15 @@ export default function SettingsPage() {
       const { error: uploadError } = await supabase.storage
         .from('profile-images').upload(filePath, compressed, { contentType: 'image/jpeg', upsert: true })
       if (uploadError) throw uploadError
-      const { data: publicData } = supabase.storage.from('profile-images').getPublicUrl(filePath)
-      let url = publicData?.publicUrl || null
-      if (url) url = `${url}?v=${Date.now()}`
+      const signedUrl = await createProfileImageSignedUrl(filePath)
+      if (!signedUrl) throw new Error('Could not create a profile image URL')
       const { error: updateError } = await supabase
-        .from('members').update({ profile_image_url: url }).eq('user_id', member.user_id)
+        .from('members').update({ profile_image_url: filePath }).eq('user_id', member.user_id)
       if (updateError) throw updateError
 
-      const nextMember = { ...member, profile_image_url: url }
+      const nextMember = { ...member, profile_image_url: filePath }
       await syncRestaurantNotesProfile(nextMember)
-      setMember((prev) => prev ? { ...prev, profile_image_url: url } : prev)
+      setMember((prev) => prev ? { ...prev, profile_image_url: signedUrl } : prev)
       setCropModalOpen(false)
       setCropImageSrc(null)
       setCroppedAreaPixels(null)
