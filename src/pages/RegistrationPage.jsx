@@ -2424,7 +2424,8 @@ const s = {
     borderRadius: '6px',
     boxShadow: 'var(--reg-dropdown-shadow)',
     marginTop: '4px',
-    zIndex: 20,
+    // Keep choices selectable when the fixed Next action overlaps the list.
+    zIndex: 30,
     border: '1px solid var(--reg-soft-border)',
   },
   typeaheadItem: {
