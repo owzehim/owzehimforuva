@@ -74,6 +74,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/complete-login/index.ts"
 
+[functions.password-reset-return-signal]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/password-reset-return-signal/index.ts"
+
 [functions.moderate-comment]
 enabled = true
 verify_jwt = true

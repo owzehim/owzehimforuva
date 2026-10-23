@@ -228,17 +228,29 @@ export async function resendConfirmationEmail(email, captchaToken) {
 }
 
 /** Send a password reset link. */
-export async function sendPasswordResetEmail(email, captchaToken) {
-  const redirectTo =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/reset-password`
-      : undefined
+export async function sendPasswordResetEmail(email, captchaToken, returnToken) {
+  const redirectTo = typeof window !== 'undefined'
+    ? new URL('/reset-password', window.location.origin)
+    : undefined
+  if (redirectTo && returnToken) redirectTo.searchParams.set('returnToken', returnToken)
 
   const { error } = await passwordRecoverySupabase.auth.resetPasswordForEmail(email, {
-    redirectTo,
+    redirectTo: redirectTo?.toString(),
     ...getCaptchaOptions(captchaToken),
   })
   if (error) throw new Error(error.message)
+}
+
+/** Notify the app that requested a reset without sharing account details. */
+export async function sendPasswordResetReturnSignal(action, token, recoveryAccessToken) {
+  const { data, error } = await supabase.functions.invoke('password-reset-return-signal', {
+    body: { action, token },
+    ...(recoveryAccessToken
+      ? { headers: { Authorization: `Bearer ${recoveryAccessToken}` } }
+      : {}),
+  })
+  if (error) throw new Error(error.message)
+  return data?.completed === true
 }
 
 /** Change a password using the verified recovery session. */
