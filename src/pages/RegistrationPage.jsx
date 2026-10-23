@@ -2628,8 +2628,15 @@ function getBottomActionStyle() {
   if (!isMobileChromeBrowser) return s.bottomAction;
   return {
     ...s.bottomAction,
-    position: 'sticky',
+    // Chrome moves sticky and fixed controls with the visual viewport when
+    // the keyboard opens. Anchor the action to the stable registration shell.
+    position: 'absolute',
+    left: 0,
+    right: 0,
     bottom: 0,
+    width: AUTH_BOX_WIDTH,
+    maxWidth: AUTH_BOX_WIDTH,
+    margin: '0 auto',
     zIndex: 20,
     backgroundColor: 'var(--reg-page-bg)',
   };
