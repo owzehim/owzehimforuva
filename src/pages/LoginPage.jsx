@@ -291,6 +291,7 @@ export default function LoginPage() {
                   className={`${inputClass} text-center font-mono text-base tracking-[0.35em]`}
                   placeholder=""
                   autoComplete="one-time-code"
+                  autoFocus
                   required
                 />
               </LoginField>
