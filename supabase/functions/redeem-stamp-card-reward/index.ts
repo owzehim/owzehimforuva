@@ -8,6 +8,8 @@ import { sheetText } from '../_shared/sheetText.js'
 import { isMembershipActive } from '../_shared/membershipStatus.js'
 import { getAllowedAppsScriptUrl, withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 async function syncClaimToAppsScript(url: string | null | undefined, label: string, payload: Record<string, unknown>) {
   if (!url) return { ok: false, skipped: true, label }
   const endpoint = getAllowedAppsScriptUrl(url)
@@ -66,11 +68,14 @@ serve(async (req) => {
     const storeId = body?.storeId
     if (
       typeof rewardId !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rewardId) ||
+      !UUID_PATTERN.test(rewardId) ||
       (typeof redemptionId !== 'string' && typeof redemptionId !== 'number') ||
       !/^[1-9]\d{0,17}$/.test(String(redemptionId)) ||
       typeof storeId !== 'string' ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId)
+      storeId.length === 0 ||
+      storeId.length > 200 ||
+      storeId.trim() !== storeId ||
+      /[\u0000-\u001f\u007f]/.test(storeId)
     ) {
       return json({ success: false, message: '잘못된 리워드 사용 요청입니다.' }, 400)
     }
@@ -145,18 +150,21 @@ serve(async (req) => {
     }
     if (!redemption) return json({ success: false, message: '최근 매장 체크인을 확인할 수 없습니다.' }, 403)
 
-    const { data: restaurantById, error: restaurantLookupError } = await admin
-      .from('restaurants')
-      .select('id')
-      .eq('id', storeId)
-      .maybeSingle()
+    let restaurantId: string | null = null
+    if (UUID_PATTERN.test(storeId)) {
+      const { data: restaurantById, error: restaurantLookupError } = await admin
+        .from('restaurants')
+        .select('id')
+        .eq('id', storeId)
+        .maybeSingle()
 
-    if (restaurantLookupError) {
-      console.error('Restaurant lookup failed:', restaurantLookupError)
-      return json({ success: false, message: '매장 정보를 확인하지 못했습니다.' }, 500)
+      if (restaurantLookupError) {
+        console.error('Restaurant lookup failed:', restaurantLookupError)
+        return json({ success: false, message: '매장 정보를 확인하지 못했습니다.' }, 500)
+      }
+      restaurantId = restaurantById?.id ?? null
     }
 
-    let restaurantId = restaurantById?.id ?? null
     if (!restaurantId) {
       const { data: restaurantByPartnership, error: partnershipLookupError } = await admin
         .from('restaurants')
