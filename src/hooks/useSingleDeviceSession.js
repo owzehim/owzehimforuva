@@ -1,23 +1,32 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getSessionId } from '../domain/auth/authRules'
 
 const CHECK_INTERVAL_MS = 15000
+const CLAIM_RETRY_DELAY_MS = 10000
 
-/** Claim the server-enforced device session before protected pages load. */
+/** Claim once per login session, then check that the server still recognizes this device. */
 export function useSingleDeviceSession(session) {
   const userId = session?.user?.id ?? null
   const accessToken = session?.access_token ?? null
-  const [claimedAccessToken, setClaimedAccessToken] = useState(null)
+  const sessionId = getSessionId(accessToken)
+  const sessionKey = userId && accessToken
+    ? [userId, sessionId || accessToken].join(':')
+    : null
+  const [claimedSessionKey, setClaimedSessionKey] = useState(null)
 
   useEffect(() => {
-    if (!userId || !accessToken) return undefined
+    if (!sessionKey) return undefined
 
     let cancelled = false
     let claimSucceeded = false
+    let claimAttempts = 0
+    let claimInFlight = false
+    let retryTimer = null
 
     const signOutThisDevice = async () => {
       if (cancelled) return
-      setClaimedAccessToken(null)
+      setClaimedSessionKey(null)
       await supabase.auth.signOut({ scope: 'local' })
     }
 
@@ -30,36 +39,68 @@ export function useSingleDeviceSession(session) {
         console.warn('single device session check failed:', error.message)
         return
       }
-      if (data !== true) await signOutThisDevice()
+      if (data === false) await signOutThisDevice()
+    }
+
+    const scheduleClaimRetry = (message) => {
+      claimAttempts += 1
+      console.warn('single device session claim failed:', message)
+      retryTimer = window.setTimeout(
+        claimThisDevice,
+        Math.min(claimAttempts * 1000, CLAIM_RETRY_DELAY_MS),
+      )
     }
 
     const claimThisDevice = async () => {
-      const { data, error } = await supabase.rpc('claim_single_device_session')
+      if (cancelled || claimSucceeded || claimInFlight) return
+
+      claimInFlight = true
+      let result
+      try {
+        result = await supabase.rpc('claim_single_device_session')
+      } catch (error) {
+        claimInFlight = false
+        if (cancelled) return
+        scheduleClaimRetry(error?.message || 'network error; retrying')
+        return
+      }
+      claimInFlight = false
       if (cancelled) return
-      if (error || data !== true) {
-        console.warn('single device session claim failed:', error?.message || 'claim rejected')
+
+      const { data, error } = result
+
+      if (!error && data === true) {
+        claimSucceeded = true
+        setClaimedSessionKey(sessionKey)
+        await checkCurrentDevice()
+        return
+      }
+
+      if (!error && data === false) {
         await signOutThisDevice()
         return
       }
 
-      claimSucceeded = true
-      setClaimedAccessToken(accessToken)
-      await checkCurrentDevice()
+      scheduleClaimRetry(error?.message || 'claim result unavailable; retrying')
     }
 
     void claimThisDevice()
     const intervalId = window.setInterval(checkCurrentDevice, CHECK_INTERVAL_MS)
     const visibilityHandler = () => {
-      if (document.visibilityState === 'visible') void checkCurrentDevice()
+      if (document.visibilityState === 'visible') {
+        if (claimSucceeded) void checkCurrentDevice()
+        else void claimThisDevice()
+      }
     }
     document.addEventListener('visibilitychange', visibilityHandler)
 
     return () => {
       cancelled = true
       window.clearInterval(intervalId)
+      window.clearTimeout(retryTimer)
       document.removeEventListener('visibilitychange', visibilityHandler)
     }
-  }, [userId, accessToken])
+  }, [sessionKey])
 
-  return Boolean(accessToken && claimedAccessToken === accessToken)
+  return Boolean(sessionKey && claimedSessionKey === sessionKey)
 }
