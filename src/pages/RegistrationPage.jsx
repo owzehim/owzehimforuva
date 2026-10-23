@@ -557,6 +557,9 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
 export default function RegistrationPage() {
   const navigate = useNavigate();
   const [language, setLanguage] = useState('ko');
+  const [stableChromeViewportHeight] = useState(() => (
+    isMobileChromeBrowser ? window.innerHeight : null
+  ));
   const fileInputRef = useRef(null);
   const [profilePreviewUrl, setProfilePreviewUrl] = useState('');
   const [cropImageSrc, setCropImageSrc] = useState(null);
@@ -1032,7 +1035,14 @@ export default function RegistrationPage() {
     <div
       className="phone-app-shell registration-page-enter"
       onDragStart={(event) => event.preventDefault()}
-      style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+      style={{
+        ...s.page,
+        ...(stableChromeViewportHeight ? { height: `${stableChromeViewportHeight}px` } : {}),
+        fontFamily: 'var(--font-app)',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      }}
     >
       <style>{registrationMotionCss}</style>
       {/* Top Bar with Back Button and Language Toggle */}
