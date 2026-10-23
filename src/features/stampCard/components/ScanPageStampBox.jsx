@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle, Octagon } from '@phosphor-icons/react'
+import { CheckCircle, Octagon, XCircle } from '@phosphor-icons/react'
 import { useStampCardConfig } from '../hooks/useStampCardConfig'
 import { useUserStampVisits } from '../hooks/useUserStampVisits'
 import { redeemReward } from '../api/rewards'
@@ -90,13 +90,7 @@ export default function ScanPageStampBox({
         className="w-full rounded-2xl border px-4 py-3 transition-transform active:scale-[0.99]"
         style={{
           borderColor: cardColor || '#e5e7eb',
-          backgroundColor: redeemedThisSession
-            ? '#f0fdf4'
-            : claimFailedThisSession
-              ? '#fef2f2'
-              : isBenefitReady
-                ? CLAIM_ORANGE
-                : '#ffffff',
+          backgroundColor: cardColor || '#ffffff',
           cursor: isBenefitReady && effectivePendingReward ? 'pointer' : 'default',
           opacity: redeeming ? 0.75 : 1,
         }}
@@ -106,18 +100,18 @@ export default function ScanPageStampBox({
             count={count}
             total={total}
             accentColor={cardColor || accentColor}
-            inverted={isBenefitReady && !claimFailedThisSession}
+            inverted={Boolean(cardColor)}
           />
           <div className="text-right shrink-0">
             <p
               className="text-sm font-bold leading-none"
-              style={{ color: isBenefitReady && !claimFailedThisSession ? '#ffffff' : redeemedThisSession ? '#15803d' : claimFailedThisSession ? '#b91c1c' : '#374151' }}
+              style={{ color: cardColor ? '#ffffff' : '#374151' }}
             >
               {count} / {total}
             </p>
             <p
               className="text-[11px] mt-1 leading-none"
-              style={{ color: isBenefitReady && !claimFailedThisSession ? 'rgba(255,255,255,0.86)' : redeemedThisSession ? '#16a34a' : claimFailedThisSession ? '#dc2626' : '#9ca3af' }}
+              style={{ color: cardColor ? 'rgba(255,255,255,0.86)' : '#9ca3af' }}
             >
               {redeemedThisSession ? '\u00a0' : isBenefitReady ? '혜택 준비 완료' : `남은 스탬프 ${remaining}개`}
             </p>
@@ -143,14 +137,15 @@ export default function ScanPageStampBox({
           )}
 
           {redeemedThisSession && (
-            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-green-700">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-white">
               <CheckCircle size={15} weight="fill" />
               Benefits Claimed!
             </div>
           )}
 
           {claimFailedThisSession && (
-            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-white">
+              <XCircle size={15} weight="fill" />
               Benefits Claim Failed
             </div>
           )}
