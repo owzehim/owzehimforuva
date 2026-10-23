@@ -37,30 +37,34 @@ export default function ResetPasswordPage() {
         const url = new URL(window.location.href)
         const code = url.searchParams.get('code')
         if (code) {
-          const { error: exchangeError } = await exchangeRecoveryCodeOnce(code)
+          const { data: exchangeData, error: exchangeError } = await exchangeRecoveryCodeOnce(code)
           if (exchangeError) {
-            if (active) setRecoveryReady(false)
+            console.error('Password recovery link exchange failed:', exchangeError.message)
+          } else if (exchangeData?.redirectType === 'recovery') {
+            url.searchParams.delete('code')
+            window.history.replaceState(
+              window.history.state,
+              '',
+              `${url.pathname}${url.search}${url.hash}`,
+            )
+            if (active) setRecoveryReady(true)
             return
           }
-
-          url.searchParams.delete('code')
-          window.history.replaceState(
-            window.history.state,
-            '',
-            `${url.pathname}${url.search}${url.hash}`,
-          )
         }
 
         const { data, error } = await passwordRecoverySupabase.auth.getClaims()
         if (active) setRecoveryReady(!error && isPasswordRecoveryClaims(data?.claims))
-      } catch {
+      } catch (error) {
+        console.error('Password recovery session check failed:', error?.message || 'unknown error')
         if (active) setRecoveryReady(false)
       }
     }
     void verifyRecoverySession()
 
     const { data: { subscription } } = passwordRecoverySupabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryReady(true)
+      } else if (event === 'SIGNED_OUT') {
         setRecoveryReady(false)
       }
     })
@@ -127,7 +131,7 @@ export default function ResetPasswordPage() {
         <div className="mb-8 min-h-[176px] pt-[54px] text-left">
           <h1 className="text-2xl font-semibold text-gray-900">새 비밀번호 설정</h1>
           <p className="mt-3 text-sm leading-relaxed text-gray-500">
-            앞으로 사용할 새 비밀번호를 입력해주세요.
+            새 비밀번호를 입력해주세요
           </p>
         </div>
 
@@ -141,12 +145,6 @@ export default function ResetPasswordPage() {
               onClick={() => navigate('/login')}
               className="w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
             >
-              로그인으로 이동
-            </button>
-          </div>
-        ) : !recoveryReady ? (
-          <div className="space-y-4">
-            <button type="button" onClick={() => navigate('/login')} className="w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white">
               로그인으로 이동
             </button>
           </div>
