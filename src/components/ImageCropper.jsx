@@ -8,7 +8,9 @@ const compressImage = async (file) => {
     return await imageCompression(file, {
       maxSizeMB: 1.2,
       maxWidthOrHeight: 1920,
-      useWebWorker: true,
+      // Keep image compression on the main thread; the CDN worker fallback is
+      // blocked by the app's restrictive Content Security Policy.
+      useWebWorker: false,
     })
   } catch {
     return file

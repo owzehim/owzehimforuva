@@ -10,7 +10,8 @@ export const compressImage = async (file, options = {}) => {
   const defaultOptions = {
     maxSizeMB: 1, // Max file size in MB
     maxWidthOrHeight: 1920, // Max dimension (maintains aspect ratio)
-    useWebWorker: true, // Use web worker for better performance
+    // Avoid the library's external worker fallback so CSP stays same-origin.
+    useWebWorker: false,
     ...options,
   };
 
