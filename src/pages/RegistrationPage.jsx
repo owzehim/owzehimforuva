@@ -841,7 +841,7 @@ export default function RegistrationPage() {
         : (language === 'ko' ? '이메일 주소를 확인하고 인증 링크를 다시 받아보세요.' : 'Check your email address and request a new confirmation link.');
 
       return (
-        <div className="phone-app-shell registration-page-enter" style={{ ...s.page, height: '100dvh', overflowY: 'auto', boxSizing: 'border-box', padding: '24px 16px', fontFamily: 'var(--font-app)' }}>
+        <div className="phone-app-shell registration-page-enter" style={{ ...s.page, height: '100svh', overflowY: 'auto', boxSizing: 'border-box', padding: '24px 16px', fontFamily: 'var(--font-app)' }}>
           <style>{registrationMotionCss}</style>
           <div style={{ ...s.emailCard, position: 'relative', top: 'auto', transform: 'none', margin: 'auto 0' }}>
             <div style={{ textAlign: 'center', marginBottom: '12px' }}>
@@ -1833,7 +1833,7 @@ html.dark select option {
 
 const s = {
   page: {
-    height: '100dvh',
+    height: '100svh',
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
@@ -2198,7 +2198,7 @@ const s = {
     padding: '0',
     borderRadius: '0',
     border: 'none',
-    fontSize: '13px',
+    fontSize: '16px',
     outline: 'none',
     width: '100%',
     boxSizing: 'border-box',
@@ -2230,7 +2230,7 @@ const s = {
     padding: '0',
     borderRadius: '0',
     border: 'none',
-    fontSize: '14px',
+    fontSize: '16px',
     backgroundColor: 'var(--reg-field-bg)',
     color: 'var(--reg-text)',
     outline: 'none',
