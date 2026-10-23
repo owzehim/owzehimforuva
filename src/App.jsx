@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { hasAdminRole } from './lib/adminRoles'
@@ -262,6 +262,7 @@ function App() {
 }
 
 function PortraitOrientationBlocker() {
+  const { pathname } = useLocation()
   const [mounted, setMounted] = useState(false)
   const [visible, setVisible] = useState(false)
 
@@ -292,7 +293,7 @@ function PortraitOrientationBlocker() {
     }
   }, [])
 
-  if (!mounted) return null
+  if (!mounted || pathname === '/reset-password') return null
 
   return (
     <div
