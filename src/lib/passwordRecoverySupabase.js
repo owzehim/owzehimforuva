@@ -8,10 +8,11 @@ export const passwordRecoverySupabase = createClient(supabaseUrl, supabasePublis
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    // ResetPasswordPage exchanges the code explicitly so other callback routes
-    // can never consume this one-time recovery code.
+    // Email apps may open links in a browser context that did not request the
+    // reset. Implicit recovery links carry a short-lived session in the URL
+    // fragment, so the callback can complete in that browser context.
     detectSessionInUrl: false,
-    flowType: 'pkce',
+    flowType: 'implicit',
     storageKey: 'uvain-password-recovery-auth',
   },
   global: { fetch: apiKeyOnlyFetch(supabasePublishableKey) },

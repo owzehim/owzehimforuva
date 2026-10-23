@@ -23,8 +23,11 @@ async function getVerifiedRecoverySession() {
     await passwordRecoverySupabase.auth.getSession()
   if (sessionError || !session) return null
 
-  const { data, error } = await passwordRecoverySupabase.auth.getClaims()
-  if (error || data?.claims?.sub !== session.user?.id) return null
+  // Ask Auth to validate the session instead of decoding claims locally. This
+  // also avoids rejecting a valid recovery session because a claims/JWKS read
+  // failed independently.
+  const { data: { user }, error } = await passwordRecoverySupabase.auth.getUser()
+  if (error || user?.id !== session.user?.id) return null
   return session
 }
 
@@ -44,6 +47,32 @@ export default function ResetPasswordPage() {
     const verifyRecoverySession = async () => {
       try {
         const url = new URL(window.location.href)
+        const hash = new URLSearchParams(url.hash.slice(1))
+        const accessToken = hash.get('access_token')
+        const refreshToken = hash.get('refresh_token')
+
+        if (hash.get('type') === 'recovery' && accessToken && refreshToken) {
+          const { data: sessionData, error: sessionError } =
+            await passwordRecoverySupabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            })
+          if (sessionError) {
+            console.error('Password recovery session setup failed:', sessionError.message)
+          } else if (sessionData?.session) {
+            url.hash = ''
+            window.history.replaceState(
+              window.history.state,
+              '',
+              `${url.pathname}${url.search}`,
+            )
+            if (active) setRecoveryReady(true)
+            return
+          }
+        }
+
+        // Keep handling reset links issued before the callback switched to
+        // implicit flow. Those links still require their original PKCE verifier.
         const code = url.searchParams.get('code')
         if (code) {
           const { data: exchangeData, error: exchangeError } = await exchangeRecoveryCodeOnce(code)
