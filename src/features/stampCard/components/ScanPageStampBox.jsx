@@ -131,7 +131,7 @@ export default function ScanPageStampBox({
               {redeeming
                 ? '혜택 적용 처리 중...'
                 : effectivePendingReward
-                  ? 'Staff Only: Tap to Complete Applying Benefits'
+                  ? 'Staff Only: Tap to Apply Benefits'
                   : '혜택 정보 불러오는 중...'}
             </div>
           )}
