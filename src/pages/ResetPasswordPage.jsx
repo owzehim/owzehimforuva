@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeSlash } from '@phosphor-icons/react'
+import { CheckCircle, Eye, EyeSlash } from '@phosphor-icons/react'
 import { sendPasswordResetReturnSignal, updatePasswordFromRecovery } from '../api/authRepository'
 import { supabase } from '../lib/supabase'
 import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
@@ -179,7 +179,21 @@ export default function ResetPasswordPage() {
   }
 
   if (resetCompleted) {
-    return <main className="min-h-[100dvh] bg-white dark:bg-[#121212]" aria-hidden="true" />
+    return (
+      <main
+        className="phone-app-shell flex min-h-[100dvh] items-center justify-center bg-white px-4 text-gray-900 dark:bg-[#121212] dark:text-white"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="w-full max-w-sm px-2 text-center">
+          <CheckCircle size={56} weight="fill" color="#f97316" className="mx-auto mb-4" />
+          <h1 className="text-2xl font-semibold">비밀번호가 변경되었습니다</h1>
+          <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+            새 비밀번호로 로그인을 진행해 주세요
+          </p>
+        </div>
+      </main>
+    )
   }
 
   return (
