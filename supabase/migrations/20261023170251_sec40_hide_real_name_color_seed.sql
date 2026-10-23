@@ -128,6 +128,10 @@ END;
 $$;
 
 -- Remove historical real-name-derived values from note rows.
+-- The note trigger also checks membership status for ordinary edits. This
+-- privacy-only backfill must still clean notes from former members.
+ALTER TABLE public.restaurant_notes DISABLE TRIGGER prepare_restaurant_note;
+
 UPDATE public.restaurant_notes
 SET avatar_color_seed = CASE
   WHEN is_anonymous IS TRUE OR nullif(btrim(username), '') IS NULL THEN NULL
@@ -137,6 +141,8 @@ WHERE avatar_color_seed IS DISTINCT FROM CASE
   WHEN is_anonymous IS TRUE OR nullif(btrim(username), '') IS NULL THEN NULL
   ELSE btrim(username)
 END;
+
+ALTER TABLE public.restaurant_notes ENABLE TRIGGER prepare_restaurant_note;
 
 -- Keep the view's existing column shape, but derive this display-only seed
 -- from the username that is already public to signed-in members.
