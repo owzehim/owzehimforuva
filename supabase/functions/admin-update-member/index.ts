@@ -28,6 +28,17 @@ function isValidDate(value: unknown) {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
 }
 
+function amsterdamToday() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Amsterdam',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
 function validateUpdates(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false
 
@@ -156,21 +167,21 @@ serve(async (req) => {
     }
 
     if (safeUpdates.is_member === true) {
-      let verifiedStudentNumber = safeUpdates.student_number
-      if (!('student_number' in safeUpdates)) {
-        const { data: currentMember, error: memberLookupError } = await admin
-          .from('members')
-          .select('student_number')
-          .eq('id', memberId)
-          .maybeSingle()
-        if (memberLookupError) {
-          console.error('Membership activation lookup failed:', memberLookupError)
-          return json({ success: false, message: '회원 상태를 확인할 수 없습니다.' }, 500)
-        }
-        verifiedStudentNumber = currentMember?.student_number
+      const { data: currentMember, error: memberLookupError } = await admin
+        .from('members')
+        .select('membership_valid_until')
+        .eq('id', memberId)
+        .maybeSingle()
+      if (memberLookupError) {
+        console.error('Membership activation lookup failed:', memberLookupError)
+        return json({ success: false, message: '회원 상태를 확인할 수 없습니다.' }, 500)
       }
-      if (typeof verifiedStudentNumber !== 'string' || !verifiedStudentNumber.trim()) {
-        return json({ success: false, message: '학번을 확인하고 저장한 뒤 멤버십을 활성화해 주세요.' }, 400)
+
+      const membershipValidUntil = 'membership_valid_until' in safeUpdates
+        ? safeUpdates.membership_valid_until
+        : currentMember?.membership_valid_until
+      if (typeof membershipValidUntil !== 'string' || membershipValidUntil < amsterdamToday()) {
+        return json({ success: false, message: '멤버십을 활성화하려면 오늘 이후의 유효기간을 먼저 설정해 주세요.' }, 400)
       }
     }
 
@@ -183,6 +194,9 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('Admin member update failed:', updateError)
+      if (updateError.code === '23505' && 'student_number' in safeUpdates) {
+        return json({ success: false, message: '이 학번은 이미 다른 계정에 확정되어 있습니다.' }, 409)
+      }
       return json({ success: false, message: '회원 정보를 수정하지 못했습니다.' }, 500)
     }
     if (!updatedMember) {

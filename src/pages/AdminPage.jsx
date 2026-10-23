@@ -788,6 +788,15 @@ function getAmsterdamCalendarDate(date = new Date()) {
     : null
 }
 
+async function getFunctionErrorMessage(error) {
+  const response = error?.context
+  if (response && typeof response.clone === 'function') {
+    const body = await response.clone().json().catch(() => null)
+    if (typeof body?.message === 'string' && body.message.trim()) return body.message
+  }
+  return error?.message || '회원 정보를 수정하지 못했습니다.'
+}
+
 function MembersTab() {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -834,6 +843,13 @@ function MembersTab() {
   }, [])
 
   const handleEdit = async () => {
+    const todayAmsterdam = getAmsterdamCalendarDate()
+    const membershipValidUntil = normalizeMemberEditValue('membership_valid_until', form.membership_valid_until)
+    if (form.is_member && (!membershipValidUntil || (todayAmsterdam && membershipValidUntil < todayAmsterdam))) {
+      alert('멤버십을 활성화하려면 오늘 이후의 유효기간을 먼저 설정해 주세요.')
+      return
+    }
+
     const updates = Object.fromEntries(
       memberEditFields
         .map((field) => [
@@ -858,41 +874,12 @@ function MembersTab() {
     })
 
     if (error || !data?.success) {
-      alert('수정 실패: ' + (data?.message || error?.message || '회원 정보를 수정하지 못했습니다.'))
+      alert('수정 실패: ' + (data?.message || await getFunctionErrorMessage(error)))
       return
     }
     alert('수정 완료')
     setEditTarget(null)
     setShowForm(false)
-    fetchMembers()
-  }
-
-  const toggleMembership = async (member) => {
-    const nextIsMember = !member.is_member
-    const todayAmsterdam = getAmsterdamCalendarDate()
-    const currentValidUntil = member.membership_valid_until
-      ? String(member.membership_valid_until).slice(0, 10)
-      : null
-    const nextValidUntil = nextIsMember &&
-      (!currentValidUntil || !todayAmsterdam || currentValidUntil < todayAmsterdam)
-      ? `${todayAmsterdam?.slice(0, 4) || new Date().getFullYear()}-12-31`
-      : currentValidUntil
-
-    const { data, error } = await supabase.functions.invoke('admin-update-member', {
-      body: {
-        memberId: member.id,
-        updates: {
-          is_member: nextIsMember,
-          membership_valid_until: nextValidUntil || null,
-        },
-      },
-    })
-
-    if (error || !data?.success) {
-      alert('멤버십 상태 변경 실패: ' + (data?.message || error?.message || '회원 상태를 변경하지 못했습니다.'))
-      return
-    }
-
     fetchMembers()
   }
 
@@ -953,18 +940,6 @@ function MembersTab() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => toggleMembership(member)}
-                      className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap border ${
-                        member.is_member
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : 'bg-gray-50 text-gray-500 border-gray-200'
-                      }`}
-                    >
-                      {member.is_member
-                        ? '유효 (탭해서 비활성)'
-                        : '비활성 (탭해서 활성)'}
-                    </button>
                     <button
                       onClick={() => openEdit(member)}
                       className="text-xs text-blue-600 hover:underline whitespace-nowrap"
@@ -1162,10 +1137,10 @@ function MembersTab() {
                       id={`ism_${member.id}`}
                       checked={form.is_member}
                       onChange={(e) =>
-                        setForm({
-                          ...form,
+                        setForm((currentForm) => ({
+                          ...currentForm,
                           is_member: e.target.checked,
-                        })
+                        }))
                       }
                     />
                     <label
