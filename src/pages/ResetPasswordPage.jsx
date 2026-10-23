@@ -39,7 +39,6 @@ export default function ResetPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
   const [recoveryReady, setRecoveryReady] = useState(false)
 
   useEffect(() => {
@@ -152,7 +151,7 @@ export default function ResetPasswordPage() {
         const { error: appSignOutError } = await supabase.auth.signOut({ scope: 'local' })
         if (appSignOutError) throw appSignOutError
       }
-      setSuccess(true)
+      navigate('/public', { replace: true })
     } catch (err) {
       setError(err.message || '비밀번호 변경 중 오류가 발생했습니다.')
     } finally {
@@ -170,21 +169,7 @@ export default function ResetPasswordPage() {
           </p>
         </div>
 
-        {success ? (
-          <div className="space-y-4">
-            <p className="text-center text-sm leading-relaxed text-green-600">
-              비밀번호가 변경되었습니다. 새 비밀번호로 로그인해주세요.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate('/login')}
-              className="w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
-            >
-              로그인으로 이동
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div className="relative">
               <ResetField label="새 비밀번호">
                 <input
@@ -234,8 +219,7 @@ export default function ResetPasswordPage() {
             >
               {loading ? '변경 중...' : '비밀번호 변경'}
             </button>
-          </form>
-        )}
+        </form>
       </div>
     </div>
   )
