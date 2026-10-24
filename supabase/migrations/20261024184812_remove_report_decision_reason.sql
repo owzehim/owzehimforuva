@@ -30,6 +30,9 @@ CREATE POLICY "Admins can review note reports"
     )
   );
 
+DROP TRIGGER IF EXISTS set_note_report_reviewed_metadata
+  ON public.restaurant_note_reports;
+
 CREATE OR REPLACE FUNCTION public.set_note_report_decision_metadata()
 RETURNS trigger
 LANGUAGE plpgsql
