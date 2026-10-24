@@ -1,12 +1,12 @@
-export const LEGAL_DOCUMENT_VERSION = '2026-10-16-01';
+export const LEGAL_DOCUMENT_VERSION = '2026-10-24-03';
 
 export const legalDocuments = {
   terms: {
     title: 'Terms and Conditions',
-    effectiveDate: '29 June 2026',
+    effectiveDate: '24 October 2026',
     body: `UvA-IN Terms and Conditions
 
-Effective Date: 29 June 2026
+Effective Date: 24 October 2026
 
 Welcome to UvA-IN. These Terms and Conditions govern your use of the UvA-IN mobile application and the services provided through it.
 
@@ -54,6 +54,8 @@ Members may voluntarily submit ratings, comments, and other feedback after visit
 
 Reviews must reflect genuine experiences, avoid abusive or unlawful content, and not infringe the rights or privacy of others. UvA-IN may remove reviews that violate these Terms.
 
+Ratings and selected tags submitted through the App's review feature are sent to the relevant partner with a redemption reference and review date. Reviewer names, account identifiers, and free-text review comments are not included in the partner's review records. The App also displays live location-level rating and tag summaries to active members.
+
 9. Responsible Use
 
 You agree not to create multiple accounts for the same person, impersonate another individual, misuse membership benefits, manipulate QR codes or rewards, interfere with the App, or use the App for unlawful purposes.
@@ -74,7 +76,7 @@ To the maximum extent permitted by law, UvA-IN is not liable for indirect, incid
 
 13. Suspension and Termination
 
-You may stop using the App and request deletion of your account at any time. UvA-IN may suspend or terminate an account if these Terms are violated, fraudulent activity is detected, eligibility can no longer be verified, or action is required by law.
+You may stop using the App and request deletion of your account at any time. UvA-IN may suspend or terminate your membership or restrict access to membership features if these Terms are violated, fraudulent activity is detected, eligibility can no longer be verified, or action is required by law.
 
 14. Changes to the Service
 
@@ -98,10 +100,10 @@ By creating an account, you confirm that you have read, understood, and agree to
   },
   privacy: {
     title: 'Privacy Policy',
-    effectiveDate: '16 October 2026',
+    effectiveDate: '24 October 2026',
     body: `UvA-IN Privacy Policy
 
-Effective Date: 16 October 2026
+Effective Date: 24 October 2026
 
 UvA-IN is committed to protecting your privacy and handling your personal information responsibly. This Privacy Policy explains how we collect, use, store, share, protect, and retain your personal data when you use the UvA-IN mobile application.
 
@@ -111,9 +113,10 @@ UvA-IN complies with the General Data Protection Regulation and applicable Dutch
 
 UvA-IN is the membership app operated by the UvA-IN student association. It connects members with participating restaurants and local businesses through offers, digital rewards, and community experiences.
 
-Data controller: Woojay Lim
+Data controller: UvA-IN
 Website: www.uva-in.nl
-Privacy contact: woojay.lim@gmail.com
+Privacy contact: Woojay Lim (임우재)
+Telephone: +31 6 4271 4078
 
 2. Information We Collect
 
@@ -129,27 +132,25 @@ To maintain platform security and reliability, we and our service providers may 
 
 3. Why We Process Your Information
 
-We process your information to verify student eligibility, create and manage your membership, operate digital stamp cards, administer rewards and discounts, prevent fraud and misuse, improve service reliability, provide customer support, and respond to legal obligations when they apply.
+We process your information to verify student eligibility, create and manage your membership, operate digital stamp cards, administer rewards and discounts, provide the review features you choose to use, prevent fraud and misuse, improve service reliability, provide customer support, and respond to legal obligations when they apply. Submitted review ratings and selected tags update live location summaries in the App and are sent to the relevant partner with the visit's redemption identifier and review date so that partner can see feedback about its location.
 
-Legal bases: We process the information needed to register and operate your membership and the features you request because this is necessary to perform our agreement with you (Article 6(1)(b) GDPR). We process limited account, visit, and security information where necessary for our legitimate interests in verifying reward claims, preventing fraud, protecting the App, and maintaining service reliability (Article 6(1)(f) GDPR). Before introducing partner reports described in Sections 4 and 5, we will document and assess our legitimate interests in evaluating the use of the member-partner programme and helping each partner improve its offers, and balance those interests against members' rights and freedoms. We will not provide those reports if we cannot establish a lawful basis. We process specific information under Article 6(1)(c) only where a concrete legal obligation requires it. Withdrawing consent will not affect processing already carried out lawfully or processing based on another applicable legal basis.
+Legal bases: We process the information needed to register and operate your membership and the features you choose to use, including submitting a review and delivering its rating and selected tags to the relevant partner, because this is necessary to perform our agreement with you (Article 6(1)(b) GDPR). We process limited account, visit, and security information where necessary for our legitimate interests in verifying reward claims, preventing fraud, protecting the App, and maintaining service reliability (Article 6(1)(f) GDPR). We process specific information under Article 6(1)(c) only where a concrete legal obligation requires it. Withdrawing consent will not affect processing already carried out lawfully or processing based on another applicable legal basis.
 
 We do not sell your personal information.
 
 4. Information Shared with Partner Businesses
 
-For in-person check-in, the success screen shows the member's name, student number, university, scan time, and membership end date, and asks the member to show that screen and their student card to restaurant staff so they can verify eligibility. A partner's operational record may contain the redemption identifier, visit date, reward or stamp progress, and redemption status needed to verify a transaction. Individual review ratings, selected tags, free-text review comments, member names, and Supabase account identifiers are not included in partner transaction rows. Review feedback may be shared with a partner only as a location-level aggregate after at least five distinct members have contributed; smaller groups are suppressed.
+For in-person check-in, the success screen shows the member's name, student number, university, scan time, and membership end date, and asks the member to show that screen and their student card to restaurant staff so they can verify eligibility. A partner's Operations sheet may contain the redemption identifier, scan date, stamp-card progress and status, reward-claim date, and the star rating, selected review tags, and review date for that visit. The rating and tags are linked to the visit by its redemption identifier. The partner does not receive the member's name, student number, university, Supabase account identifier, or free-text review comment through this sheet. The internal Master sheet may contain the member's identity and full review comment.
 
-Partner copies are limited to that partner's records and follow the 12-month transaction retention limit in Section 7. Review ratings and selected tags are not added to individual transaction rows or shared with partners as individual reviews. Any partner review summary is limited to that location and is suppressed until at least five distinct members have contributed. Free-text review comments are not included in partner review summaries. A partner may act as a separate controller for records it uses for its own reward administration; if so, it is responsible for providing its own privacy information and handling requests about that processing. You can also contact us using the details below and we will pass your request to the relevant partner.
+Partner copies are limited to that partner's records and follow the 12-month transaction retention limit in Section 7. No five-member threshold is applied to the per-visit ratings and tags sent to a partner. Free-text review comments and direct member identifiers are not included in those partner rows. A partner may act as a separate controller for records it uses for its own reward administration; if so, it is responsible for providing its own privacy information and handling requests about that processing. You can also contact us using the details below and we will pass your request to the relevant partner. We do not currently provide partners with separate aggregate analytics reports.
 
-When partner reports are introduced, each participating business may receive reports only about its own location. Reports may show weekly or monthly visit patterns by time-of-day band, broad origin region (for example, a country recorded as South Korea is grouped under East Asia), and broad faculty group. Reports will not contain member names, account identifiers, individual visit rows, or exact visit timestamps. Counts and percentages will be shown only for groups containing at least five distinct members; smaller groups and totals or overlapping breakdowns that could reveal them will be suppressed. Time bands will use Europe/Amsterdam local time.
+5. Review Summaries in the App
 
-5. Analytics and Reporting
-
-We use appropriately grouped membership and visit information to understand service usage and improve UvA-IN. We may also provide the partner reports described in Section 4 so each participating business can understand broad visit patterns at its own location and evaluate its member offer. Report breakdowns are kept separate rather than combined into detailed profiles. We suppress groups with fewer than five distinct members and any result that could reveal a suppressed group by comparison. The threshold reduces identification risk but does not guarantee that re-identification is impossible; we do not provide individual-level partner reports.
+The App calculates location-level star-rating and selected-tag summaries from submitted reviews and updates them as reviews are submitted. These summaries are visible to signed-in active App members, including when fewer than five members have reviewed a location. These in-App summaries are separate from the per-visit review fields shared with the relevant partner described in Section 4.
 
 6. Information Sharing
 
-We share information with participating partner businesses for reward administration, transaction verification, and the aggregated reports described in Sections 4 and 5; with service providers that support the App; and with competent public authorities where required by law. Current service providers include Supabase for account authentication, database and file storage; Vercel for hosting and delivery of the App; Resend for account and email-verification messages; Google services for internal administrative records and partner-specific tracking or report files; and MapTiler for map display. The internal administrative records sent through Google services can include the member identity and profile fields listed in Section 2, together with visit, reward, and review records. Access to internal records is limited to authorised UvA-IN administrators. Partner-specific files are shared with the relevant business as view-only access; each business must only have access to its own file, not another partner's or the internal master records. Partner files and reports do not include member names, account identifiers, or the full profile fields listed in Section 2. MapTiler receives map requests when you use a map feature. Fonts are served with the App and are not loaded from Google Fonts. We do not currently use the retired translation or comment-moderation features to send member content to Google Cloud Translation or OpenAI.
+We share information with participating partner businesses for reward administration, transaction verification, and the visit-level review feedback described in Section 4; with service providers that support the App; and with competent public authorities where required by law. Current service providers include Supabase for account authentication, database and file storage; Vercel for hosting and delivery of the App; Resend for account and email-verification messages; Cloudflare for Turnstile security checks; Google services for internal administrative records and partner-specific transaction and review records; and MapTiler for map display. The internal administrative records sent through Google services can include the member identity and profile fields listed in Section 2, together with visit, reward, and review records. Access to internal records is limited to authorised UvA-IN administrators. Partner-specific files are shared with the relevant business as view-only access; each business must only have access to its own file, not another partner's or the internal Master records. Partner files do not include member names, student numbers, account identifiers, or the full profile fields listed in Section 2. MapTiler receives map requests when you use a map feature. Fonts are served with the App and are not loaded from Google Fonts. We do not currently use the retired translation or comment-moderation features to send member content to Google Cloud Translation or OpenAI.
 
 The role of each provider depends on the service: a provider may process data on our instructions, or may independently process technical request information under its own privacy notice. The production Supabase project is hosted in the EU. Resend stores service data in the United States. Other providers or their subprocessors may process information outside the European Economic Area. Where the GDPR requires a transfer mechanism, we rely on the mechanism applicable to that provider and processing, such as an adequacy decision or appropriate contractual safeguards. You can contact us for information about the safeguards relevant to a specific provider.
 
@@ -189,16 +190,17 @@ We may update this Privacy Policy from time to time. The latest version will be 
 
 13. Contact
 
-Data controller: Woojay Lim (UvA-IN)
+Data controller: UvA-IN
 Website: www.uva-in.nl
-Privacy contact: woojay.lim@gmail.com`,
+Privacy contact: Woojay Lim (임우재)
+Telephone: +31 6 4271 4078`,
   },
   community: {
     title: 'Community Guidelines',
-    effectiveDate: '29 June 2026',
+    effectiveDate: '24 October 2026',
     body: `UvA-IN Community Guidelines
 
-Effective Date: 29 June 2026
+Effective Date: 24 October 2026
 
 UvA-IN exists to connect students with local businesses, create meaningful experiences, and build a trusted community where everyone benefits. These Community Guidelines explain the standards expected from every member.
 
@@ -258,9 +260,7 @@ Any activity that threatens the security or integrity of the platform may result
 
 10. Enforcement
 
-UvA-IN may investigate suspected misuse. Depending on the seriousness of a violation, UvA-IN may issue a warning, remove content, cancel or reverse stamps and rewards, suspend your account, terminate your membership, blacklist you from creating or using UvA-IN accounts, or prohibit participation in UvA-IN events, activities, campaigns, promotions, or membership programmes.
-
-Serious or repeated violations may result in permanent removal without prior notice. Where permitted or required by law, UvA-IN may report suspected unlawful activity to relevant authorities.
+UvA-IN may investigate suspected misuse. Depending on the seriousness of a violation, UvA-IN may issue a warning, remove violating content, cancel or reverse stamps and rewards, or suspend or terminate your membership and access to membership features. Where permitted or required by law, UvA-IN may report suspected unlawful activity to relevant authorities.
 
 11. Reporting Concerns
 
