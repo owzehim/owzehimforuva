@@ -102,14 +102,14 @@ serve(async (req) => {
 
     const { data: report, error: reportError } = await admin
       .from('restaurant_note_reports')
-      .select('id, note_id, reporter_email, content_author_email, content_author_name_snapshot, note_snapshot, status, decision')
+      .select('id, note_id, reporter_email, content_author_email, content_author_name_snapshot, note_snapshot, status, decision, reviewed_at')
       .eq('id', reportId)
       .maybeSingle()
     if (reportError) {
       console.error('Moderation email report lookup failed')
       return json({ success: false, message: '신고 정보를 불러오지 못했습니다.' }, 500)
     }
-    if (!report || report.status !== 'resolved' || !report.decision) {
+    if (!report || report.status !== 'resolved' || !report.decision || !report.reviewed_at) {
       return json({ success: false, message: '먼저 신고 처리를 완료해 주세요.' }, 409)
     }
     if (recipientKind === 'author' && !['content_deleted', 'content_hidden'].includes(report.decision)) {
@@ -154,7 +154,7 @@ serve(async (req) => {
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': `content-report/${report.id}/${recipientKind}`,
+        'Idempotency-Key': `content-report/${report.id}/${recipientKind}/${Date.parse(report.reviewed_at)}`,
       },
       body: JSON.stringify({ from, to: [recipient], subject, text, html }),
     })
