@@ -5,7 +5,7 @@ import { sanitizeRichText } from '../lib/sanitizeHtml'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { useNavigate } from 'react-router-dom'
 import { ImageCropper } from '../components/ImageCropper'
-import { Plus, MapPin, Ticket, StarFour } from '@phosphor-icons/react'
+import { Plus, MapPin, Ticket, StarFour, UserCircle } from '@phosphor-icons/react'
 import StampCardEditPanel from '../features/stampCard/components/StampCardEditPanel'
 import StampCardMemberPanel from '../features/stampCard/components/StampCardMemberPanel'
 import { fetchConfigBySpot } from '../features/stampCard/api/config'
@@ -732,7 +732,9 @@ function ReportsTab() {
                     <h5 className="mb-3 mt-7 text-base font-bold text-gray-900">신고 대상 댓글 처리 결과</h5>
                     <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
                       <div className="flex items-start gap-2.5">
-                        <img src="/anonymous-profile.svg" alt="" className="h-8 w-8 shrink-0 rounded-full" />
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f3f4f6] text-[rgba(44,42,39,0.55)]">
+                          <UserCircle size={24} weight="fill" />
+                        </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[11px] font-semibold text-gray-700">{noticeDraft.author}</p>
                           <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-600">{noticeDraft.content}</p>
