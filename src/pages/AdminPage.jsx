@@ -305,9 +305,6 @@ function ReportsTab() {
   const [sendingNotice, setSendingNotice] = useState({})
   const [noticeDraft, setNoticeDraft] = useState(null)
   const [noticeSendError, setNoticeSendError] = useState('')
-  const [decisionDraft, setDecisionDraft] = useState(null)
-  const [savingDecision, setSavingDecision] = useState(false)
-  const [decisionEditError, setDecisionEditError] = useState('')
   const [savingReportId, setSavingReportId] = useState(null)
   const [decisionSelections, setDecisionSelections] = useState({})
 
@@ -322,7 +319,7 @@ function ReportsTab() {
         .order('created_at', { ascending: false }),
       supabase
         .from('restaurant_note_reports')
-        .select('id, note_id, created_at, reviewed_at, reporter_name, reporter_email, reason, explanation, good_faith, note_snapshot, restaurant_name_snapshot, content_author_email, content_author_name_snapshot, status, decision, decision_reason')
+        .select('id, note_id, created_at, reviewed_at, reporter_name, reporter_email, reason, explanation, good_faith, note_snapshot, restaurant_name_snapshot, content_author_email, content_author_name_snapshot, status, decision')
         .order('reviewed_at', { ascending: true, nullsFirst: true })
         .order('created_at', { ascending: false })
     ])
@@ -443,7 +440,6 @@ function ReportsTab() {
       .update({
         status: 'resolved',
         decision,
-        decision_reason: '관리자 확인',
       })
       .eq('id', item.id)
       .eq('status', item.status)
@@ -489,9 +485,6 @@ function ReportsTab() {
       .update({
         status: 'pending',
         decision: null,
-        decision_reason: null,
-        reviewed_at: null,
-        reviewed_by: null,
       })
       .eq('id', item.id)
       .eq('status', 'resolved')
@@ -534,62 +527,6 @@ function ReportsTab() {
     }
     if (!window.confirm('신고를 처리하시겠습니까?')) return
     await saveNoteReportDecision(item, selectedDecision)
-  }
-
-  const openDecisionEditor = (item) => {
-    setDecisionEditError('')
-    setDecisionDraft({ item, decision: item.decision, reason: item.decision_reason || '' })
-  }
-
-  const saveEditedDecision = async () => {
-    if (!decisionDraft || savingDecision) return
-    const { item, decision } = decisionDraft
-    const reason = decisionDraft.reason.trim()
-    if (!reason) {
-      setDecisionEditError('결정 사유를 입력해 주세요.')
-      return
-    }
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setDecisionEditError('로그인이 필요합니다.')
-      return
-    }
-
-    setSavingDecision(true)
-    setDecisionEditError('')
-
-    const visibilityChanged = item.note_id && item.decision !== decision && ['content_hidden', 'no_action'].includes(decision)
-    if (visibilityChanged && !await setNoteHidden(item.note_id, decision === 'content_hidden')) {
-        setSavingDecision(false)
-        setDecisionEditError('댓글 상태를 바꾸지 못해 결정을 저장하지 않았습니다.')
-        return
-    }
-
-    const { data: updatedReport, error: updateError } = await supabase
-      .from('restaurant_note_reports')
-      .update({
-        decision,
-        decision_reason: reason,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: user.id,
-      })
-      .eq('id', item.id)
-      .eq('status', 'resolved')
-      .select('id')
-      .maybeSingle()
-
-    setSavingDecision(false)
-    if (updateError || !updatedReport) {
-      if (visibilityChanged) await setNoteHidden(item.note_id, item.decision === 'content_hidden')
-      setDecisionEditError('결정 수정 내용을 저장하지 못했습니다.')
-      await loadReports()
-      return
-    }
-
-    setDecisionDraft(null)
-    setError('')
-    await loadReports()
   }
 
   const openReportNotice = (item, recipientKind) => {
@@ -726,10 +663,7 @@ function ReportsTab() {
               {item.reporter_name && <p>신고자: {item.reporter_name} · {item.reporter_email}</p>}
               <p>선의 확인: {item.good_faith ? '완료' : '기존 신고에는 기록 없음'}</p>
               {item.status === 'resolved' && (
-                <>
-                  <p>결정: {item.decision === 'content_deleted' ? '과거 댓글 삭제' : item.decision === 'content_hidden' ? '숨김 처리' : item.decision === 'no_action' ? '조치 없음' : '기존 검토 완료'}{item.decision_reason && item.decision_reason !== '관리자 확인' ? ` · ${item.decision_reason}` : ''}</p>
-                  <button type="button" onClick={() => openDecisionEditor(item)} className="mt-1 rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-blue-700">결정·사유 수정</button>
-                </>
+                <p>결정: {item.decision === 'content_deleted' ? '과거 댓글 삭제' : item.decision === 'content_hidden' ? '숨김 처리' : item.decision === 'no_action' ? '조치 없음' : '기존 검토 완료'}</p>
               )}
             </div>
           )}
@@ -819,7 +753,7 @@ function ReportsTab() {
                     {(noticeDraft.intro || '').split(/\n{2,}/).map((paragraph, index) => <p key={`intro-${index}`} className="mb-5 whitespace-pre-line">{paragraph}</p>)}
                     <h5 className="mb-3 mt-7 text-base font-bold text-gray-900">신고 대상 댓글 처리 결과</h5>
                     <article className="mb-6 flex gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
-                      <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f3f4f6] text-[rgba(44,42,39,0.55)]">
+                      <div className="flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f3f4f6] text-[rgba(44,42,39,0.55)]">
                         <UserCircle size={28} weight="fill" />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -847,33 +781,6 @@ function ReportsTab() {
                 {sendingNotice[`${noticeDraft.reportId}:${noticeDraft.recipientKind}`] ? '전송 중…' : '이메일 보내기'}
               </button>
             </footer>
-          </section>
-        </div>
-      )}
-      {decisionDraft && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3" onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !savingDecision) setDecisionDraft(null)
-        }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="decision-edit-title" className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
-            <h3 id="decision-edit-title" className="mb-4 font-semibold text-gray-900">신고 결정 수정</h3>
-            <label className="mb-4 block text-sm font-medium text-gray-700">
-              결정
-              <select value={decisionDraft.decision} disabled={decisionDraft.item.decision === 'content_deleted'} onChange={(event) => setDecisionDraft((draft) => ({ ...draft, decision: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 disabled:bg-gray-100">
-                {decisionDraft.item.decision === 'content_deleted' && <option value="content_deleted">과거 댓글 삭제</option>}
-                {(decisionDraft.item.decision === 'content_hidden' || decisionDraft.item.note_id) && <option value="content_hidden">숨김 처리</option>}
-                <option value="no_action">조치 없음</option>
-              </select>
-              {decisionDraft.item.decision === 'content_deleted' && <span className="mt-1 block text-xs font-normal text-gray-500">과거에 삭제된 댓글은 복구할 수 없어 결정은 바꿀 수 없습니다.</span>}
-            </label>
-            <label className="block text-sm font-medium text-gray-700">
-              결정 사유
-              <textarea value={decisionDraft.reason} maxLength={2000} rows={4} onChange={(event) => setDecisionDraft((draft) => ({ ...draft, reason: event.target.value }))} className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal leading-6 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
-            </label>
-            {decisionEditError && <p role="alert" className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{decisionEditError}</p>}
-            <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setDecisionDraft(null)} disabled={savingDecision} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 disabled:opacity-50">취소</button>
-              <button type="button" onClick={saveEditedDecision} disabled={savingDecision || !decisionDraft.reason.trim()} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{savingDecision ? '저장 중…' : '수정 저장'}</button>
-            </div>
           </section>
         </div>
       )}
