@@ -41,6 +41,18 @@ async function deleteAuthAccount(admin: ReturnType<typeof createClient>, userId:
     .remove([`avatars/${userId}.jpg`])
   if (imageError) throw new Error('Profile image cleanup failed')
 
+  const { error: reporterReportsError } = await admin
+    .from('restaurant_note_reports')
+    .update({ reporter_id: null, reporter_name: null, reporter_email: null })
+    .eq('reporter_id', userId)
+  if (reporterReportsError) throw new Error('Reporter identity cleanup failed')
+
+  const { error: authorReportsError } = await admin
+    .from('restaurant_note_reports')
+    .update({ content_author_id: null, content_author_email: null, content_author_name_snapshot: null })
+    .eq('content_author_id', userId)
+  if (authorReportsError) throw new Error('Reported author identity cleanup failed')
+
   const { error } = await admin.auth.admin.deleteUser(userId)
   if (error && error.status !== 404) throw new Error('Auth account deletion failed')
 }
@@ -198,6 +210,44 @@ serve(async (req) => {
       }
     }
 
+    // Use a calendar-year cutoff for the agreed 12-month retention period.
+    const retentionNow = new Date()
+    const retentionYear = retentionNow.getUTCFullYear() - 1
+    const retentionMonth = retentionNow.getUTCMonth()
+    const retentionDay = Math.min(
+      retentionNow.getUTCDate(),
+      new Date(Date.UTC(retentionYear, retentionMonth + 1, 0)).getUTCDate(),
+    )
+    const retentionCutoff = new Date(Date.UTC(
+      retentionYear,
+      retentionMonth,
+      retentionDay,
+      retentionNow.getUTCHours(),
+      retentionNow.getUTCMinutes(),
+      retentionNow.getUTCSeconds(),
+      retentionNow.getUTCMilliseconds(),
+    )).toISOString()
+
+    let retentionFailedCount = 0
+    const { count: expiredHiddenNoteCount, error: hiddenNoteRetentionError } = await admin
+      .from('restaurant_notes')
+      .delete({ count: 'exact' })
+      .lt('hidden_at', retentionCutoff)
+    if (hiddenNoteRetentionError) {
+      console.error('Hidden note retention cleanup failed')
+      retentionFailedCount += 1
+    }
+
+    const { count: expiredReportCount, error: reportRetentionError } = await admin
+      .from('restaurant_note_reports')
+      .delete({ count: 'exact' })
+      .eq('status', 'resolved')
+      .lt('reviewed_at', retentionCutoff)
+    if (reportRetentionError) {
+      console.error('Resolved content report retention cleanup failed')
+      retentionFailedCount += 1
+    }
+
     const { data: overdueData, error: overdueError } = await admin.rpc('count_overdue_member_retention')
     if (overdueError) {
       console.error('Overdue retention count failed')
@@ -221,7 +271,7 @@ serve(async (req) => {
     const overdueRecordCount = Number(overdueData) || 0
     const remainingQueueCount = Number(pendingQueueCount) || 0
     const success = failedCount === 0 && expiredSignupFailedCount === 0 &&
-      overdueRecordCount === 0 && remainingQueueCount === 0
+      retentionFailedCount === 0 && overdueRecordCount === 0 && remainingQueueCount === 0
 
     return new Response(
       JSON.stringify({
@@ -233,6 +283,9 @@ serve(async (req) => {
         orphaned_pending_email_mappings_deleted_count: Number(cleanedPendingEmailMappings) || 0,
         sheet_synced_count: syncedCount,
         auth_accounts_deleted_count: deletedAuthAccountCount,
+        expired_hidden_notes_deleted_count: Number(expiredHiddenNoteCount) || 0,
+        expired_content_report_records_deleted_count: Number(expiredReportCount) || 0,
+        retention_cleanup_failed_count: retentionFailedCount,
         sheet_failed_count: failedCount,
         overdue_record_count: overdueRecordCount,
         pending_sync_count: remainingQueueCount,
