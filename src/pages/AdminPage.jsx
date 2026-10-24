@@ -418,7 +418,6 @@ function ReportsTab() {
         .from('restaurant_notes')
         .update({ hidden_at: new Date().toISOString() })
         .eq('id', item.note_id)
-        .is('hidden_at', null)
       if (hideError) {
         setError('콘텐츠를 숨기지 못했습니다. 신고 상태는 변경되지 않았습니다.')
         return
