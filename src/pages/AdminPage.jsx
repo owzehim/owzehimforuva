@@ -414,18 +414,33 @@ function ReportsTab() {
     if (!decisionReason) return
     let hiddenNoteId = null
     if (decision === 'content_hidden' && item.note_id && item.target && !item.target.is_snapshot) {
-      const { data: hiddenNote, error: hideError } = await supabase
+      const { error: hideError } = await supabase
         .from('restaurant_notes')
         .update({ hidden_at: new Date().toISOString() })
         .eq('id', item.note_id)
         .is('hidden_at', null)
-        .select('id')
-        .maybeSingle()
-      if (hideError || !hiddenNote) {
+      if (hideError) {
         setError('콘텐츠를 숨기지 못했습니다. 신고 상태는 변경되지 않았습니다.')
         return
       }
-      hiddenNoteId = hiddenNote.id
+
+      // Raw notes intentionally grant column-level SELECT only, so PostgREST
+      // cannot use UPDATE ... RETURNING. Confirm the hide through the safe view,
+      // which omits hidden notes and does not expose private columns.
+      const { data: stillVisibleNote, error: verifyHideError } = await supabase
+        .from('restaurant_notes_safe')
+        .select('id')
+        .eq('id', item.note_id)
+        .maybeSingle()
+      if (verifyHideError || stillVisibleNote) {
+        await supabase
+          .from('restaurant_notes')
+          .update({ hidden_at: null })
+          .eq('id', item.note_id)
+        setError('콘텐츠를 숨기지 못했습니다. 신고 상태는 변경되지 않았습니다.')
+        return
+      }
+      hiddenNoteId = item.note_id
     }
 
     const { data: { user } } = await supabase.auth.getUser()
