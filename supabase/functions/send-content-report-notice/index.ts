@@ -26,6 +26,14 @@ function formatEmailParagraphs(message: string): string {
   ).join('')
 }
 
+function formatNoteDisplayDate(value: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Amsterdam',
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(value))
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin')
   const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
@@ -94,7 +102,7 @@ serve(async (req) => {
 
     const { data: report, error: reportError } = await admin
       .from('restaurant_note_reports')
-      .select('id, reporter_email, content_author_email, content_author_name_snapshot, note_snapshot, status, decision, decision_reason')
+      .select('id, note_id, reporter_email, content_author_email, content_author_name_snapshot, note_snapshot, status, decision')
       .eq('id', reportId)
       .maybeSingle()
     if (reportError) {
@@ -113,13 +121,25 @@ serve(async (req) => {
 
     const author = report.content_author_name_snapshot || '익명'
     const reportedComment = report.note_snapshot || '신고된 댓글 내용을 확인할 수 없습니다.'
+    let commentDate = ''
+    if (report.note_id) {
+      const { data: note, error: noteError } = await admin
+        .from('restaurant_notes')
+        .select('created_at')
+        .eq('id', report.note_id)
+        .maybeSingle()
+      if (!noteError && note?.created_at) commentDate = formatNoteDisplayDate(note.created_at)
+    }
     const title = recipientKind === 'reporter' ? '신고 처리 결과' : '게시물 처리 안내'
-    const html = `<div style="margin:0;padding:0;background:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#111111;"><div style="max-width:520px;margin:0 auto;padding:44px 32px 56px;"><img src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png" alt="UvA-IN" width="44" height="44" style="display:block;width:44px;height:44px;object-fit:contain;margin:0 0 46px;"/><h1 style="margin:0 0 34px;font-size:34px;line-height:1.12;font-weight:800;letter-spacing:-0.5px;color:#050505;">${title}</h1><div style="height:1px;background:#e5e7eb;margin-bottom:34px;"></div>${formatEmailParagraphs(intro)}<h2 style="margin:28px 0 14px;font-size:16px;line-height:1.5;font-weight:700;color:#111111;">신고 대상 댓글 처리 결과</h2><div style="margin:0 0 24px;padding:16px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td valign="top" style="width:32px;padding:0 10px 0 0;"><div style="width:32px;height:32px;overflow:hidden;border-radius:50%;background:#f3f4f6;text-align:center;"><div style="width:10px;height:10px;margin:5px auto 1px;border-radius:50%;background:#8a8461;"></div><div style="width:20px;height:11px;margin:0 auto;border-radius:12px 12px 6px 6px;background:#8a8461;"></div></div></td><td valign="top" style="padding:0;"><div style="margin:0;font-size:11px;line-height:16px;font-weight:700;color:#374151;">${escapeHtml(author)}</div><div style="margin:4px 0 0;font-size:13px;line-height:1.6;color:#4b5563;white-space:pre-wrap;overflow-wrap:anywhere;">${escapeHtml(reportedComment)}</div></td></tr></table></div><p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#4b5563;"><strong style="color:#111111;">처리 결과: </strong>${escapeHtml(outcome).replaceAll('\n', '<br>')}</p><p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:#6b7280;">안내드린 내용과 관련하여 추가 문의가 있으시다면 아래 경로로 연락해 주세요.</p><p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#6b7280;"><strong style="color:#111111;">추가 문의: </strong>${escapeHtml(contact)}</p><p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:#6b7280;">감사합니다.</p><p style="margin:0;font-size:14px;line-height:1.7;font-weight:700;color:#374151;">UvA-IN App 팀 드림</p></div></div>`
+    const dateCell = commentDate
+      ? `<td align="right" style="padding:0 0 0 8px;white-space:nowrap;font-size:10px;line-height:16px;color:#9ca3af;">${escapeHtml(commentDate)}</td>`
+      : ''
+    const html = `<div style="margin:0;padding:0;background:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#111111;"><div style="max-width:520px;margin:0 auto;padding:44px 32px 56px;"><img src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png" alt="UvA-IN" width="44" height="44" style="display:block;width:44px;height:44px;object-fit:contain;margin:0 0 46px;"/><h1 style="margin:0 0 34px;font-size:34px;line-height:1.12;font-weight:800;letter-spacing:-0.5px;color:#050505;">${title}</h1><div style="height:1px;background:#e5e7eb;margin-bottom:34px;"></div>${formatEmailParagraphs(intro)}<h2 style="margin:28px 0 14px;font-size:16px;line-height:1.5;font-weight:700;color:#111111;">신고 대상 댓글 처리 결과</h2><div style="margin:0 0 24px;padding:8px 12px;border-radius:12px;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.12);"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td valign="top" style="width:32px;padding:2px 10px 0 0;"><div style="width:32px;height:32px;overflow:hidden;border-radius:50%;background:#f3f4f6;text-align:center;"><div style="width:10px;height:10px;margin:5px auto 1px;border-radius:50%;background:#8a8461;"></div><div style="width:20px;height:11px;margin:0 auto;border-radius:12px 12px 6px 6px;background:#8a8461;"></div></div></td><td valign="top" style="padding:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr><td style="padding:0;font-size:11px;line-height:16px;font-weight:700;color:#374151;">${escapeHtml(author)}</td>${dateCell}</tr><tr><td colspan="2" style="padding:4px 0 0;font-size:12px;line-height:1.6;color:#4b5563;white-space:pre-wrap;overflow-wrap:anywhere;">${escapeHtml(reportedComment).replaceAll('\n', '<br>')}</td></tr></table></td></tr></table></div><p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#4b5563;"><strong style="color:#111111;">처리 결과: </strong>${escapeHtml(outcome).replaceAll('\n', '<br>')}</p><p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:#6b7280;">안내드린 내용과 관련하여 추가 문의가 있으시다면 아래 경로로 연락해 주세요.</p><p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#6b7280;"><strong style="color:#111111;">추가 문의: </strong>${escapeHtml(contact)}</p><p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:#6b7280;">감사합니다.</p><p style="margin:0;font-size:14px;line-height:1.7;font-weight:700;color:#374151;">UvA-IN App 팀 드림</p></div></div>`
     const text = [
       intro,
       '',
       '[신고 대상 댓글 처리 결과]',
-      `${author}: ${reportedComment}`,
+      `${author}${commentDate ? ` · ${commentDate}` : ''}: ${reportedComment}`,
       `처리 결과: ${outcome}`,
       '',
       '안내드린 내용과 관련하여 추가 문의가 있으시다면 아래 경로로 연락해 주세요.',
