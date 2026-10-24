@@ -308,7 +308,7 @@ function ReportsTab() {
         .order('created_at', { ascending: false }),
       supabase
         .from('restaurant_note_reports')
-        .select('id, note_id, created_at, reviewed_at, reporter_name, reporter_email, reason, explanation, good_faith, note_snapshot, restaurant_name_snapshot, content_author_email, status, decision, decision_reason')
+        .select('id, note_id, created_at, reviewed_at, reporter_name, reporter_email, reason, explanation, good_faith, note_snapshot, restaurant_name_snapshot, content_author_email, content_author_name_snapshot, status, decision, decision_reason')
         .order('reviewed_at', { ascending: true, nullsFirst: true })
         .order('created_at', { ascending: false })
     ])
@@ -357,8 +357,8 @@ function ReportsTab() {
         kind: '한마디',
         target: notesById.get(report.note_id) || (report.note_snapshot ? {
           body: report.note_snapshot,
-          username: '삭제된 콘텐츠',
-          is_anonymous: true,
+          username: report.content_author_name_snapshot || '익명',
+          is_anonymous: report.content_author_name_snapshot === '익명',
           is_snapshot: true,
         } : null),
       })),
@@ -413,45 +413,29 @@ function ReportsTab() {
 
   const resolveNoteReport = async (item, decision) => {
     const decisionReason = window.prompt(
-      decision === 'content_hidden' ? '콘텐츠를 숨긴 이유를 입력해 주세요.' : '조치하지 않은 이유를 입력해 주세요.',
+      decision === 'content_deleted' ? '댓글을 삭제한 사유를 입력해 주세요.' : '조치하지 않은 이유를 입력해 주세요.',
     )?.trim()
     if (!decisionReason) return
-    let hiddenNoteId = null
-    if (decision === 'content_hidden' && item.note_id && item.target && !item.target.is_snapshot) {
-      const { error: hideError } = await supabase
-        .from('restaurant_notes')
-        .update({ hidden_at: new Date().toISOString() })
-        .eq('id', item.note_id)
-      if (hideError) {
-        setError('콘텐츠를 숨기지 못했습니다. 신고 상태는 변경되지 않았습니다.')
-        return
-      }
-
-      // Raw notes intentionally grant column-level SELECT only, so PostgREST
-      // cannot use UPDATE ... RETURNING. Confirm the hide through the safe view,
-      // which omits hidden notes and does not expose private columns.
-      const { data: stillVisibleNote, error: verifyHideError } = await supabase
-        .from('restaurant_notes_safe')
-        .select('id')
-        .eq('id', item.note_id)
-        .maybeSingle()
-      if (verifyHideError || stillVisibleNote) {
-        await supabase
-          .from('restaurant_notes')
-          .update({ hidden_at: null })
-          .eq('id', item.note_id)
-        setError('콘텐츠를 숨기지 못했습니다. 신고 상태는 변경되지 않았습니다.')
-        return
-      }
-      hiddenNoteId = item.note_id
-    }
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      if (hiddenNoteId) await supabase.from('restaurant_notes').update({ hidden_at: null }).eq('id', hiddenNoteId)
       setError('로그인이 필요합니다.')
       return
     }
+
+    if (decision === 'content_deleted' && item.note_id && item.target && !item.target.is_snapshot) {
+      const { data: deletedNote, error: deleteError } = await supabase
+        .from('restaurant_notes')
+        .delete()
+        .eq('id', item.note_id)
+        .select('id')
+        .maybeSingle()
+      if (deleteError || !deletedNote) {
+        setError('댓글을 삭제하지 못했습니다. 신고 상태는 변경되지 않았습니다.')
+        return
+      }
+    }
+
     const { data: updatedReport, error: updateError } = await supabase
       .from('restaurant_note_reports')
       .update({
@@ -467,8 +451,8 @@ function ReportsTab() {
       .maybeSingle()
 
     if (updateError || !updatedReport) {
-      if (hiddenNoteId) await supabase.from('restaurant_notes').update({ hidden_at: null }).eq('id', hiddenNoteId)
       setError('신고 처리 결과를 저장하지 못했습니다.')
+      await loadReports()
       return
     }
     setError('')
@@ -476,49 +460,48 @@ function ReportsTab() {
   }
 
   const openReportNotice = (item, recipientKind) => {
-    const hidden = item.decision === 'content_hidden'
-    const venue = item.restaurant_name_snapshot || 'UvA-IN'
+    const deleted = item.decision === 'content_deleted'
+    const previouslyHidden = item.decision === 'content_hidden'
     const reason = item.decision_reason || '신고 내용을 검토해 결정했습니다.'
     const subject = recipientKind === 'reporter'
       ? '[UvA-IN] 신고 처리 결과'
       : '[UvA-IN] 게시물 처리 안내'
-    const message = recipientKind === 'reporter'
-      ? [
-          '신고해 주셔서 감사합니다.',
-          '',
-          `신고 대상: ${venue}`,
-          `처리 결과: ${hidden ? '해당 한마디를 다른 회원에게 보이지 않도록 숨겼습니다.' : '검토 결과 별도 조치를 하지 않았습니다.'}`,
-          '',
-          '추가 문의: uvaksa16@gmail.com',
-          '',
-          'Thank you for your report.',
-          `Outcome: ${hidden ? 'The reported note has been hidden from other members.' : 'No action was taken after review.'}`,
-          'Contact: uvaksa16@gmail.com',
-        ].join('\n')
-      : [
-          '회원님이 작성한 한마디가 신고 검토 후 숨김 처리되었습니다.',
-          `매장: ${venue}`,
-          `사유: ${reason}`,
-          '이 결정에 이의를 제기하거나 문의하려면 uvaksa16@gmail.com 으로 연락해 주세요.',
-          '',
-          'Your note was hidden after a report review.',
-          `Reason: ${reason}`,
-          'To appeal or ask a question, contact uvaksa16@gmail.com.',
-        ].join('\n')
+    const intro = recipientKind === 'reporter'
+      ? "안녕하세요, UvA-IN App 관리자입니다.\n'가본 사람 한마디' 장소 댓글 신고 건에 대해 안내드립니다.\n건강하고 유익한 커뮤니티 환경을 위해 제보해 주셔서 감사합니다."
+      : "안녕하세요, UvA-IN App 관리자입니다.\n회원님이 작성하신 '가본 사람 한마디' 댓글에 대한 신고 검토 결과를 안내드립니다."
+    const outcome = recipientKind === 'reporter'
+      ? deleted
+        ? '커뮤니티 운영 정책 위반으로 확인되어 삭제 조치되었습니다.'
+        : previouslyHidden
+          ? '검토 당시 해당 댓글을 다른 회원에게 보이지 않도록 숨겼습니다.'
+          : '검토 결과 운영 정책 위반 사항이 확인되지 않아 조치 없이 유지되었습니다.'
+      : deleted
+        ? `커뮤니티 운영 정책 위반으로 확인되어 삭제 조치되었습니다.\n삭제 사유: ${reason}`
+        : `회원님의 댓글은 삭제되지 않았으며, 현재 앱에서 계속 확인할 수 있습니다.\n검토 사유: ${reason}`
 
     setNoticeSendError('')
-    setNoticeDraft({ reportId: item.id, recipientKind, recipient: recipientKind === 'reporter' ? item.reporter_email : item.content_author_email, subject, message })
+    setNoticeDraft({
+      reportId: item.id,
+      recipientKind,
+      recipient: recipientKind === 'reporter' ? item.reporter_email : item.content_author_email,
+      author: item.content_author_name_snapshot || (item.target?.is_anonymous ? '익명' : item.target?.username) || '익명',
+      content: item.note_snapshot || item.target?.body || '',
+      subject,
+      intro,
+      outcome,
+      contact: 'uvaksa16@gmail.com',
+    })
   }
 
   const sendReportNotice = async () => {
     if (!noticeDraft) return
-    const { reportId, recipientKind, subject, message } = noticeDraft
+    const { reportId, recipientKind, subject, intro, outcome, contact } = noticeDraft
     const key = `${reportId}:${recipientKind}`
     if (sendingNotice[key]) return
     setSendingNotice((current) => ({ ...current, [key]: true }))
     setNoticeSendError('')
     const { data, error: sendError } = await supabase.functions.invoke('send-content-report-notice', {
-      body: { reportId, recipientKind, subject, message },
+      body: { reportId, recipientKind, subject, intro, outcome, contact },
     })
     setSendingNotice((current) => ({ ...current, [key]: false }))
     if (sendError || !data?.success) {
@@ -559,11 +542,9 @@ function ReportsTab() {
               <div className="flex shrink-0 gap-2">
                 {item.kind === '한마디' ? (
                   <>
-                    {item.note_id && item.target && !item.target.is_snapshot && (
-                      <button onClick={() => resolveNoteReport(item, 'content_hidden')} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600">
-                        내용 숨김
+                    <button onClick={() => resolveNoteReport(item, 'content_deleted')} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600">
+                        {item.note_id && item.target && !item.target.is_snapshot ? '댓글 삭제' : '삭제 처리 기록'}
                       </button>
-                    )}
                     <button onClick={() => resolveNoteReport(item, 'no_action')} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">
                       조치 없음
                     </button>
@@ -588,7 +569,7 @@ function ReportsTab() {
               {item.reporter_name && <p>신고자: {item.reporter_name} · {item.reporter_email}</p>}
               <p>선의 확인: {item.good_faith ? '완료' : '기존 신고에는 기록 없음'}</p>
               {item.status === 'resolved' && (
-                <p>결정: {item.decision === 'content_hidden' ? '콘텐츠 숨김' : item.decision === 'no_action' ? '조치 없음' : '기존 검토 완료'}{item.decision_reason ? ` · ${item.decision_reason}` : ''}</p>
+                <p>결정: {item.decision === 'content_deleted' ? '댓글 삭제' : item.decision === 'content_hidden' ? '기존 콘텐츠 숨김' : item.decision === 'no_action' ? '조치 없음' : '기존 검토 완료'}{item.decision_reason ? ` · ${item.decision_reason}` : ''}</p>
               )}
             </div>
           )}
@@ -611,7 +592,7 @@ function ReportsTab() {
                   {noticeStatus[`${item.id}:reporter`] === 'sent' ? '신고자 이메일 전송 완료' : '신고자에게 결과 이메일 보내기'}
                 </button>
               )}
-              {item.decision === 'content_hidden' && item.content_author_email && (
+              {(item.decision === 'content_deleted' || item.decision === 'content_hidden') && item.content_author_email && (
                 <button type="button" onClick={() => openReportNotice(item, 'author')} disabled={sendingNotice[`${item.id}:author`] || noticeStatus[`${item.id}:author`] === 'sent'} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-blue-700 disabled:opacity-50">
                   {noticeStatus[`${item.id}:author`] === 'sent' ? '작성자 이메일 전송 완료' : '작성자에게 조치 이메일 보내기'}
                 </button>
@@ -640,8 +621,16 @@ function ReportsTab() {
                   <input value={noticeDraft.subject} maxLength={200} onChange={(event) => setNoticeDraft((draft) => ({ ...draft, subject: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
                 </label>
                 <label className="block text-sm font-medium text-gray-700">
-                  이메일 내용
-                  <textarea value={noticeDraft.message} maxLength={10000} rows={13} onChange={(event) => setNoticeDraft((draft) => ({ ...draft, message: event.target.value }))} className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal leading-6 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                  안내 문구
+                  <textarea value={noticeDraft.intro} maxLength={4000} rows={5} onChange={(event) => setNoticeDraft((draft) => ({ ...draft, intro: event.target.value }))} className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal leading-6 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                </label>
+                <label className="block text-sm font-medium text-gray-700">
+                  처리 결과
+                  <textarea value={noticeDraft.outcome} maxLength={3000} rows={4} onChange={(event) => setNoticeDraft((draft) => ({ ...draft, outcome: event.target.value }))} className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal leading-6 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                </label>
+                <label className="block text-sm font-medium text-gray-700">
+                  문의 이메일
+                  <input type="email" value={noticeDraft.contact} maxLength={320} onChange={(event) => setNoticeDraft((draft) => ({ ...draft, contact: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
                 </label>
                 {noticeSendError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{noticeSendError}</p>}
               </div>
@@ -650,17 +639,31 @@ function ReportsTab() {
                 <p className="mx-auto mb-3 max-w-[520px] break-words text-xs text-gray-600">제목: {noticeDraft.subject || '(제목 없음)'}</p>
                 <div className="mx-auto min-h-[440px] max-w-[520px] bg-white px-7 py-9 font-sans text-[#111111] shadow-sm sm:px-8">
                   <img src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png" alt="UvA-IN" width="44" height="44" className="mb-11 block h-11 w-11 object-contain" />
-                  <h4 className="mb-8 text-[30px] font-extrabold leading-tight tracking-tight text-[#050505]">{noticeDraft.recipientKind === 'reporter' ? 'Report update' : 'Content moderation notice'}</h4>
+                  <h4 className="mb-8 text-[30px] font-extrabold leading-tight tracking-tight text-[#050505]">{noticeDraft.recipientKind === 'reporter' ? '신고 처리 결과' : '게시물 처리 안내'}</h4>
                   <div className="mb-8 h-px bg-gray-200" />
                   <div className="break-words text-sm leading-7 text-gray-600">
-                    {(noticeDraft.message || '').split(/\n{2,}/).map((paragraph, index) => <p key={index} className="mb-5 whitespace-pre-line">{paragraph}</p>)}
+                    {(noticeDraft.intro || '').split(/\n{2,}/).map((paragraph, index) => <p key={`intro-${index}`} className="mb-5 whitespace-pre-line">{paragraph}</p>)}
+                    <h5 className="mb-3 mt-7 text-base font-bold text-gray-900">신고 대상 댓글 처리 결과</h5>
+                    <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <p className="mb-3 text-xs font-semibold text-gray-500">신고 대상</p>
+                      <div className="mb-2 flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-600">{noticeDraft.author.slice(0, 1)}</div>
+                        <span className="font-medium text-gray-800">{noticeDraft.author}</span>
+                      </div>
+                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700">{noticeDraft.content}</p>
+                    </div>
+                    <p className="mb-6 whitespace-pre-line"><strong className="text-gray-900">처리 결과: </strong>{noticeDraft.outcome}</p>
+                    <p className="mb-2">안내드린 내용과 관련하여 추가 문의가 있으시다면 아래 경로로 연락해 주세요.</p>
+                    <p className="mb-6"><strong className="text-gray-900">추가 문의: </strong>{noticeDraft.contact}</p>
+                    <p className="mb-1">감사합니다.</p>
+                    <p className="font-medium text-gray-800">UvA-IN App 팀 드림</p>
                   </div>
                 </div>
               </div>
             </div>
             <footer className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
               <button type="button" onClick={() => setNoticeDraft(null)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">취소</button>
-              <button type="button" onClick={sendReportNotice} disabled={!noticeDraft.subject.trim() || !noticeDraft.message.trim() || sendingNotice[`${noticeDraft.reportId}:${noticeDraft.recipientKind}`]} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">
+              <button type="button" onClick={sendReportNotice} disabled={!noticeDraft.subject.trim() || !noticeDraft.intro.trim() || !noticeDraft.outcome.trim() || !noticeDraft.contact.trim() || sendingNotice[`${noticeDraft.reportId}:${noticeDraft.recipientKind}`]} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">
                 {sendingNotice[`${noticeDraft.reportId}:${noticeDraft.recipientKind}`] ? '전송 중…' : '이메일 보내기'}
               </button>
             </footer>

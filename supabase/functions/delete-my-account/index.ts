@@ -170,7 +170,7 @@ serve(async (req) => {
 
     const { error: authorReportsError } = await admin
       .from('restaurant_note_reports')
-      .update({ content_author_id: null, content_author_email: null })
+      .update({ content_author_id: null, content_author_email: null, content_author_name_snapshot: null })
       .eq('content_author_id', user.id)
     if (authorReportsError) throw new Error('Reported author identity cleanup failed')
 
