@@ -64,6 +64,12 @@ export function GoodToKnowNotesPanel({
   const [editingNote, setEditingNote] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [reportTarget, setReportTarget] = useState(null)
+  const [reportReason, setReportReason] = useState('community_guidelines')
+  const [reportExplanation, setReportExplanation] = useState('')
+  const [reporterName, setReporterName] = useState('')
+  const [reporterEmail, setReporterEmail] = useState('')
+  const [reportSubmitting, setReportSubmitting] = useState(false)
   const [todayKey, setTodayKey] = useState('')
   const touchStartRef = useRef(null)
   const hasNoteToday = notes.some((note) => (
@@ -266,15 +272,48 @@ export function GoodToKnowNotesPanel({
     }
   }
 
-  const reportNote = async (noteId) => {
-    if (!userId || !window.confirm('이 한마디를 신고할까요?')) return
+  const openReport = async (note) => {
+    if (!userId) return
+    setError('')
+    setReportTarget(note)
+    setReportReason('community_guidelines')
+    setReportExplanation('')
+    setReporterName(username || '')
+    const { data } = await supabase.auth.getUser()
+    setReporterEmail(data?.user?.email || '')
+  }
+
+  const reportNote = async (event) => {
+    event.preventDefault()
+    if (!userId || !reportTarget || reportSubmitting) return
+    if (reportExplanation.trim().length < 10) {
+      setError('신고 내용을 10자 이상 입력해 주세요.')
+      return
+    }
+    if (!reporterName.trim()) {
+      setError('신고자 이름을 입력해 주세요.')
+      return
+    }
+    setReportSubmitting(true)
+    setError('')
     const { error: reportError } = await supabase
       .from('restaurant_note_reports')
-      .insert({ note_id: noteId, reporter_id: userId })
+      .insert({
+        note_id: reportTarget.id,
+        reporter_id: userId,
+        reporter_name: reporterName.trim(),
+        reason: reportReason,
+        explanation: reportExplanation.trim(),
+        good_faith: true,
+      })
 
+    setReportSubmitting(false)
     if (reportError?.code === '23505') setError('이미 신고한 한마디예요.')
-    else if (reportError) setError('신고하지 못했어요.')
-    else setError('한마디를 신고했어요.')
+    else if (reportError) setError('신고하지 못했어요. 잠시 후 다시 시도해 주세요.')
+    else {
+      setReportTarget(null)
+      setError('신고가 접수되었습니다. 검토 결과는 계정 이메일로 안내됩니다.')
+    }
   }
 
   const handleNotesTouchStart = (event) => {
@@ -397,7 +436,7 @@ export function GoodToKnowNotesPanel({
                       </>
                     )}
                     {!isMine && userId && (
-                      <button type="button" aria-label="한마디 신고" onClick={() => reportNote(note.id)} className="text-gray-400"><Flag size={13} /></button>
+                      <button type="button" aria-label="한마디 신고" onClick={() => openReport(note)} className="text-gray-400"><Flag size={13} /></button>
                     )}
                     {isAdmin && (
                       <button type="button" aria-label="관리자 한마디 삭제" onClick={() => deleteNote(note.id)} className="text-red-400"><Trash size={13} /></button>
@@ -414,6 +453,84 @@ export function GoodToKnowNotesPanel({
       {error && <p className="mt-2 text-center text-[11px] text-red-500">{error}</p>}
       {!canComment && userId && (
         <p className="mt-2 text-center text-[11px] text-gray-400">활성 회원만 한마디를 남길 수 있어요.</p>
+      )}
+
+      {reportTarget && createPortal(
+        <div
+          className="fixed inset-0 z-[1450] flex items-center justify-center overflow-y-auto bg-black/45 px-4 py-6"
+          onClick={() => setReportTarget(null)}
+        >
+          <form
+            onSubmit={reportNote}
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-[360px] space-y-3 rounded-2xl bg-white p-4 shadow-xl"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-gray-800">한마디 신고</p>
+              <button type="button" onClick={() => setReportTarget(null)} aria-label="신고창 닫기" className="text-gray-400">
+                <X size={17} weight="bold" />
+              </button>
+            </div>
+            <p className="rounded-lg bg-gray-50 p-2 text-xs leading-relaxed text-gray-600">
+              {reportTarget.body}
+            </p>
+            <label className="block text-xs font-medium text-gray-600">
+              신고 사유
+              <select
+                value={reportReason}
+                onChange={(event) => setReportReason(event.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white p-2.5 text-sm"
+              >
+                <option value="community_guidelines">커뮤니티 가이드라인 위반</option>
+                <option value="illegal_threat">위협 또는 괴롭힘</option>
+                <option value="privacy">개인정보 또는 사생활 침해</option>
+                <option value="intellectual_property">저작권 또는 지식재산권 침해</option>
+                <option value="other_illegal">그 밖의 불법 콘텐츠</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-gray-600">
+              설명
+              <textarea
+                value={reportExplanation}
+                onChange={(event) => setReportExplanation(event.target.value)}
+                maxLength={2000}
+                rows={3}
+                required
+                minLength={10}
+                placeholder="이 콘텐츠가 문제라고 생각하는 이유를 적어 주세요"
+                className="mt-1.5 w-full resize-none rounded-lg border border-gray-200 p-2.5 text-sm outline-none focus:border-orange-400"
+              />
+            </label>
+            <label className="block text-xs font-medium text-gray-600">
+              신고자 이름
+              <input
+                value={reporterName}
+                onChange={(event) => setReporterName(event.target.value)}
+                maxLength={100}
+                required
+                className="mt-1.5 w-full rounded-lg border border-gray-200 p-2.5 text-sm"
+              />
+            </label>
+            <p className="text-[11px] text-gray-500">회신 이메일: {reporterEmail || '확인할 수 없음'}</p>
+            <label className="flex items-start gap-2 text-xs leading-relaxed text-gray-600">
+              <input type="checkbox" required className="mt-0.5" />
+              선의로 신고하며, 입력한 내용이 정확하고 완전하다고 확인합니다.
+            </label>
+            <div className="flex justify-end gap-2 pt-1">
+              <button type="button" onClick={() => setReportTarget(null)} className="rounded-full px-3 py-2 text-xs text-gray-500">
+                취소
+              </button>
+              <button
+                type="submit"
+                disabled={reportSubmitting || reportExplanation.trim().length < 10 || !reporterName.trim() || !reporterEmail}
+                className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+              >
+                {reportSubmitting ? '접수 중...' : '신고 접수'}
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body,
       )}
 
       {composerOpen && createPortal(

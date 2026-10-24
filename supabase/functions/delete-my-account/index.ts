@@ -159,6 +159,21 @@ serve(async (req) => {
       .or(`old_user_id.eq.${user.id},new_user_id.eq.${user.id}`)
     if (pendingChangesError) throw new Error('Pending email change cleanup failed')
 
+    // Keep the minimum report record so moderation history survives, while
+    // removing the departing member's direct contact details from it.
+    stage = 'content_report_identity_cleanup'
+    const { error: reporterReportsError } = await admin
+      .from('restaurant_note_reports')
+      .update({ reporter_id: null, reporter_name: null, reporter_email: null })
+      .eq('reporter_id', user.id)
+    if (reporterReportsError) throw new Error('Reporter identity cleanup failed')
+
+    const { error: authorReportsError } = await admin
+      .from('restaurant_note_reports')
+      .update({ content_author_id: null, content_author_email: null })
+      .eq('content_author_id', user.id)
+    if (authorReportsError) throw new Error('Reported author identity cleanup failed')
+
     // This retry queue deliberately has no Auth foreign key. Remove any stale
     // retention entry so a later scheduled run does not revisit this account.
     stage = 'privacy_queue_cleanup'
