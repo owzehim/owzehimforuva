@@ -41,6 +41,18 @@ async function deleteAuthAccount(admin: ReturnType<typeof createClient>, userId:
     .remove([`avatars/${userId}.jpg`])
   if (imageError) throw new Error('Profile image cleanup failed')
 
+  const { error: reporterReportsError } = await admin
+    .from('restaurant_note_reports')
+    .update({ reporter_id: null, reporter_name: null, reporter_email: null })
+    .eq('reporter_id', userId)
+  if (reporterReportsError) throw new Error('Reporter identity cleanup failed')
+
+  const { error: authorReportsError } = await admin
+    .from('restaurant_note_reports')
+    .update({ content_author_id: null, content_author_email: null })
+    .eq('content_author_id', userId)
+  if (authorReportsError) throw new Error('Reported author identity cleanup failed')
+
   const { error } = await admin.auth.admin.deleteUser(userId)
   if (error && error.status !== 404) throw new Error('Auth account deletion failed')
 }
@@ -198,6 +210,17 @@ serve(async (req) => {
       }
     }
 
+    const reportRetentionCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+    const { count: expiredReportCount, error: reportRetentionError } = await admin
+      .from('restaurant_note_reports')
+      .delete({ count: 'exact' })
+      .eq('status', 'resolved')
+      .lt('reviewed_at', reportRetentionCutoff)
+    if (reportRetentionError) {
+      console.error('Resolved content report retention cleanup failed')
+      failedCount += 1
+    }
+
     const { data: overdueData, error: overdueError } = await admin.rpc('count_overdue_member_retention')
     if (overdueError) {
       console.error('Overdue retention count failed')
@@ -233,6 +256,7 @@ serve(async (req) => {
         orphaned_pending_email_mappings_deleted_count: Number(cleanedPendingEmailMappings) || 0,
         sheet_synced_count: syncedCount,
         auth_accounts_deleted_count: deletedAuthAccountCount,
+        expired_content_report_records_deleted_count: Number(expiredReportCount) || 0,
         sheet_failed_count: failedCount,
         overdue_record_count: overdueRecordCount,
         pending_sync_count: remainingQueueCount,

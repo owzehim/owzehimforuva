@@ -13,6 +13,7 @@ import EmailConfirmedPage from './pages/EmailConfirmedPage'
 import SettingsPage from './pages/SettingsPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import ContentReportPage from './pages/ContentReportPage'
 import { useSingleDeviceSession } from './hooks/useSingleDeviceSession'
 import { useTheme } from './hooks/useTheme'
 import { WifiX } from '@phosphor-icons/react'
@@ -239,6 +240,7 @@ function App() {
         />
 
         <Route path="/public" element={<PublicPage />} />
+        <Route path="/report-content" element={<ContentReportPage />} />
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/email-confirmed" element={<EmailConfirmedPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />

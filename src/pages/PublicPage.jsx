@@ -783,6 +783,14 @@ function MembershipTab() {
         </button>
 
         <button
+          type="button"
+          onClick={() => navigate('/report-content')}
+          className="block w-full text-center text-xs text-gray-500 underline underline-offset-2"
+        >
+          콘텐츠 신고
+        </button>
+
+        <button
   onClick={() => navigate('/register')}
   style={{ display: 'none' }}
   className="

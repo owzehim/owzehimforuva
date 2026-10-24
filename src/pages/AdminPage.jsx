@@ -304,7 +304,7 @@ function ReportsTab() {
         .order('created_at', { ascending: false }),
       supabase
         .from('restaurant_note_reports')
-        .select('id, note_id, created_at, reviewed_at')
+        .select('id, note_id, created_at, reviewed_at, reporter_name, reporter_email, reason, explanation, good_faith, note_snapshot, restaurant_name_snapshot, content_author_email, status, decision, decision_reason')
         .order('reviewed_at', { ascending: true, nullsFirst: true })
         .order('created_at', { ascending: false })
     ])
@@ -318,7 +318,7 @@ function ReportsTab() {
     const commentReports = commentResult.data || []
     const noteReports = noteResult.data || []
     const commentIds = commentReports.map((report) => report.comment_id)
-    const noteIds = noteReports.map((report) => report.note_id)
+    const noteIds = noteReports.map((report) => report.note_id).filter(Boolean)
     const [commentsResult, notesResult] = await Promise.all([
       commentIds.length
         ? supabase
@@ -351,7 +351,12 @@ function ReportsTab() {
       ...noteReports.map((report) => ({
         ...report,
         kind: '한마디',
-        target: notesById.get(report.note_id),
+        target: notesById.get(report.note_id) || (report.note_snapshot ? {
+          body: report.note_snapshot,
+          username: '삭제된 콘텐츠',
+          is_anonymous: true,
+          is_snapshot: true,
+        } : null),
       })),
     ].sort((a, b) => {
       const reviewStateOrder = Number(Boolean(a.reviewed_at)) - Number(Boolean(b.reviewed_at))
@@ -402,6 +407,81 @@ function ReportsTab() {
     await loadReports()
   }
 
+  const resolveNoteReport = async (item, decision) => {
+    const decisionReason = window.prompt(
+      decision === 'content_hidden' ? '콘텐츠를 숨긴 이유를 입력해 주세요.' : '조치하지 않은 이유를 입력해 주세요.',
+    )?.trim()
+    if (!decisionReason) return
+    if (decisionReason.length < 5) {
+      setError('결정 사유를 5자 이상 입력해 주세요.')
+      return
+    }
+
+    let hiddenNoteId = null
+    if (decision === 'content_hidden' && item.note_id && item.target && !item.target.is_snapshot) {
+      const { data: hiddenNote, error: hideError } = await supabase
+        .from('restaurant_notes')
+        .update({ hidden_at: new Date().toISOString() })
+        .eq('id', item.note_id)
+        .is('hidden_at', null)
+        .select('id')
+        .maybeSingle()
+      if (hideError || !hiddenNote) {
+        setError('콘텐츠를 숨기지 못했습니다. 신고 상태는 변경되지 않았습니다.')
+        return
+      }
+      hiddenNoteId = hiddenNote.id
+    }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      if (hiddenNoteId) await supabase.from('restaurant_notes').update({ hidden_at: null }).eq('id', hiddenNoteId)
+      setError('로그인이 필요합니다.')
+      return
+    }
+    const { data: updatedReport, error: updateError } = await supabase
+      .from('restaurant_note_reports')
+      .update({
+        status: 'resolved',
+        decision,
+        decision_reason: decisionReason,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: user.id,
+      })
+      .eq('id', item.id)
+      .is('reviewed_at', null)
+      .select('id')
+      .maybeSingle()
+
+    if (updateError || !updatedReport) {
+      if (hiddenNoteId) await supabase.from('restaurant_notes').update({ hidden_at: null }).eq('id', hiddenNoteId)
+      setError('신고 처리 결과를 저장하지 못했습니다.')
+      return
+    }
+    setError('')
+    await loadReports()
+  }
+
+  const decisionNoticeHref = (email, item, recipientKind) => {
+    if (!email) return ''
+    const hidden = item.decision === 'content_hidden'
+    const subject = recipientKind === 'reporter'
+      ? '[UvA-IN] 신고 처리 결과'
+      : '[UvA-IN] 콘텐츠 조치 안내'
+    const body = recipientKind === 'reporter'
+      ? `신고해 주셔서 감사합니다.\n\n신고 대상: ${item.restaurant_name_snapshot || '매장 한마디'}\n처리 결과: ${hidden ? '콘텐츠를 숨겼습니다.' : '조치를 하지 않기로 결정했습니다.'}\n사유: ${item.decision_reason || ''}\n\n추가 문의나 이의가 있으면 uvaksa16@gmail.com 으로 연락해 주세요.`
+      : `회원님이 작성한 콘텐츠에 대해 안내드립니다.\n\n매장: ${item.restaurant_name_snapshot || 'UvA-IN'}\n콘텐츠: ${item.note_snapshot || item.target?.body || ''}\n조치: ${hidden ? '다른 회원에게 보이지 않도록 숨겼습니다.' : '신고를 검토했으며 콘텐츠를 유지합니다.'}\n사유: ${item.decision_reason || ''}\n\n이 결정에 대해 이의를 제기하거나 문의하려면 uvaksa16@gmail.com 으로 연락해 주세요.`
+    return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }
+
+  const reportReasonLabel = (reason) => ({
+    illegal_threat: '위협 또는 괴롭힘',
+    privacy: '개인정보 또는 사생활 침해',
+    intellectual_property: '저작권 또는 지식재산권 침해',
+    other_illegal: '그 밖의 불법 콘텐츠',
+    community_guidelines: '커뮤니티 가이드라인 위반',
+  }[reason] || '기존 신고')
+
   if (loading) return <LoadingIndicator />
 
   return (
@@ -422,17 +502,41 @@ function ReportsTab() {
             </div>
             {!item.reviewed_at && (
               <div className="flex shrink-0 gap-2">
-                {item.target && (
+                {item.kind === '한마디' ? (
+                  <>
+                    {item.note_id && item.target && !item.target.is_snapshot && (
+                      <button onClick={() => resolveNoteReport(item, 'content_hidden')} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600">
+                        내용 숨김
+                      </button>
+                    )}
+                    <button onClick={() => resolveNoteReport(item, 'no_action')} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">
+                      조치 없음
+                    </button>
+                  </>
+                ) : item.target && (
                   <button onClick={() => deleteReportedContent(item)} className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600">
                     내용 삭제
                   </button>
                 )}
-                <button onClick={() => markReviewed(item)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">
-                  검토 완료
-                </button>
+                {item.kind !== '한마디' && (
+                  <button onClick={() => markReviewed(item)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">
+                    검토 완료
+                  </button>
+                )}
               </div>
             )}
           </div>
+          {item.kind === '한마디' && (
+            <div className="space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+              <p>사유: {reportReasonLabel(item.reason)}</p>
+              {item.explanation && <p className="whitespace-pre-wrap">설명: {item.explanation}</p>}
+              {item.reporter_name && <p>신고자: {item.reporter_name} · {item.reporter_email}</p>}
+              <p>선의 확인: {item.good_faith ? '완료' : '기존 신고에는 기록 없음'}</p>
+              {item.status === 'resolved' && (
+                <p>결정: {item.decision === 'content_hidden' ? '콘텐츠 숨김' : item.decision === 'no_action' ? '조치 없음' : '기존 검토 완료'}{item.decision_reason ? ` · ${item.decision_reason}` : ''}</p>
+              )}
+            </div>
+          )}
           {item.target ? (
             <>
               <p className="text-sm font-medium text-gray-800">
@@ -441,7 +545,23 @@ function ReportsTab() {
               <p className="whitespace-pre-wrap break-words text-sm text-gray-700">{item.target.body}</p>
             </>
           ) : (
-            <p className="text-sm text-gray-500">원문이 이미 삭제되었습니다.</p>
+            <p className="whitespace-pre-wrap text-sm text-gray-500">
+              {item.note_snapshot || '원문이 이미 삭제되었습니다.'}
+            </p>
+          )}
+          {item.kind === '한마디' && item.status === 'resolved' && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {item.reporter_email && (
+                <a href={decisionNoticeHref(item.reporter_email, item, 'reporter')} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-blue-700">
+                  신고자에게 결과 이메일
+                </a>
+              )}
+              {item.decision === 'content_hidden' && item.content_author_email && (
+                <a href={decisionNoticeHref(item.content_author_email, item, 'author')} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-blue-700">
+                  작성자에게 조치 이메일
+                </a>
+              )}
+            </div>
           )}
         </article>
       ))}

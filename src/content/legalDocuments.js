@@ -1,4 +1,4 @@
-export const LEGAL_DOCUMENT_VERSION = '2026-10-24-03';
+export const LEGAL_DOCUMENT_VERSION = '2026-10-24-04';
 
 export const legalDocuments = {
   terms: {
@@ -55,6 +55,8 @@ Members may voluntarily submit ratings, comments, and other feedback after visit
 Reviews must reflect genuine experiences, avoid abusive or unlawful content, and not infringe the rights or privacy of others. UvA-IN may remove reviews that violate these Terms.
 
 Ratings and selected tags submitted through the App's review feature are sent to the relevant partner with a redemption reference and review date. Reviewer names, account identifiers, and free-text review comments are not included in the partner's review records. The App also displays live location-level rating and tag summaries to active members.
+
+Members may report a note or review they believe is illegal or violates these Terms. UvA-IN reviews reports and may hide or remove content. If we restrict your content, we will tell you the reason and how to ask us to review the decision.
 
 9. Responsible Use
 
@@ -126,6 +128,8 @@ To operate your membership, we may collect membership validity period, membershi
 
 When you use the App, we may record QR code check-ins, visit date and time, participating partner location, digital stamp progress, reward redemption records, and operational usage records. We also process comments, notes, ratings, selected review tags, and reports you submit through the App. Live store-level rating and tag summaries are visible to signed-in active App members. A one-line review submitted before you set a username is shown as anonymous; setting a username later does not reveal that earlier contribution. Contributions made after you set a username may show that username unless you choose an anonymous option where available.
 
+When you report a note, we collect the reported text as it appeared when reported, the location, your selected reason and explanation, your name and account email, and the report and decision dates. The report and minimal decision record may remain after the note is hidden or deleted.
+
 The App stores authentication session information and limited app state in your browser's local or session storage (for example, your sign-in session, temporary sign-up state, and display preference). This supports sign-in and basic App operation. The current App code does not use advertising cookies or collect push-notification device tokens.
 
 To maintain platform security and reliability, we and our service providers may process internal account identifiers, IP address, browser/device request information, access and security logs, and error reports.
@@ -161,6 +165,8 @@ Personal identifying information needed to operate your membership is retained w
 If you do not confirm your email address within 7 days of creating an account, we delete the unverified account and its registration information. If you confirm your account but do not become a member, we retain your account and profile information for up to 12 months after account creation. After that period, we delete the account and its identifying information.
 
 When you request account deletion, we delete or anonymize information directly linked to your account as part of the deletion process, subject to any specific legal obligation or unresolved legal claim that requires limited information to be retained.
+
+Content report records are kept while they are being handled and for up to 12 months after a decision. A report record can retain the reported text and decision so that the moderation action can be reviewed. If a reporter or content author deletes their account, we remove their account link and direct email from the report record. Resolved report records are then deleted when the 12-month period ends.
 
 The minimum partner transaction records needed to verify rewards and handle related questions, fraud, or disputes are retained for no more than 12 months from the transaction date. Partner businesses are instructed to delete or irreversibly anonymize these records when that period ends. If a specific record must be retained to meet a legal accounting obligation, only the necessary record is kept separately, with restricted access, for the legally required period.
 
@@ -244,33 +250,39 @@ Do not submit abusive language, discrimination or hate speech, threats, false ac
 
 UvA-IN may remove reviews that violate these guidelines.
 
-7. Respect Partner Businesses
+7. Content Reports and Moderation
+
+Use the report control beside a note to tell us why you believe it is illegal or violates these Guidelines. Include enough detail for us to identify and assess the content. People who cannot use the App can report content by emailing uvaksa16@gmail.com with the content location, reason, explanation, name, and email address, and confirm that the report is made in good faith.
+
+UvA-IN reviews reports manually and aims to handle them promptly. We may leave content available, hide it while we review it, or remove it when it violates the law or these Guidelines. Reports do not automatically remove content. If we restrict your content, we will email you the decision, the reason, and how to ask us to review it. We will also tell the reporter the outcome. Contact uvaksa16@gmail.com if you disagree with a decision or need to challenge it. Report records, including a copy of the reported text and the decision, are kept for up to 12 months after the decision; account links and direct email addresses are removed if the reporter or author deletes their account.
+
+8. Respect Partner Businesses
 
 Partner businesses determine their own menus, pricing, promotions, availability, and operating conditions. If you encounter a problem, contact UvA-IN rather than confronting partner staff.
 
-8. Fair Use
+9. Fair Use
 
 UvA-IN is intended for genuine personal use. Misuse includes creating multiple accounts, sharing membership benefits, manipulating rewards or stamp cards, exploiting software bugs, interfering with the App, or accessing information that does not belong to you.
 
-9. Platform Security
+10. Platform Security
 
 You must not reverse engineer the App, bypass security measures, automate QR check-ins, interfere with platform operations, or gain unauthorised access to UvA-IN systems.
 
 Any activity that threatens the security or integrity of the platform may result in immediate removal from the community.
 
-10. Enforcement
+11. Enforcement
 
 UvA-IN may investigate suspected misuse. Depending on the seriousness of a violation, UvA-IN may issue a warning, remove violating content, cancel or reverse stamps and rewards, or suspend or terminate your membership and access to membership features. Where permitted or required by law, UvA-IN may report suspected unlawful activity to relevant authorities.
 
-11. Reporting Concerns
+12. Reporting Concerns
 
 If you discover fraudulent activity, security vulnerabilities, reward misuse, inappropriate behaviour, or technical issues affecting fairness or security, please contact UvA-IN.
 
-12. Changes to These Guidelines
+13. Changes to These Guidelines
 
 These Guidelines may be updated from time to time. The latest version will be available within the App and on our website. Continued use of the App after updates become effective constitutes acceptance of the revised Guidelines.
 
-13. Contact
+14. Contact
 
 UvA-IN
 Website: www.uva-in.nl
