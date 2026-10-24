@@ -412,11 +412,6 @@ function ReportsTab() {
       decision === 'content_hidden' ? '콘텐츠를 숨긴 이유를 입력해 주세요.' : '조치하지 않은 이유를 입력해 주세요.',
     )?.trim()
     if (!decisionReason) return
-    if (decisionReason.length < 5) {
-      setError('결정 사유를 5자 이상 입력해 주세요.')
-      return
-    }
-
     let hiddenNoteId = null
     if (decision === 'content_hidden' && item.note_id && item.target && !item.target.is_snapshot) {
       const { data: hiddenNote, error: hideError } = await supabase
