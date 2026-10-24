@@ -69,6 +69,7 @@ export function GoodToKnowNotesPanel({
   const [reportExplanation, setReportExplanation] = useState('')
   const [reporterName, setReporterName] = useState('')
   const [reporterEmail, setReporterEmail] = useState('')
+  const [reportGoodFaith, setReportGoodFaith] = useState(false)
   const [reportSubmitting, setReportSubmitting] = useState(false)
   const [todayKey, setTodayKey] = useState('')
   const touchStartRef = useRef(null)
@@ -278,6 +279,7 @@ export function GoodToKnowNotesPanel({
     setReportTarget(note)
     setReportReason('community_guidelines')
     setReportExplanation('')
+    setReportGoodFaith(false)
     setReporterName(username || '')
     const { data } = await supabase.auth.getUser()
     setReporterEmail(data?.user?.email || '')
@@ -286,12 +288,12 @@ export function GoodToKnowNotesPanel({
   const reportNote = async (event) => {
     event.preventDefault()
     if (!userId || !reportTarget || reportSubmitting) return
-    if (reportExplanation.trim().length < 10) {
-      setError('신고 내용을 10자 이상 입력해 주세요.')
-      return
-    }
     if (!reporterName.trim()) {
       setError('신고자 이름을 입력해 주세요.')
+      return
+    }
+    if (!reportGoodFaith) {
+      setError('신고 내용이 사실임을 확인하고 동의해 주세요.')
       return
     }
     setReportSubmitting(true)
@@ -303,7 +305,7 @@ export function GoodToKnowNotesPanel({
         reporter_id: userId,
         reporter_name: reporterName.trim(),
         reason: reportReason,
-        explanation: reportExplanation.trim(),
+        explanation: reportExplanation.trim() || null,
         good_faith: true,
       })
 
@@ -489,14 +491,12 @@ export function GoodToKnowNotesPanel({
               </select>
             </label>
             <label className="block text-xs font-medium text-gray-600">
-              설명
+              설명 (선택)
               <textarea
                 value={reportExplanation}
                 onChange={(event) => setReportExplanation(event.target.value)}
                 maxLength={2000}
                 rows={3}
-                required
-                minLength={10}
                 placeholder="이 콘텐츠가 문제라고 생각하는 이유를 적어 주세요"
                 className="mt-1.5 w-full resize-none rounded-lg border border-gray-200 p-2.5 text-sm outline-none focus:border-orange-400"
               />
@@ -513,8 +513,14 @@ export function GoodToKnowNotesPanel({
             </label>
             <p className="text-[11px] text-gray-500">회신 이메일: {reporterEmail || '확인할 수 없음'}</p>
             <label className="flex items-start gap-2 text-xs leading-relaxed text-gray-600">
-              <input type="checkbox" required className="mt-0.5" />
-              선의로 신고하며, 입력한 내용이 정확하고 완전하다고 확인합니다.
+              <input
+                type="checkbox"
+                checked={reportGoodFaith}
+                onChange={(event) => setReportGoodFaith(event.target.checked)}
+                required
+                className="mt-0.5"
+              />
+              입력한 신고 내용은 사실이며, 이에 동의합니다
             </label>
             <div className="flex justify-end gap-2 pt-1">
               <button type="button" onClick={() => setReportTarget(null)} className="rounded-full px-3 py-2 text-xs text-gray-500">
@@ -522,7 +528,7 @@ export function GoodToKnowNotesPanel({
               </button>
               <button
                 type="submit"
-                disabled={reportSubmitting || reportExplanation.trim().length < 10 || !reporterName.trim() || !reporterEmail}
+                disabled={reportSubmitting || !reporterName.trim() || !reportGoodFaith}
                 className="rounded-full bg-orange-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
               >
                 {reportSubmitting ? '접수 중...' : '신고 접수'}

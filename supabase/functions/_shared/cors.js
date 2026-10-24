@@ -1,5 +1,9 @@
 const DEV_SUPABASE_PROJECT_REF = 'smesebnighdcwqcgokhg'
 const PRODUCTION_SUPABASE_PROJECT_REF = 'npvcghdzrtqrlliprtnw'
+const DEV_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'https://uvain-app-git-dev-woojaylim-4666s-projects.vercel.app',
+]
 const PRODUCTION_ALLOWED_ORIGINS = [
   'https://app.uva-in.nl',
   'https://uvain-app.vercel.app',
@@ -15,7 +19,7 @@ function currentProjectRef() {
 }
 
 function defaultAllowedOrigins(projectRef) {
-  if (projectRef === DEV_SUPABASE_PROJECT_REF) return ['http://localhost:5173']
+  if (projectRef === DEV_SUPABASE_PROJECT_REF) return DEV_ALLOWED_ORIGINS
   if (projectRef === PRODUCTION_SUPABASE_PROJECT_REF) return PRODUCTION_ALLOWED_ORIGINS
 
   return ['http://localhost:5173']
