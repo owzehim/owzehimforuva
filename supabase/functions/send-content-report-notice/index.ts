@@ -20,7 +20,7 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;')
 }
 
-function formatEmailMessage(message: string): string {
+function formatEmailParagraphs(message: string): string {
   return message.split(/\n{2,}/).map((paragraph) =>
     `<p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:#6b7280;">${escapeHtml(paragraph).replaceAll('\n', '<br>')}</p>`
   ).join('')
@@ -47,11 +47,14 @@ serve(async (req) => {
     const reportId = body?.reportId
     const recipientKind = body?.recipientKind as RecipientKind
     const subject = typeof body?.subject === 'string' ? body.subject.trim() : ''
-    const message = typeof body?.message === 'string' ? body.message.trim() : ''
+    const intro = typeof body?.intro === 'string' ? body.intro.trim() : ''
+    const outcome = typeof body?.outcome === 'string' ? body.outcome.trim() : ''
+    const contact = typeof body?.contact === 'string' ? body.contact.trim() : ''
     if (!validUuid(reportId) || !['reporter', 'author'].includes(recipientKind)) {
       return json({ success: false, message: '잘못된 이메일 발송 요청입니다.' }, 400)
     }
-    if (!subject || subject.length > 200 || !message || message.length > 10000) {
+    if (!subject || subject.length > 200 || !intro || intro.length > 4000 ||
+        !outcome || outcome.length > 3000 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact) || contact.length > 320) {
       return json({ success: false, message: '이메일 제목과 내용을 확인해 주세요.' }, 400)
     }
 
@@ -91,7 +94,7 @@ serve(async (req) => {
 
     const { data: report, error: reportError } = await admin
       .from('restaurant_note_reports')
-      .select('id, reporter_email, content_author_email, restaurant_name_snapshot, note_snapshot, status, decision, decision_reason')
+      .select('id, reporter_email, content_author_email, content_author_name_snapshot, note_snapshot, status, decision, decision_reason')
       .eq('id', reportId)
       .maybeSingle()
     if (reportError) {
@@ -101,15 +104,30 @@ serve(async (req) => {
     if (!report || report.status !== 'resolved' || !report.decision) {
       return json({ success: false, message: '먼저 신고 처리를 완료해 주세요.' }, 409)
     }
-    if (recipientKind === 'author' && report.decision !== 'content_hidden') {
-      return json({ success: false, message: '숨김 처리된 콘텐츠의 작성자에게만 안내할 수 있습니다.' }, 400)
+    if (recipientKind === 'author' && !['content_deleted', 'content_hidden'].includes(report.decision)) {
+      return json({ success: false, message: '삭제 또는 기존 숨김 처리된 댓글의 작성자에게만 안내할 수 있습니다.' }, 400)
     }
 
     const recipient = recipientKind === 'reporter' ? report.reporter_email : report.content_author_email
     if (!recipient) return json({ success: false, message: '받는 사람의 이메일 주소가 없습니다.' }, 400)
 
-    const headline = recipientKind === 'reporter' ? 'Report update' : 'Content moderation notice'
-    const html = `<div style="margin:0;padding:0;background:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#111111;"><div style="max-width:520px;margin:0 auto;padding:44px 32px 56px;"><img src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png" alt="UvA-IN" width="44" height="44" style="display:block;width:44px;height:44px;object-fit:contain;margin:0 0 46px;"/><h1 style="margin:0 0 34px;font-size:34px;line-height:1.12;font-weight:800;letter-spacing:-0.5px;color:#050505;">${headline}</h1><div style="height:1px;background:#e5e7eb;margin-bottom:34px;"></div>${formatEmailMessage(message)}</div></div>`
+    const author = report.content_author_name_snapshot || '익명'
+    const reportedComment = report.note_snapshot || '신고된 댓글 내용을 확인할 수 없습니다.'
+    const title = recipientKind === 'reporter' ? '신고 처리 결과' : '게시물 처리 안내'
+    const html = `<div style="margin:0;padding:0;background:#ffffff;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#111111;"><div style="max-width:520px;margin:0 auto;padding:44px 32px 56px;"><img src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png" alt="UvA-IN" width="44" height="44" style="display:block;width:44px;height:44px;object-fit:contain;margin:0 0 46px;"/><h1 style="margin:0 0 34px;font-size:34px;line-height:1.12;font-weight:800;letter-spacing:-0.5px;color:#050505;">${title}</h1><div style="height:1px;background:#e5e7eb;margin-bottom:34px;"></div>${formatEmailParagraphs(intro)}<h2 style="margin:28px 0 14px;font-size:16px;line-height:1.5;font-weight:700;color:#111111;">신고 대상 댓글 처리 결과</h2><div style="margin:0 0 24px;padding:16px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb;"><p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#6b7280;">신고 대상</p><div style="margin:0 0 10px;font-size:14px;font-weight:700;color:#374151;">${escapeHtml(author)}</div><div style="font-size:14px;line-height:1.7;color:#4b5563;white-space:pre-wrap;overflow-wrap:anywhere;">${escapeHtml(reportedComment)}</div></div><p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#4b5563;"><strong style="color:#111111;">처리 결과: </strong>${escapeHtml(outcome).replaceAll('\n', '<br>')}</p><p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:#6b7280;">안내드린 내용과 관련하여 추가 문의가 있으시다면 아래 경로로 연락해 주세요.</p><p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#6b7280;"><strong style="color:#111111;">추가 문의: </strong>${escapeHtml(contact)}</p><p style="margin:0 0 8px;font-size:14px;line-height:1.7;color:#6b7280;">감사합니다.</p><p style="margin:0;font-size:14px;line-height:1.7;font-weight:700;color:#374151;">UvA-IN App 팀 드림</p></div></div>`
+    const text = [
+      intro,
+      '',
+      '[신고 대상 댓글 처리 결과]',
+      `${author}: ${reportedComment}`,
+      `처리 결과: ${outcome}`,
+      '',
+      '안내드린 내용과 관련하여 추가 문의가 있으시다면 아래 경로로 연락해 주세요.',
+      `추가 문의: ${contact}`,
+      '',
+      '감사합니다.',
+      'UvA-IN App 팀 드림',
+    ].join('\n')
 
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -118,7 +136,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Idempotency-Key': `content-report/${report.id}/${recipientKind}`,
       },
-      body: JSON.stringify({ from, to: [recipient], subject, text: message, html }),
+      body: JSON.stringify({ from, to: [recipient], subject, text, html }),
     })
     if (!response.ok) {
       console.error('Resend rejected moderation email:', response.status)
