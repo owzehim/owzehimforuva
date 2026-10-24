@@ -98,15 +98,13 @@ export function GoodToKnowNotesPanel({
     if (loadError) {
       setError('Could not load notes.')
     } else {
-      const notesWithOwnImageUrls = await Promise.all((data || []).map(async (note) => ({
+      const notesWithImageUrls = await Promise.all((data || []).map(async (note) => ({
         ...note,
-        // Other members' profile images are private; only sign the caller's own.
-        profile_image_url:
-          note.is_mine && !note.is_anonymous
-            ? await createProfileImageSignedUrl(note.profile_image_url)
-            : null,
+        profile_image_url: !note.is_anonymous
+          ? await createProfileImageSignedUrl(note.profile_image_url)
+          : null,
       })))
-      setNotes(notesWithOwnImageUrls)
+      setNotes(notesWithImageUrls)
     }
     setLoading(false)
   }, [restaurantId, userId])
