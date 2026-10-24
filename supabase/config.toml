@@ -83,6 +83,10 @@ entrypoint = "./functions/password-reset-return-signal/index.ts"
 enabled = true
 verify_jwt = true
 
+[functions.send-content-report-notice]
+enabled = true
+verify_jwt = true
+
 [functions.translate-note]
 enabled = true
 verify_jwt = true

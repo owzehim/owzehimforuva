@@ -292,6 +292,10 @@ function ReportsTab() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [noticeStatus, setNoticeStatus] = useState({})
+  const [sendingNotice, setSendingNotice] = useState({})
+  const [noticeDraft, setNoticeDraft] = useState(null)
+  const [noticeSendError, setNoticeSendError] = useState('')
 
   const loadReports = useCallback(async () => {
     setLoading(true)
@@ -471,16 +475,58 @@ function ReportsTab() {
     await loadReports()
   }
 
-  const decisionNoticeHref = (email, item, recipientKind) => {
-    if (!email) return ''
+  const openReportNotice = (item, recipientKind) => {
     const hidden = item.decision === 'content_hidden'
+    const venue = item.restaurant_name_snapshot || 'UvA-IN'
+    const reason = item.decision_reason || '신고 내용을 검토해 결정했습니다.'
     const subject = recipientKind === 'reporter'
       ? '[UvA-IN] 신고 처리 결과'
-      : '[UvA-IN] 콘텐츠 조치 안내'
-    const body = recipientKind === 'reporter'
-      ? `신고해 주셔서 감사합니다.\n\n신고 대상: ${item.restaurant_name_snapshot || '매장 한마디'}\n처리 결과: ${hidden ? '콘텐츠를 숨겼습니다.' : '조치를 하지 않기로 결정했습니다.'}\n사유: ${item.decision_reason || ''}\n\n추가 문의나 이의가 있으면 uvaksa16@gmail.com 으로 연락해 주세요.`
-      : `회원님이 작성한 콘텐츠에 대해 안내드립니다.\n\n매장: ${item.restaurant_name_snapshot || 'UvA-IN'}\n콘텐츠: ${item.note_snapshot || item.target?.body || ''}\n조치: ${hidden ? '다른 회원에게 보이지 않도록 숨겼습니다.' : '신고를 검토했으며 콘텐츠를 유지합니다.'}\n사유: ${item.decision_reason || ''}\n\n이 결정에 대해 이의를 제기하거나 문의하려면 uvaksa16@gmail.com 으로 연락해 주세요.`
-    return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+      : '[UvA-IN] 게시물 처리 안내'
+    const message = recipientKind === 'reporter'
+      ? [
+          '신고해 주셔서 감사합니다.',
+          '',
+          `신고 대상: ${venue}`,
+          `처리 결과: ${hidden ? '해당 한마디를 다른 회원에게 보이지 않도록 숨겼습니다.' : '검토 결과 별도 조치를 하지 않았습니다.'}`,
+          '',
+          '추가 문의: uvaksa16@gmail.com',
+          '',
+          'Thank you for your report.',
+          `Outcome: ${hidden ? 'The reported note has been hidden from other members.' : 'No action was taken after review.'}`,
+          'Contact: uvaksa16@gmail.com',
+        ].join('\n')
+      : [
+          '회원님이 작성한 한마디가 신고 검토 후 숨김 처리되었습니다.',
+          `매장: ${venue}`,
+          `사유: ${reason}`,
+          '이 결정에 이의를 제기하거나 문의하려면 uvaksa16@gmail.com 으로 연락해 주세요.',
+          '',
+          'Your note was hidden after a report review.',
+          `Reason: ${reason}`,
+          'To appeal or ask a question, contact uvaksa16@gmail.com.',
+        ].join('\n')
+
+    setNoticeSendError('')
+    setNoticeDraft({ reportId: item.id, recipientKind, recipient: recipientKind === 'reporter' ? item.reporter_email : item.content_author_email, subject, message })
+  }
+
+  const sendReportNotice = async () => {
+    if (!noticeDraft) return
+    const { reportId, recipientKind, subject, message } = noticeDraft
+    const key = `${reportId}:${recipientKind}`
+    if (sendingNotice[key]) return
+    setSendingNotice((current) => ({ ...current, [key]: true }))
+    setNoticeSendError('')
+    const { data, error: sendError } = await supabase.functions.invoke('send-content-report-notice', {
+      body: { reportId, recipientKind, subject, message },
+    })
+    setSendingNotice((current) => ({ ...current, [key]: false }))
+    if (sendError || !data?.success) {
+      setNoticeSendError(data?.message || '이메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.')
+      return
+    }
+    setNoticeStatus((current) => ({ ...current, [key]: 'sent' }))
+    setNoticeDraft(null)
   }
 
   const reportReasonLabel = (reason) => ({
@@ -561,19 +607,66 @@ function ReportsTab() {
           {item.kind === '한마디' && item.status === 'resolved' && (
             <div className="flex flex-wrap gap-2 pt-1">
               {item.reporter_email && (
-                <a href={decisionNoticeHref(item.reporter_email, item, 'reporter')} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-blue-700">
-                  신고자에게 결과 이메일
-                </a>
+                <button type="button" onClick={() => openReportNotice(item, 'reporter')} disabled={sendingNotice[`${item.id}:reporter`] || noticeStatus[`${item.id}:reporter`] === 'sent'} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-blue-700 disabled:opacity-50">
+                  {noticeStatus[`${item.id}:reporter`] === 'sent' ? '신고자 이메일 전송 완료' : '신고자에게 결과 이메일 보내기'}
+                </button>
               )}
               {item.decision === 'content_hidden' && item.content_author_email && (
-                <a href={decisionNoticeHref(item.content_author_email, item, 'author')} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-blue-700">
-                  작성자에게 조치 이메일
-                </a>
+                <button type="button" onClick={() => openReportNotice(item, 'author')} disabled={sendingNotice[`${item.id}:author`] || noticeStatus[`${item.id}:author`] === 'sent'} className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-blue-700 disabled:opacity-50">
+                  {noticeStatus[`${item.id}:author`] === 'sent' ? '작성자 이메일 전송 완료' : '작성자에게 조치 이메일 보내기'}
+                </button>
               )}
             </div>
           )}
         </article>
       ))}
+      {noticeDraft && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-6" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setNoticeDraft(null)
+        }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="report-email-title" className="flex max-h-[94dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <header className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h3 id="report-email-title" className="font-semibold text-gray-900">이메일 미리보기 및 수정</h3>
+                <p className="mt-1 text-xs text-gray-500">내용을 확인하고 필요한 문구를 수정한 뒤 보내세요.</p>
+              </div>
+              <button type="button" onClick={() => setNoticeDraft(null)} aria-label="닫기" className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100">닫기</button>
+            </header>
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4 md:grid-cols-2 md:p-5">
+              <div className="space-y-3">
+                <p className="break-all text-xs text-gray-500">받는 사람: {noticeDraft.recipient}</p>
+                <label className="block text-sm font-medium text-gray-700">
+                  제목
+                  <input value={noticeDraft.subject} maxLength={200} onChange={(event) => setNoticeDraft((draft) => ({ ...draft, subject: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                </label>
+                <label className="block text-sm font-medium text-gray-700">
+                  이메일 내용
+                  <textarea value={noticeDraft.message} maxLength={10000} rows={13} onChange={(event) => setNoticeDraft((draft) => ({ ...draft, message: event.target.value }))} className="mt-1 w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm font-normal leading-6 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                </label>
+                {noticeSendError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{noticeSendError}</p>}
+              </div>
+              <div className="min-w-0 rounded-xl border border-gray-200 bg-gray-100 p-3 sm:p-5">
+                <p className="mb-3 text-xs font-medium text-gray-500">이메일 미리보기</p>
+                <p className="mx-auto mb-3 max-w-[520px] break-words text-xs text-gray-600">제목: {noticeDraft.subject || '(제목 없음)'}</p>
+                <div className="mx-auto min-h-[440px] max-w-[520px] bg-white px-7 py-9 font-sans text-[#111111] shadow-sm sm:px-8">
+                  <img src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png" alt="UvA-IN" width="44" height="44" className="mb-11 block h-11 w-11 object-contain" />
+                  <h4 className="mb-8 text-[30px] font-extrabold leading-tight tracking-tight text-[#050505]">{noticeDraft.recipientKind === 'reporter' ? 'Report update' : 'Content moderation notice'}</h4>
+                  <div className="mb-8 h-px bg-gray-200" />
+                  <div className="break-words text-sm leading-7 text-gray-600">
+                    {(noticeDraft.message || '').split(/\n{2,}/).map((paragraph, index) => <p key={index} className="mb-5 whitespace-pre-line">{paragraph}</p>)}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <footer className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
+              <button type="button" onClick={() => setNoticeDraft(null)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">취소</button>
+              <button type="button" onClick={sendReportNotice} disabled={!noticeDraft.subject.trim() || !noticeDraft.message.trim() || sendingNotice[`${noticeDraft.reportId}:${noticeDraft.recipientKind}`]} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50">
+                {sendingNotice[`${noticeDraft.reportId}:${noticeDraft.recipientKind}`] ? '전송 중…' : '이메일 보내기'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
     </div>
   )
 }
