@@ -210,15 +210,42 @@ serve(async (req) => {
       }
     }
 
-    const reportRetentionCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+    // Use a calendar-year cutoff for the agreed 12-month retention period.
+    const retentionNow = new Date()
+    const retentionYear = retentionNow.getUTCFullYear() - 1
+    const retentionMonth = retentionNow.getUTCMonth()
+    const retentionDay = Math.min(
+      retentionNow.getUTCDate(),
+      new Date(Date.UTC(retentionYear, retentionMonth + 1, 0)).getUTCDate(),
+    )
+    const retentionCutoff = new Date(Date.UTC(
+      retentionYear,
+      retentionMonth,
+      retentionDay,
+      retentionNow.getUTCHours(),
+      retentionNow.getUTCMinutes(),
+      retentionNow.getUTCSeconds(),
+      retentionNow.getUTCMilliseconds(),
+    )).toISOString()
+
+    let retentionFailedCount = 0
+    const { count: expiredHiddenNoteCount, error: hiddenNoteRetentionError } = await admin
+      .from('restaurant_notes')
+      .delete({ count: 'exact' })
+      .lt('hidden_at', retentionCutoff)
+    if (hiddenNoteRetentionError) {
+      console.error('Hidden note retention cleanup failed')
+      retentionFailedCount += 1
+    }
+
     const { count: expiredReportCount, error: reportRetentionError } = await admin
       .from('restaurant_note_reports')
       .delete({ count: 'exact' })
       .eq('status', 'resolved')
-      .lt('reviewed_at', reportRetentionCutoff)
+      .lt('reviewed_at', retentionCutoff)
     if (reportRetentionError) {
       console.error('Resolved content report retention cleanup failed')
-      failedCount += 1
+      retentionFailedCount += 1
     }
 
     const { data: overdueData, error: overdueError } = await admin.rpc('count_overdue_member_retention')
@@ -244,7 +271,7 @@ serve(async (req) => {
     const overdueRecordCount = Number(overdueData) || 0
     const remainingQueueCount = Number(pendingQueueCount) || 0
     const success = failedCount === 0 && expiredSignupFailedCount === 0 &&
-      overdueRecordCount === 0 && remainingQueueCount === 0
+      retentionFailedCount === 0 && overdueRecordCount === 0 && remainingQueueCount === 0
 
     return new Response(
       JSON.stringify({
@@ -256,7 +283,9 @@ serve(async (req) => {
         orphaned_pending_email_mappings_deleted_count: Number(cleanedPendingEmailMappings) || 0,
         sheet_synced_count: syncedCount,
         auth_accounts_deleted_count: deletedAuthAccountCount,
+        expired_hidden_notes_deleted_count: Number(expiredHiddenNoteCount) || 0,
         expired_content_report_records_deleted_count: Number(expiredReportCount) || 0,
+        retention_cleanup_failed_count: retentionFailedCount,
         sheet_failed_count: failedCount,
         overdue_record_count: overdueRecordCount,
         pending_sync_count: remainingQueueCount,
