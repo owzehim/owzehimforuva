@@ -412,9 +412,9 @@ function ReportsTab() {
       .from('restaurant_notes')
       .update({ hidden_at: hidden ? new Date().toISOString() : null })
       .eq('id', noteId)
-      .select('id, hidden_at')
+      .select('id')
       .maybeSingle()
-    return !updateError && Boolean(updatedNote) && (hidden ? Boolean(updatedNote.hidden_at) : !updatedNote.hidden_at)
+    return !updateError && Boolean(updatedNote)
   }
 
   const resolveNoteReport = async (item, decision) => {
