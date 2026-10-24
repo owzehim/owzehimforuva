@@ -308,6 +308,8 @@ function ReportsTab() {
   const [decisionDraft, setDecisionDraft] = useState(null)
   const [savingDecision, setSavingDecision] = useState(false)
   const [decisionEditError, setDecisionEditError] = useState('')
+  const [savingReportId, setSavingReportId] = useState(null)
+  const [decisionSelections, setDecisionSelections] = useState({})
 
   const loadReports = useCallback(async () => {
     setLoading(true)
@@ -417,11 +419,8 @@ function ReportsTab() {
     return !updateError && Boolean(updatedNote)
   }
 
-  const resolveNoteReport = async (item, decision) => {
-    const decisionReason = window.prompt(
-      decision === 'content_hidden' ? '댓글을 숨긴 사유를 입력해 주세요.' : '조치하지 않은 이유를 입력해 주세요.',
-    )?.trim()
-    if (!decisionReason) return
+  const saveNoteReportDecision = async (item, decision) => {
+    if (savingReportId === item.id) return
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
@@ -429,10 +428,12 @@ function ReportsTab() {
       return
     }
 
-    const didHideNote = decision === 'content_hidden' && item.note_id
-      ? await setNoteHidden(item.note_id, true)
-      : false
-    if (decision === 'content_hidden' && !didHideNote) {
+    setSavingReportId(item.id)
+    const previousVisibility = item.decision === 'content_hidden'
+    const nextVisibility = decision === 'content_hidden'
+    const visibilityChanged = Boolean(item.note_id) && previousVisibility !== nextVisibility
+    if (visibilityChanged && !await setNoteHidden(item.note_id, nextVisibility)) {
+      setSavingReportId(null)
       setError('댓글을 숨기지 못했습니다. 신고 상태는 변경되지 않았습니다.')
       return
     }
@@ -442,23 +443,97 @@ function ReportsTab() {
       .update({
         status: 'resolved',
         decision,
-        decision_reason: decisionReason,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: user.id,
+        decision_reason: '관리자 확인',
       })
       .eq('id', item.id)
-      .is('reviewed_at', null)
+      .eq('status', item.status)
       .select('id')
       .maybeSingle()
 
     if (updateError || !updatedReport) {
-      if (didHideNote) await setNoteHidden(item.note_id, false)
+      if (visibilityChanged) await setNoteHidden(item.note_id, previousVisibility)
+      setSavingReportId(null)
       setError('신고 처리 결과를 저장하지 못했습니다.')
       await loadReports()
       return
     }
+    setDecisionSelections((current) => {
+      const next = { ...current }
+      delete next[item.id]
+      return next
+    })
+    setSavingReportId(null)
     setError('')
     await loadReports()
+  }
+
+  const cancelNoteReportDecision = async (item) => {
+    if (savingReportId === item.id) return
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setError('로그인이 필요합니다.')
+      return
+    }
+
+    setSavingReportId(item.id)
+    const wasHidden = item.decision === 'content_hidden'
+    if (wasHidden && item.note_id && !await setNoteHidden(item.note_id, false)) {
+      setSavingReportId(null)
+      setError('댓글 숨김을 취소하지 못했습니다. 신고 상태는 변경되지 않았습니다.')
+      return
+    }
+
+    const { data: updatedReport, error: updateError } = await supabase
+      .from('restaurant_note_reports')
+      .update({
+        status: 'pending',
+        decision: null,
+        decision_reason: null,
+        reviewed_at: null,
+        reviewed_by: null,
+      })
+      .eq('id', item.id)
+      .eq('status', 'resolved')
+      .select('id')
+      .maybeSingle()
+
+    if (updateError || !updatedReport) {
+      if (wasHidden && item.note_id) await setNoteHidden(item.note_id, true)
+      setSavingReportId(null)
+      setError('처리를 취소하지 못했습니다.')
+      await loadReports()
+      return
+    }
+
+    setDecisionSelections((current) => {
+      const next = { ...current }
+      delete next[item.id]
+      return next
+    })
+    setSavingReportId(null)
+    setError('')
+    await loadReports()
+  }
+
+  const confirmNoteReportAction = async (item) => {
+    if (savingReportId === item.id) return
+    const selectedDecision = decisionSelections[item.id] ?? item.decision
+    const canCancelLegacyDeletion = item.decision === 'content_deleted' && !item.note_id
+
+    if (item.status === 'resolved' && selectedDecision === item.decision) {
+      if (canCancelLegacyDeletion) return
+      if (!window.confirm('처리 완료를 취소하시겠습니까? 이미 발송된 이메일은 회수되지 않습니다.')) return
+      await cancelNoteReportDecision(item)
+      return
+    }
+
+    if (!['content_hidden', 'no_action'].includes(selectedDecision)) {
+      setError('숨김 처리 또는 조치 없음을 먼저 선택해 주세요.')
+      return
+    }
+    if (!window.confirm('신고를 처리하시겠습니까?')) return
+    await saveNoteReportDecision(item, selectedDecision)
   }
 
   const openDecisionEditor = (item) => {
@@ -520,7 +595,6 @@ function ReportsTab() {
   const openReportNotice = (item, recipientKind) => {
     const deleted = item.decision === 'content_deleted'
     const previouslyHidden = item.decision === 'content_hidden'
-    const reason = item.decision_reason || '신고 내용을 검토해 결정했습니다.'
     const subject = recipientKind === 'reporter'
       ? '[UvA-IN] 신고 처리 결과'
       : '[UvA-IN] 게시물 처리 안내'
@@ -534,10 +608,10 @@ function ReportsTab() {
           ? '해당 댓글을 다른 회원에게 보이지 않도록 숨김 처리했습니다.'
           : '검토 결과 운영 정책 위반 사항이 확인되지 않아 조치 없이 유지되었습니다.'
       : deleted
-        ? `커뮤니티 운영 정책 위반으로 확인되어 삭제 조치되었습니다.\n삭제 사유: ${reason}`
+        ? '커뮤니티 운영 정책 위반으로 확인되어 삭제 조치되었습니다.'
         : previouslyHidden
-          ? `회원님의 댓글을 다른 회원에게 보이지 않도록 숨김 처리했습니다.\n숨김 사유: ${reason}`
-          : `회원님의 댓글은 숨김 처리되지 않았으며, 현재 앱에서 계속 확인할 수 있습니다.\n검토 사유: ${reason}`
+          ? '회원님의 댓글을 다른 회원에게 보이지 않도록 숨김 처리했습니다.'
+          : '회원님의 댓글은 숨김 처리되지 않았으며, 현재 앱에서 계속 확인할 수 있습니다.'
 
     setNoticeSendError('')
     setNoticeDraft({
@@ -592,26 +666,52 @@ function ReportsTab() {
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-5 text-sm text-gray-500">접수된 신고가 없습니다.</p>
-      ) : items.map((item) => (
+      ) : items.map((item) => {
+        const selectedDecision = decisionSelections[item.id] ?? item.decision
+        const isResolved = item.kind === '한마디' && item.status === 'resolved'
+        const decisionChanged = isResolved && selectedDecision && selectedDecision !== item.decision
+        const legacyDeletion = item.decision === 'content_deleted' && !item.note_id
+        const confirmLabel = isResolved && !decisionChanged
+          ? '처리 완료'
+          : isResolved
+            ? '변경 확인'
+            : '신고 확인'
+
+        return (
         <article key={`${item.kind}-${item.id}`} className="rounded-xl border border-gray-100 bg-white p-4 space-y-2">
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-gray-500">
               {item.kind} · {new Date(item.created_at).toLocaleString('nl-NL')}
               {item.reviewed_at && <span className="ml-2 text-green-700">검토 완료</span>}
             </div>
-            {!item.reviewed_at && (
+            {item.kind === '한마디' ? (
               <div className="flex shrink-0 gap-2">
                 {item.kind === '한마디' && item.note_id && (
-                  <button onClick={() => resolveNoteReport(item, 'content_hidden')} className="rounded-lg border border-amber-200 px-3 py-1.5 text-xs font-medium text-amber-700">
+                  <button
+                    type="button"
+                    aria-pressed={selectedDecision === 'content_hidden'}
+                    disabled={savingReportId === item.id}
+                    onClick={() => setDecisionSelections((current) => ({ ...current, [item.id]: 'content_hidden' }))}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-60 ${selectedDecision === 'content_hidden' ? 'border-green-600 bg-green-600 text-white' : 'border-amber-200 text-amber-700'}`}
+                  >
                     숨김 처리
                   </button>
                 )}
-                {item.kind === '한마디' && (
-                  <button onClick={() => resolveNoteReport(item, 'no_action')} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">
+                {!(item.decision === 'content_deleted' && !item.note_id) && (
+                  <button
+                    type="button"
+                    aria-pressed={selectedDecision === 'no_action'}
+                    disabled={savingReportId === item.id}
+                    onClick={() => setDecisionSelections((current) => ({ ...current, [item.id]: 'no_action' }))}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-60 ${selectedDecision === 'no_action' ? 'border-green-600 bg-green-600 text-white' : 'border-blue-200 text-blue-700'}`}
+                  >
                     조치 없음
                   </button>
                 )}
-                {item.kind !== '한마디' && (
+              </div>
+            ) : !item.reviewed_at && (
+              <div className="flex shrink-0 gap-2">
+                {(
                   <button onClick={() => markReviewed(item)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">
                     검토 완료
                   </button>
@@ -627,7 +727,7 @@ function ReportsTab() {
               <p>선의 확인: {item.good_faith ? '완료' : '기존 신고에는 기록 없음'}</p>
               {item.status === 'resolved' && (
                 <>
-                  <p>결정: {item.decision === 'content_deleted' ? '과거 댓글 삭제' : item.decision === 'content_hidden' ? '숨김 처리' : item.decision === 'no_action' ? '조치 없음' : '기존 검토 완료'}{item.decision_reason ? ` · ${item.decision_reason}` : ''}</p>
+                  <p>결정: {item.decision === 'content_deleted' ? '과거 댓글 삭제' : item.decision === 'content_hidden' ? '숨김 처리' : item.decision === 'no_action' ? '조치 없음' : '기존 검토 완료'}{item.decision_reason && item.decision_reason !== '관리자 확인' ? ` · ${item.decision_reason}` : ''}</p>
                   <button type="button" onClick={() => openDecisionEditor(item)} className="mt-1 rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-blue-700">결정·사유 수정</button>
                 </>
               )}
@@ -659,8 +759,22 @@ function ReportsTab() {
               )}
             </div>
           )}
+          {item.kind === '한마디' && (
+            <div className="flex justify-end border-t border-gray-100 pt-2">
+              <button
+                type="button"
+                aria-pressed={isResolved && !decisionChanged}
+                disabled={savingReportId === item.id || (isResolved && legacyDeletion && !decisionChanged) || (!isResolved && !selectedDecision)}
+                onClick={() => confirmNoteReportAction(item)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 ${isResolved && !decisionChanged ? 'bg-green-600' : 'bg-blue-600'}`}
+              >
+                {confirmLabel}
+              </button>
+            </div>
+          )}
         </article>
-      ))}
+        )
+      })}
       {noticeDraft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-6" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setNoticeDraft(null)
@@ -704,9 +818,9 @@ function ReportsTab() {
                   <div className="break-words text-sm leading-7 text-gray-600">
                     {(noticeDraft.intro || '').split(/\n{2,}/).map((paragraph, index) => <p key={`intro-${index}`} className="mb-5 whitespace-pre-line">{paragraph}</p>)}
                     <h5 className="mb-3 mt-7 text-base font-bold text-gray-900">신고 대상 댓글 처리 결과</h5>
-                    <article className="mb-6 flex gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm">
-                      <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f3f4f6] text-[rgba(44,42,39,0.55)]">
-                        <UserCircle size={24} weight="fill" />
+                    <article className="mb-6 flex gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                      <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f3f4f6] text-[rgba(44,42,39,0.55)]">
+                        <UserCircle size={28} weight="fill" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
