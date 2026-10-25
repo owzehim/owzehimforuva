@@ -9,7 +9,6 @@ import { getMapIconSvg } from '../lib/mapCategories'
 import {
   getRestaurantCommercialLabel,
   getRestaurantCommercialLabelType,
-  RESTAURANT_COMMERCIAL_LABEL_TYPES,
 } from '../lib/restaurantCommercialLabel'
 import { MapPinSimple } from '@phosphor-icons/react'
 
@@ -201,13 +200,11 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     if (commercialLabel) {
       const disclosure = document.createElement('div')
       disclosure.className = 'marker-commercial-label'
-      const isPaidAdLabel =
-        commercialLabelType === RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
       disclosure.textContent = commercialLabel
       disclosure.style.cssText = `
         display: ${isSelected ? 'block' : 'none'};
-        background: ${dark ? (isPaidAdLabel ? '#052e16' : '#431407') : isPaidAdLabel ? '#f0fdf4' : '#fff7ed'};
-        color: ${isPaidAdLabel ? '#16A34A' : '#c2410c'};
+        background: #f97316;
+        color: #ffffff;
         font-size: 8px;
         font-weight: 700;
         line-height: 11px;
