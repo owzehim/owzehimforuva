@@ -1,6 +1,6 @@
 import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
@@ -148,7 +148,7 @@ async function recordStampCardVisit(admin: any, userId: string, storeId: string)
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
   const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
   const corsHeaders = getCorsHeaders(origin, configuredOrigins)
@@ -320,7 +320,7 @@ serve(async (req) => {
     // Record (or safely recognize) today's visit before claiming the 15-minute
     // redemption window. If stamp persistence fails, return an error without
     // consuming the retry window; the unique daily index handles scan races.
-    let stampResult
+    let stampResult: any
     try {
       stampResult = await recordStampCardVisit(admin, user.id, storeId)
     } catch (stampError) {
