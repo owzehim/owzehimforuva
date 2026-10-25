@@ -6,11 +6,6 @@ import { computeStarDisplay, getSortedTagsForDisplay, formatAverageRating } from
 import { REVIEW_TAGS } from '../domain/reviewTypes'
 import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 import { sanitizeRichText } from '../lib/sanitizeHtml'
-import {
-  getRestaurantCommercialLabel,
-  getRestaurantCommercialLabelType,
-  RESTAURANT_COMMERCIAL_LABEL_TYPES,
-} from '../lib/restaurantCommercialLabel'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -899,23 +894,6 @@ export function SpotCard({
                 {selected.name}
               </p>
             </div>
-            {getRestaurantCommercialLabel(
-              getRestaurantCommercialLabelType(selected),
-            ) && (
-              <span
-                className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  getRestaurantCommercialLabelType(selected) ===
-                  RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
-                    ? 'bg-green-50 text-[#16A34A] dark:bg-green-950 dark:text-[#16A34A]'
-                    : 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
-                }`}
-              >
-                {getRestaurantCommercialLabel(
-                  getRestaurantCommercialLabelType(selected),
-                )}
-              </span>
-            )}
-
             {spotCardHeightMode === 'full' && showRating && (
               <div className="flex items-center gap-1 mt-1">
                 <StarDisplay
