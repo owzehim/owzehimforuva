@@ -133,7 +133,7 @@ export default function LoginPage() {
       </button>
 
       <div
-        className="mx-auto flex min-h-[100dvh] w-full max-w-sm items-center px-2 py-8"
+        className="mx-auto flex min-h-[100dvh] w-full max-w-sm items-center px-2 pt-8 pb-16"
       >
         <div
           className="w-full"
@@ -229,13 +229,6 @@ export default function LoginPage() {
                   회원가입
                 </button>
               </p>
-              <button
-                type="button"
-                onClick={() => navigate('/legal?lang=ko')}
-                className="block w-full pt-1 text-center text-[11px] text-gray-500 underline underline-offset-2 dark:text-gray-400"
-              >
-                이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
-              </button>
             </form>
           )}
 
@@ -378,6 +371,16 @@ export default function LoginPage() {
           )}
         </div>
       </div>
+      {step === 'credentials' && (
+        <button
+          type="button"
+          onClick={() => navigate('/legal?lang=ko')}
+          className="fixed inset-x-4 z-20 mx-auto max-w-sm text-center text-[11px] font-medium text-gray-400 underline underline-offset-2 dark:text-gray-500"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+        >
+          이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
+        </button>
+      )}
     </main>
   )
 }
