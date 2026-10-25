@@ -34,3 +34,48 @@ jobs:
 
       - name: Build application
         run: npm run build
+
+      - name: Check client bundle for privileged Supabase keys
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from 'node:fs/promises';
+          import path from 'node:path';
+
+          const findings = [];
+          const jwtPattern = /\b(eyJ[A-Za-z0-9_-]{8,})\.([A-Za-z0-9_-]{8,})\.([A-Za-z0-9_-]{8,})\b/g;
+
+          async function scan(directory) {
+            for (const entry of await readdir(directory, { withFileTypes: true })) {
+              const file = path.join(directory, entry.name);
+              if (entry.isDirectory()) {
+                await scan(file);
+                continue;
+              }
+              if (!/\.(js|mjs|cjs|html|css|json|map)$/i.test(entry.name)) continue;
+
+              const content = await readFile(file, 'utf8');
+              if (/sb_secret_[A-Za-z0-9_-]{20,}/.test(content)) findings.push(file);
+
+              for (const match of content.matchAll(jwtPattern)) {
+                try {
+                  const payload = JSON.parse(Buffer.from(match[2], 'base64url').toString('utf8'));
+                  if (payload.role === 'service_role') {
+                    findings.push(file);
+                    break;
+                  }
+                } catch {
+                  // Ignore non-JWT strings that happen to match the token shape.
+                }
+              }
+            }
+          }
+
+          await scan('dist');
+          const uniqueFindings = [...new Set(findings)];
+          if (uniqueFindings.length > 0) {
+            console.error('Potential privileged Supabase API key found in client build:');
+            for (const file of uniqueFindings) console.error(' - ' + file);
+            process.exit(1);
+          }
+          console.log('No Supabase secret keys or legacy service_role JWTs found in the client build.');
+          NODE
