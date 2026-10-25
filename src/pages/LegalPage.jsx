@@ -32,7 +32,7 @@ export default function LegalPage() {
           type="button"
           onClick={() => navigate(-1)}
           className="fixed left-[14px] z-20 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
-          style={{ top: 'max(18px, calc(env(safe-area-inset-top) + 6px))' }}
+          style={{ top: 'calc(env(safe-area-inset-top) + 6px)' }}
           aria-label={closeLabel}
         >
           <CaretLeft size={24} weight="bold" />
@@ -41,12 +41,16 @@ export default function LegalPage() {
           type="button"
           onClick={() => setLanguage((current) => current === 'ko' ? 'en' : 'ko')}
           className="fixed right-8 z-20 flex h-9 min-w-[72px] items-center justify-center rounded-full border border-gray-200 bg-white px-3 text-[13px] font-semibold text-[#374151] dark:border-[#2c2c2e] dark:bg-[#121212] dark:text-[#c7c7cc]"
-          style={{ top: 'max(22px, calc(env(safe-area-inset-top) + 10px))' }}
+          style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}
         >
           {language === 'ko' ? 'English' : '한국어'}
         </button>
         <div className="mx-auto max-w-3xl" style={{ height: 'calc(env(safe-area-inset-top) + 56px)' }} />
-        <nav aria-label={language === 'ko' ? '법률 문서' : 'Legal documents'} className="mx-auto mt-4 flex max-w-3xl gap-2 overflow-x-auto">
+        <nav
+          aria-label={language === 'ko' ? '법률 문서' : 'Legal documents'}
+          className="mx-auto flex max-w-3xl gap-2 overflow-x-auto"
+          style={{ marginTop: 'calc(16px - max(0px, calc(12px - env(safe-area-inset-top))))' }}
+        >
           {documentKeys.map((key) => (
             <button
               key={key}

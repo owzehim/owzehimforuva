@@ -69,8 +69,8 @@ export default function ChangePasswordPage() {
       <button
         type="button"
         onClick={() => navigate('/settings')}
-        className="absolute left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
-        style={{ top: 'max(18px, calc(env(safe-area-inset-top) + 6px))' }}
+        className="fixed left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
+        style={{ top: 'calc(env(safe-area-inset-top) + 6px)' }}
         aria-label={copy.back}
       >
         <CaretLeft size={24} weight="bold" />

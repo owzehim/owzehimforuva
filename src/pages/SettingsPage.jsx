@@ -420,7 +420,7 @@ export default function SettingsPage({ userId, isAdmin }) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto space-y-6 px-4 py-6" style={{ maxWidth: 'var(--app-screen-width)' }}>
+        <div className="mx-auto space-y-6 px-4 pt-3 pb-6" style={{ maxWidth: 'var(--app-screen-width)' }}>
 
           {/* Profile card */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4 dark:border-[#2c2c2e] dark:bg-[#111111]">

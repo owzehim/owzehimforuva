@@ -125,8 +125,8 @@ export default function LoginPage() {
       <button
         type="button"
         onClick={isStandaloneStep ? handleBack : closeLogin}
-        className="absolute left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
-        style={{ top: 'max(18px, calc(env(safe-area-inset-top) + 6px))' }}
+        className="fixed left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
+        style={{ top: 'calc(env(safe-area-inset-top) + 6px)' }}
         aria-label={isStandaloneStep ? 'Back to login' : 'Close login'}
       >
         <CaretLeft size={24} weight="bold" />
