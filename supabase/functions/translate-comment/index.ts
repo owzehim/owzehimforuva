@@ -1,9 +1,8 @@
 import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 // Retired: the current app does not call this endpoint. Keep future deploys
 // from restoring the old service-role comment read and translation path.
-serve((req) => {
+Deno.serve((req) => {
   const origin = req.headers.get('origin')
   const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
   const corsHeaders = getCorsHeaders(origin, configuredOrigins)

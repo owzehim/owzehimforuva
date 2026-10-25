@@ -1,6 +1,5 @@
 import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
@@ -20,7 +19,7 @@ async function anonymizeMasterSheet(url: string, userId: string) {
   if (!response.ok || body?.success !== true) throw new Error('Master sheet did not confirm anonymization')
 }
 
-async function clearAuthPersonalMetadata(admin: ReturnType<typeof createClient>, userId: string) {
+async function clearAuthPersonalMetadata(admin: any, userId: string) {
   const { error } = await admin.auth.admin.updateUserById(userId, {
     user_metadata: {
       first_name: null,
@@ -35,7 +34,7 @@ async function clearAuthPersonalMetadata(admin: ReturnType<typeof createClient>,
   if (error && error.status !== 404) throw new Error('Auth metadata cleanup failed')
 }
 
-async function deleteAuthAccount(admin: ReturnType<typeof createClient>, userId: string) {
+async function deleteAuthAccount(admin: any, userId: string) {
   const { error: imageError } = await admin.storage
     .from('profile-images')
     .remove([`avatars/${userId}.jpg`])
@@ -57,7 +56,7 @@ async function deleteAuthAccount(admin: ReturnType<typeof createClient>, userId:
   if (error && error.status !== 404) throw new Error('Auth account deletion failed')
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
   const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
   const corsHeaders = getCorsHeaders(origin, configuredOrigins)
@@ -89,7 +88,7 @@ serve(async (req) => {
       )
     }
 
-    const admin = createClient(supabaseUrl, serviceKey, {
+    const admin: any = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
       global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })

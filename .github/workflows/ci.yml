@@ -11,6 +11,31 @@ permissions:
   contents: read
 
 jobs:
+  edge-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.1.13
+
+      - name: Type check Supabase Edge Functions with locked dependencies
+        shell: bash
+        run: |
+          for function_dir in supabase/functions/*; do
+            [ -d "$function_dir" ] || continue
+            [ -f "$function_dir/index.ts" ] || continue
+
+            if [ -f "$function_dir/deno.json" ]; then
+              deno check --frozen --config "$function_dir/deno.json" "$function_dir/index.ts"
+            else
+              deno check "$function_dir/index.ts"
+            fi
+          done
+
   build:
     runs-on: ubuntu-latest
     steps:

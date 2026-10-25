@@ -1,6 +1,6 @@
 import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
@@ -63,7 +63,7 @@ function decodeClaims(token: string): Record<string, unknown> | null {
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
   const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
   const corsHeaders = getCorsHeaders(origin, configuredOrigins)
