@@ -229,6 +229,15 @@ serve(async (req) => {
     )).toISOString()
 
     let retentionFailedCount = 0
+    const rewardRetentionNow = new Date().toISOString()
+    const { count: expiredPartnerRewardsCount, error: rewardRetentionError } = await admin
+      .from('stamp_card_rewards')
+      .delete({ count: 'exact' })
+      .lte('delete_after', rewardRetentionNow)
+    if (rewardRetentionError) {
+      console.error('Expired partner reward cleanup failed')
+      retentionFailedCount += 1
+    }
     const { count: expiredHiddenNoteCount, error: hiddenNoteRetentionError } = await admin
       .from('restaurant_notes')
       .delete({ count: 'exact' })
@@ -281,6 +290,7 @@ serve(async (req) => {
         expired_signup_accounts_deleted_count: expiredSignupDeletedCount,
         expired_signup_accounts_failed_count: expiredSignupFailedCount,
         orphaned_pending_email_mappings_deleted_count: Number(cleanedPendingEmailMappings) || 0,
+        expired_partner_rewards_deleted_count: Number(expiredPartnerRewardsCount) || 0,
         sheet_synced_count: syncedCount,
         auth_accounts_deleted_count: deletedAuthAccountCount,
         expired_hidden_notes_deleted_count: Number(expiredHiddenNoteCount) || 0,

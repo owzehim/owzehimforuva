@@ -100,7 +100,7 @@ async function findStampRestaurant(admin: any, storeId: string) {
   if (isUuid) {
     const { data: byId, error: byIdError } = await admin
       .from('restaurants')
-      .select('id, stamp_card_enabled')
+      .select('id, stamp_card_enabled, is_archived')
       .eq('id', storeId)
       .maybeSingle()
 
@@ -110,7 +110,7 @@ async function findStampRestaurant(admin: any, storeId: string) {
 
   const { data: byPartnership, error: byPartnershipError } = await admin
     .from('restaurants')
-    .select('id, stamp_card_enabled')
+    .select('id, stamp_card_enabled, is_archived')
     .eq('partnership_id', storeId)
     .maybeSingle()
 
@@ -123,7 +123,7 @@ async function findStampRestaurant(admin: any, storeId: string) {
 
 async function recordStampCardVisit(admin: any, userId: string, storeId: string) {
   const restaurant = await findStampRestaurant(admin, storeId)
-  if (!restaurant?.stamp_card_enabled) return { enabled: false }
+  if (!restaurant?.stamp_card_enabled || restaurant.is_archived) return { enabled: false }
 
   const { data, error } = await admin.rpc('record_member_stamp_visit', {
     p_user_id: userId,
@@ -254,6 +254,28 @@ serve(async (req) => {
 
     // ── Fetch partnership ──────────────────────────────────────────────────
     const { data: partnership, error: partnershipError } = partnershipResult
+
+    if (!partnershipError && partnership) {
+      const { data: restaurantStatus, error: restaurantStatusError } = await admin
+        .from('restaurants')
+        .select('id, is_archived')
+        .eq('partnership_id', storeId)
+        .maybeSingle()
+
+      if (restaurantStatusError) {
+        console.error('Partner status lookup failed')
+        return new Response(
+          JSON.stringify({ success: false, message: '매장 제휴 상태를 확인하지 못했습니다.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+      if (restaurantStatus?.is_archived) {
+        return new Response(
+          JSON.stringify({ success: false, message: '제휴가 종료된 매장입니다.' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
+      }
+    }
 
     if (!partnershipError && partnership && member.is_test_account) {
       return new Response(

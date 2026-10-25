@@ -8,7 +8,6 @@ const QR_BOX_SCAN_RATIO = 0.72
 
 export default function QRScanner({ onScan, darkMode = false }) {
   const scannerRef = useRef(null)
-  const frameRef = useRef(null)
   const scannedRef = useRef(false)
   const onScanRef = useRef(onScan)
   const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false)
@@ -17,21 +16,6 @@ export default function QRScanner({ onScan, darkMode = false }) {
   useEffect(() => {
     onScanRef.current = onScan
   }, [onScan])
-
-  useEffect(() => {
-    const frame = frameRef.current
-    if (!frame || typeof ResizeObserver === 'undefined') return undefined
-
-    const observer = new ResizeObserver(([entry]) => {
-      const nextSize = Math.round(
-        Math.min(entry.contentRect.width * QR_BOX_SCAN_RATIO, QR_BOX_SIZE),
-      )
-      setQrBoxSize((current) => (current === nextSize ? current : nextSize))
-    })
-
-    observer.observe(frame)
-    return () => observer.disconnect()
-  }, [])
 
   useEffect(() => {
     const scannerId = 'qr-scanner-container'
@@ -48,7 +32,16 @@ export default function QRScanner({ onScan, darkMode = false }) {
           { facingMode: 'environment' },
           {
             fps: 10,
-            qrbox: { width: qrBoxSize, height: qrBoxSize },
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const size = Math.round(
+                Math.min(
+                  Math.min(viewfinderWidth, viewfinderHeight) * QR_BOX_SCAN_RATIO,
+                  QR_BOX_SIZE,
+                ),
+              )
+              if (isMounted) setQrBoxSize(size)
+              return { width: size, height: size }
+            },
             aspectRatio: 1.0,
           },
           (decodedText) => {
@@ -97,7 +90,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
         scannerRef.current = null
       }
     }
-  }, [qrBoxSize])
+  }, [])
 
   return (
     <div className="flex w-full flex-col items-center gap-3">
@@ -119,7 +112,6 @@ export default function QRScanner({ onScan, darkMode = false }) {
       `}</style>
 
       <div
-        ref={frameRef}
         className="relative w-full"
         style={{
           aspectRatio: '1',

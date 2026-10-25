@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, Plus, ClockCounterClockwise } from '@phosphor-icons/react'
 import { fetchAllMemberStampData, restoreReward } from '../api/rewards'
 import { adminInsertVisit } from '../api/visits'
+import { isPendingRewardAvailable } from '../rewardAvailability'
 
 export default function StampCardMemberPanel({ restaurantId, spotName, totalStamps, onClose }) {
   const [rows, setRows] = useState([])
@@ -154,7 +155,10 @@ function MemberRow({ member, stampState, latestReward, totalStamps, restaurantId
     }
   }
 
-  const showRestore = latestReward?.redeemed === true
+  const rewardExpired = Boolean(
+    latestReward?.expires_at && !isPendingRewardAvailable(latestReward),
+  )
+  const showRestore = latestReward?.redeemed === true && !latestReward.expires_at
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
@@ -166,8 +170,10 @@ function MemberRow({ member, stampState, latestReward, totalStamps, restaurantId
             현재 사이클: {currentCycle} · 스탬프: {stampsInCurrentCycle} / {totalStamps}
           </p>
           {latestReward && (
-            <p className="text-xs mt-0.5" style={{ color: latestReward.redeemed ? '#9ca3af' : '#f97316' }}>
-              {latestReward.redeemed
+            <p className="text-xs mt-0.5" style={{ color: latestReward.redeemed || rewardExpired ? '#9ca3af' : '#f97316' }}>
+              {rewardExpired
+                ? '만료된 리워드'
+                : latestReward.redeemed
                 ? `리워드 사용됨 · ${latestReward.redeemed_at?.slice(0, 10)}`
                 : '미사용 리워드 있음'}
             </p>

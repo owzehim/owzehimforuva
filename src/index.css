@@ -5,7 +5,7 @@
   src: url("/fonts/AlienBlock-Regular.ttf") format("truetype");
   font-weight: 400 900;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -32,18 +32,49 @@ body {
   min-height: 100dvh;
 }
 
-/* This is an app-like interface, not a document reader. Keep every screen
-   non-selectable and disable the browser's native image dragging. */
+/* Disable native image dragging while keeping app text selectable. */
 #root,
 #root * {
-  user-select: none;
-  -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+.text-gray-400 {
+  color: #6b7280;
 }
 
 #root img {
   -webkit-user-drag: none;
   user-drag: none;
+}
+
+#root .legal-page,
+#root .legal-page * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+}
+
+.dev-no-zoom-selection,
+.dev-no-zoom-selection * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+}
+
+.dev-no-zoom-selection {
+  touch-action: pan-x pan-y;
+  min-height: 100dvh;
+}
+
+@media print {
+  .legal-page-controls {
+    display: none !important;
+  }
+
+  #legal-document-content {
+    max-width: none !important;
+    padding: 0 !important;
+  }
 }
 
 :lang(ko) {
@@ -259,7 +290,7 @@ select {
 }
 
 .dark .force-light .text-gray-400 {
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .app-loading-spinner {

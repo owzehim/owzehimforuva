@@ -1,13 +1,15 @@
 import { supabase } from '../../../lib/supabase'
 import { computeStampState } from '../utils'
+import { isPendingRewardAvailable } from '../rewardAvailability'
 
 export async function fetchPendingReward(userId, restaurantId) {
   const { data, error } = await supabase
     .from('stamp_card_rewards')
-    .select('id, user_id, restaurant_id, card_cycle, redeemed, redeemed_at, created_at')
+    .select('id, user_id, restaurant_id, card_cycle, redeemed, redeemed_at, created_at, expires_at')
     .eq('user_id', userId)
     .eq('restaurant_id', restaurantId)
     .eq('redeemed', false)
+    .is('expires_at', null)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -86,7 +88,7 @@ async function fetchAllMemberStampDataFallback(restaurantId, totalStamps) {
 
       const { data: latestRewardRows, error: rewardsError } = await supabase
         .from('stamp_card_rewards')
-        .select('id, user_id, restaurant_id, card_cycle, redeemed, redeemed_at, created_at')
+        .select('id, user_id, restaurant_id, card_cycle, redeemed, redeemed_at, created_at, expires_at')
         .eq('user_id', member.user_id)
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false })
@@ -95,7 +97,7 @@ async function fetchAllMemberStampDataFallback(restaurantId, totalStamps) {
       if (rewardsError) throw rewardsError
 
       const latestReward = latestRewardRows?.[0] ?? null
-      const pendingReward = latestReward?.redeemed === false ? latestReward : null
+      const pendingReward = isPendingRewardAvailable(latestReward) ? latestReward : null
       const stampState = computeStampState(visits ?? [], totalStamps, pendingReward)
 
       return { member, stampState, latestReward }

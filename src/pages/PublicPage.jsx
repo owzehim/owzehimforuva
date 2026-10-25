@@ -6,6 +6,7 @@ import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_I
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
 import { MapPin, Lock, ForkKnife, Calendar, CalendarDots, Users } from '@phosphor-icons/react'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
+import { useDevInteractionLock } from '../lib/devInteractionLock'
 
 const MapView = lazy(() => import('../components/MapView'))
 
@@ -18,8 +19,10 @@ function getStoredPublicTab() {
 
 export default function PublicPage() {
   const [activeTab, setActiveTab] = useState(getStoredPublicTab)
+  const [hasOpenedMap, setHasOpenedMap] = useState(() => getStoredPublicTab() === 'map')
   const [restaurants, setRestaurants] = useState([])
   const navigate = useNavigate()
+  const lockInteractions = useDevInteractionLock(activeTab !== 'map')
 
   useEffect(() => {
     const resetScroll = () => {
@@ -46,6 +49,7 @@ export default function PublicPage() {
       const { data } = await supabase
         .from('restaurants')
         .select('*')
+        .eq('is_archived', false)
         .order('created_at', { ascending: false })
       const loadedRestaurants = data || []
       setRestaurants(loadedRestaurants)
@@ -71,22 +75,20 @@ export default function PublicPage() {
     <div
       className={
         'phone-app-shell flex flex-col overflow-hidden no-highlight-zone ' +
+        (lockInteractions ? 'dev-no-zoom-selection ' : '') +
         (activeTab === 'membership'
           ? 'bg-black'
           : 'bg-white dark:bg-[#121212]')
       }
       style={{
         height: '100dvh',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
         WebkitTapHighlightColor: 'transparent',
+        touchAction: lockInteractions ? 'pan-x pan-y' : undefined,
       }}
     >
       <style>{`
         .no-highlight-zone,
         .no-highlight-zone * {
-          -webkit-user-select: none;
-          user-select: none;
           -webkit-tap-highlight-color: transparent;
         }
         .membership-heading p + p {
@@ -142,11 +144,22 @@ export default function PublicPage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        <div key={activeTab} className="h-full">
-          {activeTab === 'map' && <PublicMapTab restaurants={restaurants} />}
+      <div className="flex-1 overflow-hidden relative">
+        <div className="h-full" style={{ display: activeTab === 'membership' ? 'block' : 'none' }}>
           {activeTab === 'membership' && <MembershipCarousel />}
         </div>
+        {hasOpenedMap && (
+          <div
+            className="absolute inset-0"
+            aria-hidden={activeTab !== 'map'}
+            style={{
+              visibility: activeTab === 'map' ? 'visible' : 'hidden',
+              pointerEvents: activeTab === 'map' ? 'auto' : 'none',
+            }}
+          >
+            <PublicMapTab restaurants={restaurants} active={activeTab === 'map'} />
+          </div>
+        )}
       </div>
 
       <div
@@ -173,6 +186,7 @@ export default function PublicPage() {
 
                 window.sessionStorage.setItem(PUBLIC_ACTIVE_TAB_KEY, tab.key)
                 setActiveTab(tab.key)
+                if (tab.key === 'map') setHasOpenedMap(true)
               }}
               className={
                 'flex-1 py-3 flex flex-col items-center gap-0.5 text-xs font-medium transition-colors select-none ' +
@@ -194,7 +208,7 @@ export default function PublicPage() {
   )
 }
 
-function PublicMapTab({ restaurants }) {
+function PublicMapTab({ restaurants, active }) {
   const [selected, setSelected] = useState(null)
   const [activeCategory, setActiveCategory] = useState('전체')
   const [darkMode, setDarkMode] = useState(
@@ -310,7 +324,12 @@ function PublicMapTab({ restaurants }) {
       ) : (
         <div className="flex-1 relative overflow-hidden no-highlight-zone">
           <Suspense fallback={null}>
-            <MapView restaurants={filtered} selected={selected} onSelect={setSelected} />
+            <MapView
+              restaurants={filtered}
+              selected={selected}
+              onSelect={setSelected}
+              active={active}
+            />
           </Suspense>
           {selected && (
             <SpotCard
@@ -325,19 +344,9 @@ function PublicMapTab({ restaurants }) {
 }
 
 const MEMBERSHIP_IMAGE_BASE = '/PublicPage_MembershipTab_Images'
-const MEMBERSHIP_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
-function membershipImage(prefix, index, preferredExtension = 'jpg') {
-  const orderedExtensions = [
-    preferredExtension,
-    ...MEMBERSHIP_IMAGE_EXTENSIONS.filter((ext) => ext !== preferredExtension),
-  ]
-
-  return {
-    srcCandidates: orderedExtensions.map(
-      (ext) => `${MEMBERSHIP_IMAGE_BASE}/${prefix}-${index}.${ext}`,
-    ),
-  }
+function membershipImage(filename) {
+  return { src: `${MEMBERSHIP_IMAGE_BASE}/${filename}` }
 }
 
 const MEMBERSHIP_SLIDES = [
@@ -352,10 +361,10 @@ const MEMBERSHIP_SLIDES = [
     ),
     description: '',
     images: [
-      membershipImage('uva-campus', 1),
-      membershipImage('uva-campus', 2),
-      membershipImage('uva-campus', 3),
-      membershipImage('uva-campus', 4),
+      membershipImage('uva-campus-1.webp'),
+      membershipImage('uva-campus-2.webp'),
+      membershipImage('uva-campus-3.webp'),
+      membershipImage('uva-campus-4.webp'),
     ],
   },
   {
@@ -368,10 +377,8 @@ const MEMBERSHIP_SLIDES = [
     ),
     description: '암스테르담 곳곳의 제휴 매장 혜택',
     images: [
-      membershipImage('restaurant-cafe', 1),
-      membershipImage('restaurant-cafe', 2),
-      membershipImage('restaurant-cafe', 3),
-      membershipImage('restaurant-cafe', 4),
+      membershipImage('restaurant-cafe-1.webp'),
+      membershipImage('restaurant-cafe-2.webp'),
     ],
   },
   {
@@ -384,10 +391,7 @@ const MEMBERSHIP_SLIDES = [
     ),
     description: 'UvA-IN 독점 이벤트 지원 혜택 및 참가비 할인',
     images: [
-      membershipImage('uvain-event', 1, 'png'),
-      membershipImage('uvain-event', 2),
-      membershipImage('uvain-event', 3),
-      membershipImage('uvain-event', 4),
+      membershipImage('uvain-event-1.webp'),
     ],
   },
   {
@@ -400,10 +404,7 @@ const MEMBERSHIP_SLIDES = [
     ),
     description: 'UvA 학생 전용 커뮤니티 연결',
     images: [
-      membershipImage('uvain-network', 1),
-      membershipImage('uvain-network', 2, 'jpeg'),
-      membershipImage('uvain-network', 3),
-      membershipImage('uvain-network', 4),
+      membershipImage('uvain-network-1.webp'),
     ],
   },
 ]
@@ -477,35 +478,6 @@ function MembershipCarousel() {
 
     return () => window.clearInterval(timer)
   }, [loadedImageIndexes, slides])
-
-  useEffect(() => {
-    const preloaders = []
-
-    slides.forEach((slide, slideIndex) => {
-      slide.images.forEach((image, imageIndex) => {
-        const candidates = image.srcCandidates || (image.src ? [image.src] : [])
-        const tryCandidate = (candidateIndex) => {
-          const src = candidates[candidateIndex]
-          if (!src) return
-
-          const imagePreloader = new Image()
-          preloaders.push(imagePreloader)
-          imagePreloader.onload = () => handleImageLoaded(slideIndex, imageIndex)
-          imagePreloader.onerror = () => tryCandidate(candidateIndex + 1)
-          imagePreloader.src = src
-        }
-
-        tryCandidate(0)
-      })
-    })
-
-    return () => {
-      preloaders.forEach((imagePreloader) => {
-        imagePreloader.onload = null
-        imagePreloader.onerror = null
-      })
-    }
-  }, [slides])
 
   const pauseInteraction = () => {
     interactionPausedRef.current = true
@@ -581,6 +553,10 @@ function MembershipCarousel() {
             slide={slide}
             slideIndex={slideIndex}
             slideCount={slides.length}
+            shouldLoadImages={
+              slideIndex === realActiveSlide ||
+              slideIndex === (realActiveSlide + 1) % slides.length
+            }
             imageIndex={imageIndexes[slideIndex]}
             onImageLoaded={handleImageLoaded}
           />
@@ -670,6 +646,7 @@ function MembershipSlide({
   slide,
   slideIndex,
   slideCount,
+  shouldLoadImages,
   imageIndex,
   onImageLoaded,
 }) {
@@ -678,9 +655,9 @@ function MembershipSlide({
       className="relative h-full flex-shrink-0 overflow-hidden bg-neutral-400 dark:bg-neutral-700"
       style={{ width: `${100 / slideCount}%` }}
     >
-      {slide.images.map((image, index) => (
+      {shouldLoadImages && slide.images.map((image, index) => (
         <MembershipImageLayer
-          key={(image.srcCandidates || [image.src || image.label || index]).join('|')}
+          key={image.src || index}
           image={image}
           active={index === imageIndex}
           slideIndex={slideIndex}
@@ -700,11 +677,7 @@ function MembershipImageLayer({
   imageIndex,
   onImageLoaded,
 }) {
-  const candidates = image.srcCandidates || (image.src ? [image.src] : [])
-  const candidateKey = candidates.join('|')
-  const [candidateFallback, setCandidateFallback] = useState({ key: '', index: 0 })
-  const candidateIndex = candidateFallback.key === candidateKey ? candidateFallback.index : 0
-  const src = candidates[candidateIndex]
+  const src = image.src
 
   if (!src && !image.style) return null
 
@@ -736,11 +709,6 @@ function MembershipImageLayer({
       style={{ opacity: active ? 1 : 0 }}
       onLoad={() => {
         onImageLoaded(slideIndex, imageIndex)
-      }}
-      onError={() => {
-        if (candidateIndex < candidates.length - 1) {
-          setCandidateFallback({ key: candidateKey, index: candidateIndex + 1 })
-        }
       }}
     />
   )

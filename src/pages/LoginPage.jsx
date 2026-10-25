@@ -120,7 +120,7 @@ export default function LoginPage() {
     <main
       className="phone-app-shell login-page scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]"
       onDragStart={(event) => event.preventDefault()}
-      style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
     >
       <button
         type="button"
@@ -133,7 +133,7 @@ export default function LoginPage() {
       </button>
 
       <div
-        className="mx-auto flex min-h-[100dvh] w-full max-w-sm items-center px-2 py-8"
+        className="mx-auto flex min-h-[100dvh] w-full max-w-sm items-center px-2 pt-8 pb-16"
       >
         <div
           className="w-full"
@@ -371,6 +371,16 @@ export default function LoginPage() {
           )}
         </div>
       </div>
+      {step === 'credentials' && (
+        <button
+          type="button"
+          onClick={() => navigate('/legal?lang=ko')}
+          className="fixed inset-x-4 z-20 mx-auto max-w-sm text-center text-[11px] font-medium text-gray-400 underline underline-offset-2 dark:text-gray-500"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}
+        >
+          이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
+        </button>
+      )}
     </main>
   )
 }

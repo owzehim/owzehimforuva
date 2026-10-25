@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { resendConfirmationEmail } from '../api/authRepository'
 import CaptchaChallenge from '../components/CaptchaChallenge'
 import { isCaptchaEnabled } from '../lib/captcha'
+import { hasAppAccessClaim } from '../domain/auth/authRules'
 
 const copy = {
   verifyingTitle: '\uC774\uBA54\uC77C \uC778\uC99D \uC911',
@@ -61,6 +62,13 @@ export default function EmailConfirmedPage() {
 
         if (cancelled) return
 
+        // Do not treat an already-authenticated app session as an email-link
+        // session when a supplied app token was deliberately ignored above.
+        if (hasAppAccessClaim(session?.access_token)) {
+          finish('error')
+          return
+        }
+
         if (!session) {
           if (cameFromVerifiedLink) {
             // Supabase only redirects here with a code after confirming the
@@ -73,7 +81,6 @@ export default function EmailConfirmedPage() {
           }
           return
         }
-
         if (session.user?.user_metadata?.registration) {
           const { data: registrationResult, error: registrationError } =
             await supabase.functions.invoke('complete-member-registration')

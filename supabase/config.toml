@@ -39,6 +39,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/complete-member-registration/index.ts"
 
+[functions.manage-legal-consent]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/manage-legal-consent/index.ts"
+
 [functions.admin-create-member]
 enabled = true
 verify_jwt = true

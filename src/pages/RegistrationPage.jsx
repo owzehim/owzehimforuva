@@ -391,8 +391,8 @@ const translations = {
     finalStep: 'And That',
     firstName: 'First name (English) *',
     lastName: 'Last name (English) *',
-    firstNameKorean: 'First name (Korean) *',
-    lastNameKorean: 'Last name (Korean) *',
+    firstNameKorean: 'First name (Korean, optional)',
+    lastNameKorean: 'Last name (Korean, optional)',
     yearOfBirth: 'Year of birth (optional)',
     gender: 'Gender (optional)',
     nationality: 'Nationality (optional)',
@@ -436,8 +436,8 @@ const translations = {
     finalStep: '마지막 단계',
     firstName: '이름 (영문) *',
     lastName: '성 (영문) *',
-    firstNameKorean: '이름 (한글) *',
-    lastNameKorean: '성 (한글) *',
+    firstNameKorean: '이름 (한글, 선택사항)',
+    lastNameKorean: '성 (한글, 선택사항)',
     yearOfBirth: '출생 연도 (선택사항)',
     gender: '성별 (선택사항)',
     nationality: '국적 (선택사항)',
@@ -519,6 +519,7 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
   return (
     <div ref={containerRef} style={s.typeaheadContainer}>
       <input
+        id={name}
         name={name}
         value={open ? searchText : value || ''}
         onChange={handleInputChange}
@@ -557,6 +558,13 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
 export default function RegistrationPage() {
   const navigate = useNavigate();
   const [language, setLanguage] = useState('ko');
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+    return () => {
+      document.documentElement.lang = 'ko';
+    };
+  }, [language]);
   const [stableChromeViewportHeight] = useState(() => (
     isMobileChromeBrowser ? window.innerHeight : null
   ));
@@ -914,7 +922,7 @@ export default function RegistrationPage() {
       <div
         className="phone-app-shell registration-page-enter"
         onDragStart={(event) => event.preventDefault()}
-        style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+        style={{ ...s.page, fontFamily: 'var(--font-app)', WebkitTapHighlightColor: 'transparent' }}
       >
         <style>{registrationMotionCss}</style>
         <div style={s.topBar}>
@@ -1140,6 +1148,7 @@ export default function RegistrationPage() {
       {activeLegalDoc && (
         <LegalDocumentModal
           document={legalDocuments[activeLegalDoc]}
+          language={language}
           onClose={() => setActiveLegalDoc(null)}
         />
       )}
@@ -1214,16 +1223,18 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
         </h1>
 
         <div style={{ ...s.nameGrid, ...s.stageOneFieldStart }}>
-          <Field label={t.firstName}>
+          <Field label={t.firstName} id="firstName">
             <input
+              id="firstName"
               name="firstName"
               value={formData.firstName}
               onChange={handleChange}
               style={s.input}
             />
           </Field>
-          <Field label={t.lastName}>
+          <Field label={t.lastName} id="lastName">
             <input
+              id="lastName"
               name="lastName"
               value={formData.lastName}
               onChange={handleChange}
@@ -1233,16 +1244,18 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
           {language === 'ko' && (
             <>
               <div style={s.nameGroupGap} />
-              <Field label={t.firstNameKorean}>
+              <Field label={t.firstNameKorean} id="firstNameKorean">
                 <input
+                  id="firstNameKorean"
                   name="firstNameKorean"
                   value={formData.firstNameKorean || ''}
                   onChange={handleChange}
                   style={s.input}
                 />
               </Field>
-              <Field label={t.lastNameKorean}>
+              <Field label={t.lastNameKorean} id="lastNameKorean">
                 <input
+                  id="lastNameKorean"
                   name="lastNameKorean"
                   value={formData.lastNameKorean || ''}
                   onChange={handleChange}
@@ -1254,8 +1267,9 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
 
           <div style={s.nameGroupGap} />
           <Row columns="1fr 1fr">
-            <Field label={t.yearOfBirth}>
+            <Field label={t.yearOfBirth} id="yearOfBirth">
               <input
+                id="yearOfBirth"
                 type="number"
                 name="yearOfBirth"
                 value={formData.yearOfBirth}
@@ -1266,7 +1280,7 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
                 max={new Date().getFullYear()}
               />
             </Field>
-            <Field label={t.gender}>
+            <Field label={t.gender} id="gender">
               <TypeaheadSelect
                 name="gender"
                 value={formData.gender}
@@ -1277,7 +1291,7 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
             </Field>
           </Row>
 
-          <Field label={t.nationality}>
+          <Field label={t.nationality} id="countryOfOrigin">
             <TypeaheadSelect
               name="countryOfOrigin"
               value={formData.countryOfOrigin}
@@ -1369,7 +1383,7 @@ function AcademicStep({
         </h1>
 
         <div style={{ ...s.fieldStack, ...s.stageTwoFieldStart }}>
-          <Field label={t.university}>
+          <Field label={t.university} id="university">
             <TypeaheadSelect
               name="university"
               value={formData.university}
@@ -1380,8 +1394,9 @@ function AcademicStep({
             />
           </Field>
 
-          <Field label={t.studentNumber}>
+          <Field label={t.studentNumber} id="studentNumber">
             <input
+              id="studentNumber"
               name="studentNumber"
               value={formData.studentNumber}
               onChange={handleChange}
@@ -1390,7 +1405,7 @@ function AcademicStep({
           </Field>
 
           <div style={s.nameGroupGap} />
-          <Field label={t.major}>
+          <Field label={t.major} id="major">
             <TypeaheadSelect
               name="major"
               value={formData.major}
@@ -1510,8 +1525,9 @@ function AccountStep({
         </div>
 
         <div style={{ ...s.fieldStack, ...s.accountFieldStart }}>
-          <Field label={t.email}>
+          <Field label={t.email} id="email">
             <input
+              id="email"
               type="email"
               name="email"
               value={formData.email}
@@ -1522,9 +1538,10 @@ function AccountStep({
           </Field>
 
           <Row>
-            <Field label={t.password}>
+            <Field label={t.password} id="password">
               <div style={s.passwordInputRow}>
                 <input
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
@@ -1547,9 +1564,10 @@ function AccountStep({
                 </button>
               </div>
             </Field>
-            <Field label={t.confirmPassword}>
+            <Field label={t.confirmPassword} id="confirmPassword">
               <div style={s.passwordInputRow}>
                 <input
+                  id="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
                   name="confirmPassword"
                   value={formData.confirmPassword}
@@ -1631,9 +1649,9 @@ function LegalAgreementList({
   language,
 }) {
   const labels = {
-    terms: language === 'ko' ? 'Terms & Conditions에 동의합니다' : 'I agree to the Terms & Conditions',
-    privacy: language === 'ko' ? 'Privacy Policy에 동의합니다' : 'I agree to the Privacy Policy',
-    community: language === 'ko' ? 'Community Guidelines에 동의합니다' : 'I agree to the Community Guidelines',
+    terms: language === 'ko' ? '이용약관에 동의합니다' : 'I agree to the Terms & Conditions',
+    privacy: language === 'ko' ? '개인정보 처리방침에 동의합니다' : 'I agree to the Privacy Policy',
+    community: language === 'ko' ? '커뮤니티 가이드라인에 동의합니다' : 'I agree to the Community Guidelines',
   };
 
   const readLabels = {
@@ -1669,25 +1687,28 @@ function LegalAgreementList({
   );
 }
 
-function LegalDocumentModal({ document, onClose }) {
+function LegalDocumentModal({ document, language, onClose }) {
   if (!document) return null;
+  const content = language === 'ko' ? document.ko : document;
 
   return (
     <div style={s.legalOverlay}>
       <div style={s.legalModal}>
         <div style={s.legalModalHeader}>
           <div>
-            <h2 style={s.legalModalTitle}>{document.title}</h2>
-            <p style={s.legalModalDate}>Effective Date: {document.effectiveDate}</p>
+            <h2 style={s.legalModalTitle}>{content.title}</h2>
+            <p style={s.legalModalDate}>
+              {language === 'ko' ? '시행일' : 'Effective Date'}: {content.effectiveDate}
+            </p>
           </div>
           <button type="button" onClick={onClose} style={s.legalCloseButton}>
-            Close
+            {language === 'ko' ? '닫기' : 'Close'}
           </button>
         </div>
-        <div style={s.legalModalBody}>
-          {document.body.split('\n').map((line, index) => (
+        <div className="legal-document-content" style={s.legalModalBody}>
+          {content.body.split('\n').map((line, index) => (
             <p
-              key={`${document.title}-${index}`}
+              key={`${content.title}-${index}`}
               style={line.trim() ? s.legalParagraph : s.legalSpacer}
             >
               {line}
@@ -1704,8 +1725,9 @@ function Row({ children, columns }) {
   return <div style={{ ...rowStyle, ...(columns ? { gridTemplateColumns: columns } : {}) }}>{children}</div>;
 }
 
-function Field({ label, children, variant = 'input', style }) {
+function Field({ label, children, variant = 'input', style, id }) {
   const fieldRef = useRef(null);
+  const labelId = `field-label-${label.replace(/\s+/g, '-')}`;
   const handleFieldClick = (event) => {
     if (variant !== 'input') return;
     if (event.target.closest('input, textarea, select, button')) return;
@@ -1722,8 +1744,14 @@ function Field({ label, children, variant = 'input', style }) {
         ...(variant === 'input' ? s.touchableField : {}),
         ...style,
       }}
+      role={variant === 'group' ? 'group' : undefined}
+      aria-labelledby={variant === 'group' ? labelId : undefined}
     >
-      <label style={labelStyle}>{label}</label>
+      {variant === 'group' ? (
+        <div id={labelId} style={labelStyle}>{label}</div>
+      ) : (
+        <label htmlFor={id} style={labelStyle}>{label}</label>
+      )}
       {children}
     </div>
   );
@@ -1889,11 +1917,11 @@ const s = {
   languageToggle: {
     position: 'fixed',
     right: '32px',
-    top: 'calc(env(safe-area-inset-top) + 10px)',
+    top: 'max(22px, calc(env(safe-area-inset-top) + 10px))',
     minWidth: '72px',
     height: '36px',
     padding: '0 12px',
-    borderRadius: '6px',
+    borderRadius: '9999px',
     border: '1px solid var(--reg-soft-border)',
     backgroundColor: 'var(--reg-card-bg)',
     color: 'var(--reg-subtext)',
@@ -1977,7 +2005,7 @@ const s = {
   },
   registrationPrompt: {
     margin: '0 0 8px',
-    fontSize: '24px',
+    fontSize: '20px',
     lineHeight: 1.28,
     fontWeight: 700,
     color: 'var(--reg-text)',

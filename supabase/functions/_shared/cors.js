@@ -34,7 +34,7 @@ function allowedOrigins(configuredOrigins) {
   const disallowedOrigins = projectRef === DEV_SUPABASE_PROJECT_REF
     ? new Set(PRODUCTION_ALLOWED_ORIGINS)
     : projectRef === PRODUCTION_SUPABASE_PROJECT_REF
-      ? new Set(['http://localhost:5173'])
+      ? new Set(DEV_ALLOWED_ORIGINS)
       : new Set()
   const allowed = [...defaultAllowedOrigins(projectRef), ...configured]
     .filter((origin) => !disallowedOrigins.has(origin))

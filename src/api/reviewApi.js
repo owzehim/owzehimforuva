@@ -29,6 +29,17 @@ export async function createReview({ redemptionId, storeId, rating, tags, commen
     return { data: null, error: { message: '로그인이 필요합니다.' } }
   }
 
+  const { data: restaurantStatus, error: restaurantStatusError } = await supabase
+    .from('restaurants')
+    .select('id, is_archived')
+    .eq('partnership_id', storeId)
+    .maybeSingle()
+
+  if (restaurantStatusError) return { data: null, error: restaurantStatusError }
+  if (restaurantStatus?.is_archived) {
+    return { data: null, error: { message: '제휴 종료된 매장에는 리뷰를 작성할 수 없습니다.' } }
+  }
+
   // 1. Insert review into Supabase
   const { data, error } = await supabase
     .from('reviews')
@@ -99,8 +110,8 @@ export async function getReviewsByStore(storeId) {
 }
 
 /**
- * Fetches a store summary. Member summaries are available to active members;
- * public summaries are suppressed until at least five distinct members review.
+ * Fetches location aggregates for public and active-member map screens.
+ * Individual member notes are shown only to active members.
  *
  * @param {string} storeId
  * @returns {Promise<{
@@ -217,6 +228,7 @@ async function syncReviewCommentToRestaurantNotes({
     .from('restaurants')
     .select('id')
     .eq('partnership_id', storeId)
+    .eq('is_archived', false)
     .maybeSingle()
 
   if (restaurantError || !restaurant?.id) {

@@ -47,6 +47,7 @@ export default defineConfig({
     }),
   ],
   build: {
+    license: { fileName: 'third-party-licenses.md' },
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {

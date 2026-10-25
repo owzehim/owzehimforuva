@@ -1,7 +1,6 @@
 ﻿import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { hasAdminRole } from '../lib/adminRoles'
 import { getSafeHttpsUrl, richTextToPlainText } from '../lib/sanitizeHtml'
 import { SpotCard, RichText } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
@@ -17,6 +16,7 @@ import LoadingIndicator from '../components/LoadingIndicator'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { isMembershipActive } from '../domain/member/membershipStatus'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
+import { useDevInteractionLock } from '../lib/devInteractionLock'
 
 const MapView = lazy(() => import('../components/MapView'))
 const QRScanner = lazy(() => import('../components/QRScanner'))
@@ -39,13 +39,13 @@ function getStoredEventListOpen() {
   return window.sessionStorage.getItem(MEMBER_EVENT_LIST_OPEN_KEY) === '1'
 }
 
-export default function MemberPage() {
-  const [authUserId, setAuthUserId] = useState(null)
+export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }) {
   const [member, setMember] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
   const [activeTab, setActiveTab] = useState(getStoredMemberTab)
   const [tabKey, setTabKey] = useState(0)
+  const [hasOpenedMap, setHasOpenedMap] = useState(() => getStoredMemberTab() === 'map')
+  const lockInteractions = useDevInteractionLock(activeTab !== 'map')
   const [events, setEvents] = useState([])
   const [restaurants, setRestaurants] = useState([])
   const [qrCardLifted, setQrCardLifted] = useState(false)
@@ -95,30 +95,21 @@ export default function MemberPage() {
     setComment,
     submitReview,
     skipReview,
-  } = useReviewPrompt()
+  } = useReviewPrompt(sessionUserId)
 
   // Load user, member, events, restaurants
   useEffect(() => {
     const fetchData = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        console.error('auth.getUser error:', userError)
+      if (!sessionUserId) {
         setLoading(false)
         return
       }
-
-      const isAdminUser = await hasAdminRole(user.id)
-      setAuthUserId(user.id)
 
       // Members: maybeSingle() so we don't get a 406 if the admin has no row
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', sessionUserId)
         .maybeSingle()
 
       if (memberError) {
@@ -153,7 +144,7 @@ export default function MemberPage() {
           )
           .eq('is_archived', false)
           .order('event_date', { ascending: true }),
-        supabase.from('restaurants').select('*').order('created_at', { ascending: false }),
+        supabase.from('restaurants').select('*').eq('is_archived', false).order('created_at', { ascending: false }),
       ])
 
       if (eventResult.error) {
@@ -178,7 +169,7 @@ export default function MemberPage() {
     }
 
     fetchData()
-  }, [])
+  }, [sessionUserId, reopenWelcomeSlides])
 
   // Prevent iOS edge-swipe back gesture
   useEffect(() => {
@@ -194,6 +185,7 @@ export default function MemberPage() {
 
     window.sessionStorage.setItem(MEMBER_ACTIVE_TAB_KEY, key)
     setActiveTab(key)
+    if (key === 'map') setHasOpenedMap(true)
     setTabKey((prev) => prev + 1)
     if (key !== 'qr') {
       setQrCardLifted(false)
@@ -222,7 +214,7 @@ export default function MemberPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#121212]">
+      <div className={`min-h-screen flex items-center justify-center bg-white dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`} style={{ touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}>
         <LoadingIndicator />
       </div>
     )
@@ -232,8 +224,8 @@ export default function MemberPage() {
 
   return (
     <div
-      className="member-app-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212]"
-      style={{ height: '100dvh' }}
+      className={`member-app-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`}
+      style={{ height: '100dvh', touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}
     >
       {/* Review modal */}
       <ReviewModal
@@ -355,8 +347,8 @@ export default function MemberPage() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        <div key={tabKey} className="h-full">
+      <div className="flex-1 overflow-hidden relative">
+        <div key={tabKey} className="h-full" style={{ display: activeTab === 'map' ? 'none' : 'block' }}>
           {activeTab === 'qr' && (
             <QRTab
               member={member}
@@ -366,15 +358,27 @@ export default function MemberPage() {
             />
           )}
           {activeTab === 'events' && <EventsTab events={events} />}
-          {activeTab === 'map' && (
-  <MapTab
-    restaurants={restaurants}
-    member={member}
-    isValid={isValid}
-    isAdmin={isAdmin}
-    authUserId={authUserId}
-  />
-)}        </div>
+        </div>
+        {hasOpenedMap && (
+          <div
+            className="absolute inset-0"
+            aria-hidden={activeTab !== 'map'}
+            style={{
+              visibility: activeTab === 'map' ? 'visible' : 'hidden',
+              pointerEvents: activeTab === 'map' ? 'auto' : 'none',
+            }}
+          >
+            <MapTab
+              restaurants={restaurants}
+              member={member}
+              isValid={isValid}
+              isAdmin={isAdmin}
+              authUserId={sessionUserId}
+              userEmail={userEmail}
+              active={activeTab === 'map'}
+            />
+          </div>
+        )}
       </div>
 
       {/* Bottom tab bar */}
@@ -456,7 +460,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
     {
       eyebrow: 'SPOT tab',
       title: 'UvA-IN 제휴 매장을 둘러보세요',
-      body: '지도 위 UvA-IN 제휴 매장 마커를 누르고 위로 올려 매장 정보와 우술랭 평가를 확인하세요.',
+      body: '지도 위 UvA-IN 제휴 매장 마커를 누르고 위로 올려 매장 정보와 우슐랭 평가를 확인하세요.',
       icon: MapPin,
       demo: 'spot',
     },
@@ -501,8 +505,6 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       style={{
         paddingTop: 'calc(env(safe-area-inset-top) + 18px)',
         paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
       }}
     >
@@ -1754,8 +1756,6 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
         height: '100%',
         overflow: 'hidden',
         touchAction: 'none',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
         WebkitTapHighlightColor: 'transparent',
       }}
       onTouchStart={handleTouchStart}
@@ -4021,7 +4021,7 @@ const effectiveDateColor = isDragging
 
 }
 // Map Tab
-function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
+function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, active }) {
   const [selected, setSelected] = useState(null)
   const [activeCategory, setActiveCategory] = useState('전체')
   const [stampCardModalOpen, setStampCardModalOpen] = useState(false)
@@ -4099,8 +4099,6 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
     <div
       className="h-full flex flex-col no-highlight-zone"
       style={{
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
         WebkitTapHighlightColor: 'transparent',
       }}
     >
@@ -4170,6 +4168,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
             restaurants={filtered}
             selected={selected}
             onSelect={setSelected}
+            active={active}
           />
         </Suspense>
         {selected && (
@@ -4178,6 +4177,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId }) {
             onClosingStart={() => setSpotCardClosing(true)}
             onClose={() => setSelected(null)}
             currentUserId={stampCardUserId}
+            currentUserEmail={userEmail}
             currentUsername={noteDisplayName}
             canComment={isValid || isAdmin}
             isAdmin={isAdmin}
@@ -4217,8 +4217,6 @@ if (typeof document !== 'undefined' && !document.getElementById('no-highlight-zo
   style.textContent = `
     .no-highlight-zone,
     .no-highlight-zone * {
-      -webkit-user-select: none;
-      user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
   `

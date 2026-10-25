@@ -2523,7 +2523,7 @@ function RestaurantForm({
           className="text-sm text-gray-700 flex items-center gap-1"
         >
           <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" />
-          제휴/스폰서
+          제휴 매장
         </label>
       </div>
 
@@ -2542,7 +2542,7 @@ function RestaurantForm({
 </div>
 
 <div>
-  <label className="text-sm text-gray-500 block mb-1">우슐랭 스타</label>
+  <label className="text-sm text-gray-500 block mb-1">우슐랭 별점</label>
   <div className="mb-2 flex items-center justify-between">
     <span className="text-xs text-gray-400">SpotCard에 표시</span>
     <button
@@ -2568,7 +2568,7 @@ function RestaurantForm({
       'flex items-center gap-1 ' +
       (form.show_usullang_stars ? '' : 'pointer-events-none opacity-40')
     }
-    aria-label="우슐랭 스타 채움 수"
+    aria-label="우슐랭 별 채움 수"
   >
     {[1, 2, 3].map((star) => {
       const highlighted = star <= form.usullang_star_count
@@ -2584,7 +2584,7 @@ function RestaurantForm({
           }
           className="rounded-md p-1 transition-colors hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-300"
           aria-pressed={highlighted}
-          aria-label={`우슐랭 스타 ${star}개${highlighted ? ' 해제' : ' 표시'}`}
+          aria-label={`우슐랭 별 ${star}개${highlighted ? ' 해제' : ' 표시'}`}
         >
           <StarFour
             size={26}
@@ -2661,6 +2661,7 @@ function RestaurantsTab() {
   const [restaurants, setRestaurants] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
+  const [showArchived, setShowArchived] = useState(false)
 
   const [form, setForm] = useState({
     name: '',
@@ -2874,9 +2875,32 @@ function RestaurantsTab() {
     fetchRestaurants()
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('삭제할까요?')) return
-    await supabase.from('restaurants').delete().eq('id', id)
+  const handleArchive = async (id) => {
+    if (!confirm('제휴를 종료할까요? 매장은 앱에서 숨겨지고 미사용 리워드는 즉시 만료되어 12개월 뒤 삭제됩니다. 댓글·노트·스탬프 기록은 보존됩니다.')) return
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({ is_archived: true })
+      .eq('id', id)
+      .select('id')
+      .maybeSingle()
+    if (error || !data) {
+      alert('제휴 종료 처리 실패: ' + (error?.message || '매장을 찾을 수 없습니다.'))
+      return
+    }
+    fetchRestaurants()
+  }
+
+  const handleRestore = async (id) => {
+    const { data, error } = await supabase
+      .from('restaurants')
+      .update({ is_archived: false })
+      .eq('id', id)
+      .select('id')
+      .maybeSingle()
+    if (error || !data) {
+      alert('매장을 복원하지 못했습니다: ' + (error?.message || '매장을 찾을 수 없습니다.'))
+      return
+    }
     fetchRestaurants()
   }
 
@@ -2951,7 +2975,8 @@ function RestaurantsTab() {
     setShowForm(true)
   }
 
-  const sorted = koreanSort(restaurants, 'name')
+  const visibleRestaurants = restaurants.filter((restaurant) => Boolean(restaurant.is_archived) === showArchived)
+  const sorted = koreanSort(visibleRestaurants, 'name')
 
   const formProps = {
     form,
@@ -2977,7 +3002,20 @@ function RestaurantsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-gray-900">장소 관리</h2>
-        {!showForm && (
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowArchived(false)}
+            className={`text-xs ${!showArchived ? 'font-semibold text-blue-600' : 'text-gray-500'}`}
+          >
+            운영 중
+          </button>
+          <button
+            onClick={() => setShowArchived(true)}
+            className={`text-xs ${showArchived ? 'font-semibold text-blue-600' : 'text-gray-500'}`}
+          >
+            보관됨
+          </button>
+        {!showForm && !showArchived && (
           <button
             onClick={openAdd}
             className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-1 whitespace-nowrap"
@@ -2986,12 +3024,13 @@ function RestaurantsTab() {
             장소 추가
           </button>
         )}
+        </div>
       </div>
 
       {showForm && !editTarget && <RestaurantForm {...formProps} />}
 
-      {restaurants.length === 0 ? (
-        <p className="text-gray-500 text-sm">등록된 장소가 없어요.</p>
+      {visibleRestaurants.length === 0 ? (
+        <p className="text-gray-500 text-sm">{showArchived ? '보관된 장소가 없어요.' : '등록된 장소가 없어요.'}</p>
       ) : (
         (() => {
           const grouped = {}
@@ -3048,12 +3087,21 @@ function RestaurantsTab() {
                         >
                           수정
                         </button>
-                        <button
-                          onClick={() => handleDelete(r.id)}
-                          className="text-xs text-red-500 hover:underline whitespace-nowrap"
-                        >
-                          삭제
-                        </button>
+                        {showArchived ? (
+                          <button
+                            onClick={() => handleRestore(r.id)}
+                            className="text-xs text-green-600 hover:underline whitespace-nowrap"
+                          >
+                            복원
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleArchive(r.id)}
+                            className="text-xs text-red-500 hover:underline whitespace-nowrap"
+                          >
+                            제휴 종료
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
