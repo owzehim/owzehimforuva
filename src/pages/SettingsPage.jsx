@@ -10,6 +10,7 @@ import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { legalDocuments } from '../content/legalDocuments'
 import AdminBadge from '../components/AdminBadge'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 function isValidUsername(value) {
   const normalized = value.trim().normalize('NFKC').toLowerCase()
@@ -92,6 +93,28 @@ export default function SettingsPage({ userId, isAdmin }) {
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
   const [cropModalOpen, setCropModalOpen] = useState(false)
+  const deleteDialogRef = useRef(null)
+  const privacyDialogRef = useRef(null)
+  const cropDialogRef = useRef(null)
+  const handleDeleteDialogKeyDown = useModalFocus(
+    deleteDialogRef,
+    () => setDeleteAccountOpen(false),
+    { enabled: deleteAccountOpen, closeOnEscape: !deleteAccountLoading },
+  )
+  const handlePrivacyDialogKeyDown = useModalFocus(
+    privacyDialogRef,
+    () => setPrivacyPolicyOpen(false),
+    { enabled: privacyPolicyOpen },
+  )
+  const handleCropDialogKeyDown = useModalFocus(
+    cropDialogRef,
+    () => {
+      setCropModalOpen(false)
+      setCropImageSrc(null)
+      setCroppedAreaPixels(null)
+    },
+    { enabled: cropModalOpen && Boolean(cropImageSrc), closeOnEscape: !uploading },
+  )
 
   useEffect(() => {
     const load = async () => {
@@ -629,9 +652,12 @@ export default function SettingsPage({ userId, isAdmin }) {
       {deleteAccountOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
           <section
+            ref={deleteDialogRef}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="delete-account-title"
+            tabIndex={-1}
+            onKeyDown={handleDeleteDialogKeyDown}
             className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl dark:bg-[#161616]"
           >
             <h2 id="delete-account-title" className="text-base font-bold text-gray-900 dark:text-white">
@@ -684,9 +710,12 @@ export default function SettingsPage({ userId, isAdmin }) {
       {privacyPolicyOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
           <section
+            ref={privacyDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-privacy-policy-title"
+            tabIndex={-1}
+            onKeyDown={handlePrivacyDialogKeyDown}
             className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl bg-white p-5 shadow-xl dark:bg-[#161616]"
           >
             <div className="flex items-start justify-between gap-4">
@@ -706,7 +735,7 @@ export default function SettingsPage({ userId, isAdmin }) {
                 닫기
               </button>
             </div>
-            <div className="legal-document-content mt-4 overflow-y-auto rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-700 dark:bg-[#202020] dark:text-gray-200">
+            <div className="legal-document-content mt-4 overflow-y-auto rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-700 dark:bg-[#202020] dark:text-gray-200" tabIndex={0} aria-label="개인정보 처리방침 본문">
               <p className="whitespace-pre-wrap">{legalDocuments.privacy.ko.body}</p>
             </div>
           </section>
@@ -716,8 +745,16 @@ export default function SettingsPage({ userId, isAdmin }) {
       {/* Crop modal */}
       {cropModalOpen && cropImageSrc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-white rounded-2xl p-4 w-full max-w-sm flex flex-col gap-4 dark:bg-[#111111]">
-            <h2 className="text-sm font-semibold text-gray-900 mb-1 dark:text-white">프로필 사진 자르기</h2>
+          <div
+            ref={cropDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-crop-title"
+            tabIndex={-1}
+            onKeyDown={handleCropDialogKeyDown}
+            className="bg-white rounded-2xl p-4 w-full max-w-sm flex flex-col gap-4 dark:bg-[#111111]"
+          >
+            <h2 id="settings-crop-title" className="text-sm font-semibold text-gray-900 mb-1 dark:text-white">프로필 사진 자르기</h2>
             <div className="relative w-full h-64 rounded-xl overflow-hidden bg-gray-900">
               <Cropper
                 image={cropImageSrc}

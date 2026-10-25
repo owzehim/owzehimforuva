@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Star, StarHalf, BowlSteam, HandHeart, Wine, CoinVertical, X } from '@phosphor-icons/react'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 const TAG_ICONS = {
   BowlSteam,
@@ -133,6 +134,10 @@ export default function ReviewModal({
     }, 320)
   }
 
+  const handleDialogKeyDown = useModalFocus(sheetRef, handleClose, {
+    enabled: open || closing,
+  })
+
   const handleTouchStart = (e) => {
     touchStartY.current = e.touches[0].clientY
     touchStartX.current = e.touches[0].clientX
@@ -167,6 +172,11 @@ export default function ReviewModal({
       {/* Sheet — slides up from bottom */}
       <div
         ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-modal-title"
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
         className="fixed bottom-0 left-0 right-0 z-[1200] bg-white rounded-t-3xl"
         style={{
           paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
@@ -194,7 +204,7 @@ export default function ReviewModal({
         <div className="flex items-center justify-between px-5 pt-2 pb-4">
           <div>
             <p className="text-xs text-orange-500 font-medium mb-0.5">가본 사람 한마디</p>
-            <h2 className="text-base font-bold text-gray-900">{storeName}</h2>
+            <h2 id="review-modal-title" className="text-base font-bold text-gray-900">{storeName}</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               추천 메뉴나 매장 분위기, 다음 사람을 위한 꿀팁을 남겨주세요!
             </p>

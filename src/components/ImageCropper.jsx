@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Cropper from 'react-easy-crop'
 import { Check, Minus, Plus, X } from '@phosphor-icons/react'
 import imageCompression from 'browser-image-compression'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 const compressImage = async (file) => {
   try {
@@ -36,6 +37,10 @@ export function ImageCropper({
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
   const [isCompressing, setIsCompressing] = useState(false)
+  const dialogRef = useRef(null)
+  const handleDialogKeyDown = useModalFocus(dialogRef, onCancel, {
+    closeOnEscape: !isCompressing,
+  })
 
   const [ratioWidth, ratioHeight] = selectedRatio.split(':').map(Number)
   const aspect = ratioWidth / ratioHeight
@@ -86,9 +91,17 @@ export function ImageCropper({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
-      <div className="w-full max-w-sm space-y-3 rounded-2xl bg-white">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="image-cropper-title"
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
+        className="w-full max-w-sm space-y-3 rounded-2xl bg-white"
+      >
         <div className="flex items-center justify-between px-4 pt-4">
-          <h3 className="text-sm font-semibold text-gray-900">이미지 자르기</h3>
+          <h3 id="image-cropper-title" className="text-sm font-semibold text-gray-900">이미지 자르기</h3>
           <button
             type="button"
             onClick={onCancel}

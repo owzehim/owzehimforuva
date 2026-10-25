@@ -1,11 +1,12 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Image as ImageIcon, MapPin, Ticket, Star, StarFour } from '@phosphor-icons/react'
+import { Image as ImageIcon, MapPin, Ticket, Star, StarFour, X } from '@phosphor-icons/react'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, getSortedTagsForDisplay, formatAverageRating } from '../domain/reviewDomain'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
 import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 import { sanitizeRichText } from '../lib/sanitizeHtml'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -161,6 +162,7 @@ function Lightbox({ imgs, startIndex, onClose }) {
   }))
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
+  const dialogRef = useRef(null)
   const activeImageRatio = imageRatios[index] || 1
   const imageMaxHeight = lightboxBounds.height - (imgs.length > 1 ? 38 : 0)
   const imageWidth = Math.min(lightboxBounds.width, imageMaxHeight * activeImageRatio)
@@ -201,17 +203,7 @@ function Lightbox({ imgs, startIndex, onClose }) {
     setVisible(false)
     setTimeout(() => onClose(), 250)
   }, [onClose])
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') handleClose()
-      if (e.key === 'ArrowRight') goToIndex(index + 1)
-      if (e.key === 'ArrowLeft') goToIndex(index - 1)
-    }
-
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [goToIndex, handleClose, index])
+  const handleDialogKeyDown = useModalFocus(dialogRef, handleClose)
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX
@@ -260,6 +252,23 @@ function Lightbox({ imgs, startIndex, onClose }) {
       `}</style>
 
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="매장 사진 보기"
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          handleDialogKeyDown(event)
+          if (event.defaultPrevented) return
+          if (event.key === 'ArrowRight') {
+            event.preventDefault()
+            goToIndex(index + 1)
+          } else if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            if (index === 0) handleClose()
+            else goToIndex(index - 1)
+          }
+        }}
         onClick={handleClose}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
@@ -276,6 +285,17 @@ function Lightbox({ imgs, startIndex, onClose }) {
           touchAction: 'none',
         }}
       >
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            handleClose()
+          }}
+          aria-label="매장 사진 보기 닫기"
+          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          <X size={22} weight="bold" aria-hidden="true" />
+        </button>
         <div
           onClick={(e) => e.stopPropagation()}
           className={visible ? 'lightbox-zoom-enter' : ''}
@@ -352,21 +372,28 @@ function Lightbox({ imgs, startIndex, onClose }) {
             }}
           >
             {imgs.map((_, i) => (
-              <div
+              <button
+                type="button"
                 key={i}
+                aria-label={`사진 ${i + 1} 보기`}
+                aria-current={i === index ? 'true' : undefined}
                 onClick={(e) => {
                   e.stopPropagation()
                   goToIndex(i)
                 }}
-                style={{
-                  width: i === index ? 8 : 6,
-                  height: i === index ? 8 : 6,
-                  borderRadius: '999px',
-                  background: i === index ? '#fff' : 'rgba(255,255,255,0.4)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              />
+                className="flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: i === index ? 8 : 6,
+                    height: i === index ? 8 : 6,
+                    borderRadius: '999px',
+                    background: i === index ? '#fff' : 'rgba(255,255,255,0.4)',
+                    transition: 'all 0.2s',
+                  }}
+                />
+              </button>
             ))}
           </div>
         )}
