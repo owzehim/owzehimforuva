@@ -18,7 +18,7 @@ export function getRestaurantCommercialLabelType(restaurant) {
 
 export function getRestaurantCommercialLabel(type) {
   if (type === RESTAURANT_COMMERCIAL_LABEL_TYPES.MEMBER_DISCOUNT) {
-    return '회원 할인 제공'
+    return '할인 제공'
   }
   if (type === RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD) {
     return '유료 광고'
