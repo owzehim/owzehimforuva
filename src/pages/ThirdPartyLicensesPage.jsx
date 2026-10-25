@@ -64,7 +64,11 @@ export default function ThirdPartyLicensesPage({ embedded = false, languageOverr
   }
 
   return (
-    <main className="legal-page min-h-dvh bg-white text-gray-900 dark:bg-[#121212] dark:text-white">
+    <main
+      className="legal-page min-h-dvh bg-white text-gray-900 dark:bg-[#121212] dark:text-white"
+      onDragStart={(event) => event.preventDefault()}
+      style={{ touchAction: 'pan-x pan-y' }}
+    >
       <header className="legal-page-controls sticky top-0 z-10 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-[#2c2c2e] dark:bg-[#121212]/95">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <button
