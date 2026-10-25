@@ -54,6 +54,12 @@ html:not(.dark) .text-gray-400 {
   -webkit-user-drag: none !important;
 }
 
+#root .legal-page .legal-document-content,
+#root .legal-page .legal-document-content * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
 .dev-no-zoom-selection,
 .dev-no-zoom-selection * {
   user-select: none !important;
