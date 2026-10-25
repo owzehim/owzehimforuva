@@ -578,14 +578,6 @@ export default function SettingsPage({ userId, isAdmin }) {
 
             <button
               type="button"
-              onClick={() => navigate('/legal?lang=ko')}
-              className="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-center text-sm font-semibold text-gray-700 shadow-sm dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
-            >
-              이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
-            </button>
-
-            <button
-              type="button"
               onClick={() => {
                 // Keep a one-time fallback signal in case navigation state is lost
                 // when the member page remounts in an installed PWA.
@@ -603,6 +595,14 @@ export default function SettingsPage({ userId, isAdmin }) {
               className="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 text-center shadow-sm dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
             >
               비밀번호 바꾸기
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/legal?lang=ko')}
+              className="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-center text-sm font-semibold text-gray-700 shadow-sm dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
+            >
+              이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
             </button>
 
             <button
