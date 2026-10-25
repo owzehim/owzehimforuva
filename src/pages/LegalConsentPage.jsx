@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, CaretDown, CircleNotch } from '@phosphor-icons/react'
+import { Check, CircleNotch, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { LEGAL_DOCUMENT_VERSION, legalDocuments } from '../content/legalDocuments'
 
@@ -9,6 +9,7 @@ const DOCUMENT_KEYS = ['terms', 'privacy', 'community']
 export default function LegalConsentPage({ onAccepted, onRetry, statusError = false }) {
   const navigate = useNavigate()
   const [language, setLanguage] = useState('ko')
+  const [activeDocumentKey, setActiveDocumentKey] = useState(null)
   const [checked, setChecked] = useState({ terms: false, privacy: false, community: false })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -70,20 +71,18 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
   const names = { terms: labels.terms, privacy: labels.privacy, community: labels.community }
 
   return (
-    <main className="min-h-dvh bg-gray-50 px-4 py-8 text-gray-900 dark:bg-[#121212] dark:text-white">
-      <section className="mx-auto max-w-xl rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1c1c1e] sm:p-7">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold">{labels.title}</h1>
-            <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{labels.subtitle}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setLanguage((current) => current === 'ko' ? 'en' : 'ko')}
-            className="shrink-0 rounded-full border border-gray-200 px-3 py-2 text-xs font-semibold dark:border-gray-700"
-          >
-            {language === 'ko' ? 'English' : '한국어'}
-          </button>
+    <main className="min-h-dvh bg-gray-50 px-4 pt-[calc(env(safe-area-inset-top)+56px)] pb-8 text-gray-900 dark:bg-[#121212] dark:text-white">
+      <button
+        type="button"
+        onClick={() => setLanguage((current) => current === 'ko' ? 'en' : 'ko')}
+        className="fixed right-8 top-[calc(env(safe-area-inset-top)+10px)] z-20 flex h-9 min-w-[72px] items-center justify-center rounded-md border border-gray-200 bg-white px-3 text-[13px] font-semibold text-gray-700 dark:border-gray-700 dark:bg-[#1c1c1e] dark:text-gray-200"
+      >
+        {language === 'ko' ? 'English' : '한국어'}
+      </button>
+      <section className="mx-auto max-w-xl rounded-2xl bg-white p-5 pt-[30px] shadow-sm dark:bg-[#1c1c1e] sm:p-7 sm:pt-[30px]">
+        <div>
+          <h1 className="text-xl font-bold">{labels.title}</h1>
+          <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{labels.subtitle}</p>
         </div>
 
         <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
@@ -113,18 +112,14 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
                     <label htmlFor={`consent-${key}`} className="flex-1 text-sm font-semibold">
                       {labels.agree(names[key])}
                     </label>
-                    <CaretDown size={17} className="text-gray-400" aria-hidden="true" />
+                    <button
+                      type="button"
+                      onClick={() => setActiveDocumentKey(key)}
+                      className="shrink-0 text-xs font-semibold text-orange-600 underline underline-offset-2 dark:text-orange-400"
+                    >
+                      {labels.read}
+                    </button>
                   </div>
-                  <details className="border-t border-gray-100 dark:border-gray-700">
-                    <summary className="cursor-pointer px-4 py-3 text-xs font-medium text-orange-600 dark:text-orange-400">
-                      {labels.read}: {names[key]}
-                    </summary>
-                    <div className="max-h-64 overflow-y-auto whitespace-pre-wrap border-t border-gray-100 px-4 py-3 text-xs leading-6 text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                      <h2 className="mb-1 font-bold text-gray-900 dark:text-white">{content.title}</h2>
-                      <p className="mb-2">{language === 'ko' ? '시행일' : 'Effective Date'}: {content.effectiveDate}</p>
-                      {content.body}
-                    </div>
-                  </details>
                 </section>
               )
             })}
@@ -146,6 +141,55 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
           {language === 'ko' ? '로그아웃하고 나중에 하기' : 'Sign out and do this later'}
         </button>
       </section>
+      {activeDocumentKey && (
+        <LegalDocumentModal
+          document={legalDocuments[activeDocumentKey]}
+          language={language}
+          onClose={() => setActiveDocumentKey(null)}
+        />
+      )}
     </main>
+  )
+}
+
+function LegalDocumentModal({ document, language, onClose }) {
+  const content = language === 'ko' ? document.ko : document
+
+  return (
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="legal-consent-document-title"
+        className="flex max-h-[82dvh] w-full max-w-[720px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white text-gray-900 shadow-2xl dark:border-gray-700 dark:bg-[#1c1c1e] dark:text-white"
+      >
+        <header className="flex items-start justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-700">
+          <div>
+            <h2 id="legal-consent-document-title" className="text-lg font-bold">{content.title}</h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {language === 'ko' ? '시행일' : 'Effective Date'}: {content.effectiveDate}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={language === 'ko' ? '닫기' : 'Close'}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 dark:bg-[#2c2c2e] dark:text-gray-200"
+          >
+            <X size={18} />
+          </button>
+        </header>
+        <div className="legal-document-content overflow-y-auto overscroll-contain px-4 py-4">
+          {content.body.split('\n').map((line, index) => (
+            <p
+              key={`${content.title}-${index}`}
+              className={`mb-3 whitespace-pre-wrap text-[13px] leading-relaxed text-gray-700 dark:text-gray-200 ${line.trim() ? '' : 'min-h-px'}`}
+            >
+              {line}
+            </p>
+          ))}
+        </div>
+      </section>
+    </div>
   )
 }
