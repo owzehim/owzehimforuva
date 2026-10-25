@@ -29,6 +29,9 @@ import { hasCurrentLegalConsent } from './domain/legalConsent'
 const OTP_PENDING_KEY = 'uvain_otp_pending_email'
 const OTP_PENDING_EVENT = 'uvain-otp-pending-change'
 
+const isStandaloneApp = () =>
+  window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
+
 function App() {
   useTheme()
   const [session, setSession] = useState(undefined)
