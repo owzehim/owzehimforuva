@@ -71,7 +71,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
   const names = { terms: labels.terms, privacy: labels.privacy, community: labels.community }
 
   return (
-    <main className="min-h-dvh bg-gray-50 px-4 pt-[calc(env(safe-area-inset-top)+56px)] pb-8 text-gray-900 dark:bg-[#121212] dark:text-white">
+    <main className="flex min-h-dvh flex-col bg-gray-50 px-4 py-8 text-gray-900 dark:bg-[#121212] dark:text-white">
       <button
         type="button"
         onClick={() => setLanguage((current) => current === 'ko' ? 'en' : 'ko')}
@@ -79,7 +79,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
       >
         {language === 'ko' ? 'English' : '한국어'}
       </button>
-      <section className="mx-auto max-w-xl rounded-2xl bg-white p-5 pt-[30px] shadow-sm dark:bg-[#1c1c1e] sm:p-7 sm:pt-[30px]">
+      <section className="mx-auto my-auto max-w-xl rounded-2xl bg-white p-5 pt-[30px] shadow-sm dark:bg-[#1c1c1e] sm:p-7 sm:pt-[30px]">
         <div>
           <h1 className="text-xl font-bold">{labels.title}</h1>
           <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{labels.subtitle}</p>
@@ -132,7 +132,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
           type="button"
           disabled={!allChecked || submitting || statusError}
           onClick={accept}
-          className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-700"
+          className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-700"
         >
           {submitting ? <><CircleNotch size={18} className="animate-spin" />{labels.working}</> : <><Check size={18} />{labels.submit}</>}
         </button>
