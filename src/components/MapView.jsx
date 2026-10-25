@@ -143,7 +143,6 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       `${displayName}${commercialLabel ? `, ${commercialLabel}` : ''} 지도에서 선택`,
     )
     el.style.cssText = `
-      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -203,10 +202,6 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       disclosure.className = 'marker-commercial-label'
       disclosure.textContent = commercialLabel
       disclosure.style.cssText = `
-        position: absolute;
-        top: calc(100% + 2px);
-        left: 50%;
-        transform: translateX(-50%);
         display: ${isSelected ? 'block' : 'none'};
         background: #f97316;
         color: #ffffff;
