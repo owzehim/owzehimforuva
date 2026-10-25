@@ -126,16 +126,18 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
           </div>
         )}
 
-        {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
+        <div className="mt-4">
+          {error && <p className="mb-3 text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
 
-        <button
-          type="button"
-          disabled={!allChecked || submitting || statusError}
-          onClick={accept}
-          className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-700"
-        >
-          {submitting ? <><CircleNotch size={18} className="animate-spin" />{labels.working}</> : <><Check size={18} />{labels.submit}</>}
-        </button>
+          <button
+            type="button"
+            disabled={!allChecked || submitting || statusError}
+            onClick={accept}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-700"
+          >
+            {submitting ? <><CircleNotch size={18} className="animate-spin" />{labels.working}</> : <><Check size={18} />{labels.submit}</>}
+          </button>
+        </div>
 
         <button type="button" onClick={async () => { await supabase.auth.signOut(); navigate('/login', { replace: true }) }} className="mt-4 w-full py-2 text-sm font-medium text-gray-500">
           {language === 'ko' ? '로그아웃하고 나중에 하기' : 'Sign out and do this later'}
