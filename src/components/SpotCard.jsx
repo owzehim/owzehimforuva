@@ -893,11 +893,6 @@ export function SpotCard({
               <p className="font-semibold text-gray-900 text-lg">
                 {selected.name}
               </p>
-              {selected.is_sponsored && (
-                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
-                  제휴
-                </span>
-              )}
             </div>
 
             {spotCardHeightMode === 'full' && showRating && (
@@ -966,9 +961,9 @@ export function SpotCard({
             <section
               className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out"
               aria-label="리뷰 박스"
-              onTouchStart={reviewAudience === 'member' ? handleReviewBoxTouchStart : undefined}
-              onTouchMove={reviewAudience === 'member' ? handleReviewBoxTouchMove : undefined}
-              onTouchEnd={reviewAudience === 'member' ? handleReviewBoxTouchEnd : undefined}
+              onTouchStart={handleReviewBoxTouchStart}
+              onTouchMove={handleReviewBoxTouchMove}
+              onTouchEnd={handleReviewBoxTouchEnd}
               style={{
                 opacity: isCollapsed ? 0 : 1,
                 transform: isCollapsed ? 'translateY(8px)' : 'translateY(0)',
@@ -979,14 +974,14 @@ export function SpotCard({
               }}
             >
               <div
-                className={`flex min-h-0 ${reviewAudience === 'member' ? 'w-[200%]' : 'w-full'} flex-1 transition-transform duration-300 ease-out`}
+                className="flex min-h-0 w-[200%] flex-1 transition-transform duration-300 ease-out"
                 style={{
-                  transform: reviewAudience === 'member' && reviewBoxPanel === 'notes'
+                  transform: reviewBoxPanel === 'notes'
                     ? 'translateX(-50%)'
                     : 'translateX(0)',
                 }}
               >
-                <div className={`${reviewAudience === 'member' ? 'w-1/2' : 'w-full'} flex-shrink-0 px-4 pt-1`}>
+                <div className="w-1/2 flex-shrink-0 px-4 pt-1">
                   {guideContent}
                   <div>
                     <TagBarChart
@@ -995,19 +990,30 @@ export function SpotCard({
                     />
                   </div>
                 </div>
-                {reviewAudience === 'member' && <div className="w-1/2 flex-shrink-0 px-4">
-                  <GoodToKnowNotesPanel
-                    restaurantId={selected.id}
-                    userId={currentUserId}
-                    userEmail={currentUserEmail}
-                    username={currentUsername}
-                    canComment={canComment}
-                    isAdmin={isAdmin}
-                    mutedAccentColor={darkMode ? DARK_MUTED_ACCENT : undefined}
-                  />
-                </div>}
+                <div className="w-1/2 flex-shrink-0 px-4">
+                  {reviewAudience === 'member' ? (
+                    <GoodToKnowNotesPanel
+                      restaurantId={selected.id}
+                      userId={currentUserId}
+                      userEmail={currentUserEmail}
+                      username={currentUsername}
+                      canComment={canComment}
+                      isAdmin={isAdmin}
+                      mutedAccentColor={darkMode ? DARK_MUTED_ACCENT : undefined}
+                    />
+                  ) : (
+                    <div className="flex h-full min-h-0 flex-col py-3">
+                      <p className="text-xs font-semibold text-gray-500">회원 한마디</p>
+                      <div className="flex min-h-0 flex-1 items-center justify-center px-4">
+                        <p className="text-center text-xs leading-relaxed text-gray-400">
+                          회원만 한마디를 볼 수 있어요.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              {reviewAudience === 'member' && <div className="relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4">
+              <div className="relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4">
                 <button
                   type="button"
                   aria-label="우슐랭 보기"
@@ -1026,7 +1032,7 @@ export function SpotCard({
                 >
                   <span className={'block h-1.5 rounded-full transition-all ' + (reviewBoxPanel === 'notes' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')} />
                 </button>
-              </div>}
+              </div>
             </section>
           )}
 
