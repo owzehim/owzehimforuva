@@ -10,6 +10,11 @@ import StampCardEditPanel from '../features/stampCard/components/StampCardEditPa
 import StampCardMemberPanel from '../features/stampCard/components/StampCardMemberPanel'
 import { fetchConfigBySpot } from '../features/stampCard/api/config'
 import { preparePublicImage } from '../lib/preparePublicImage'
+import {
+  getRestaurantCommercialLabel,
+  getRestaurantCommercialLabelType,
+  RESTAURANT_COMMERCIAL_LABEL_TYPES,
+} from '../lib/restaurantCommercialLabel'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -2523,8 +2528,34 @@ function RestaurantForm({
           className="text-sm text-gray-700 flex items-center gap-1"
         >
           <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" />
-          제휴 매장
+          주황색 강조 마커
         </label>
+      </div>
+
+      <div>
+        <label
+          className="text-sm text-gray-500 block mb-1"
+          htmlFor="commercial-display-type"
+        >
+          매장 표시 유형
+        </label>
+        <select
+          id="commercial-display-type"
+          value={form.commercial_display_type}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, commercial_display_type: e.target.value }))
+          }
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+        >
+          <option value={RESTAURANT_COMMERCIAL_LABEL_TYPES.NONE}>표시 없음</option>
+          <option value={RESTAURANT_COMMERCIAL_LABEL_TYPES.MEMBER_DISCOUNT}>
+            회원 할인 제공
+          </option>
+          <option value={RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD}>유료 광고</option>
+        </select>
+        <p className="mt-1 text-xs text-gray-400">
+          유료 광고는 파란색 지도 마커와 함께 표시됩니다.
+        </p>
       </div>
 
       {/* 한 줄 평가 */}
@@ -2679,6 +2710,7 @@ function RestaurantsTab() {
     category: '맛집',
     price_range: '',
     is_sponsored: false,
+    commercial_display_type: RESTAURANT_COMMERCIAL_LABEL_TYPES.NONE,
     show_rating: true,
     show_google_maps_button: true,
     show_usullang_stars: false,
@@ -2780,6 +2812,7 @@ function RestaurantsTab() {
       category: '맛집',
       price_range: '',
       is_sponsored: false,
+      commercial_display_type: RESTAURANT_COMMERCIAL_LABEL_TYPES.NONE,
       show_rating: true,
       show_google_maps_button: true,
       show_usullang_stars: false,
@@ -2842,6 +2875,7 @@ function RestaurantsTab() {
       category: form.category,
       price_range: form.price_range,
       is_sponsored: form.is_sponsored,
+      commercial_display_type: form.commercial_display_type,
       show_rating: form.show_rating,
       show_google_maps_button: form.show_google_maps_button,
       show_usullang_stars: form.show_usullang_stars,
@@ -2922,6 +2956,7 @@ function RestaurantsTab() {
       category: r.category || '맛집',
       price_range: r.price_range || '',
       is_sponsored: r.is_sponsored || false,
+      commercial_display_type: getRestaurantCommercialLabelType(r),
       show_rating: typeof r.show_rating === 'boolean' ? r.show_rating : true,
       show_google_maps_button:
         typeof r.show_google_maps_button === 'boolean'
@@ -2961,6 +2996,7 @@ function RestaurantsTab() {
       category: '맛집',
       price_range: '',
       is_sponsored: false,
+      commercial_display_type: RESTAURANT_COMMERCIAL_LABEL_TYPES.NONE,
       show_rating: true,
       show_google_maps_button: true,
       show_usullang_stars: false,
@@ -3053,12 +3089,23 @@ function RestaurantsTab() {
                           <p className="font-medium text-gray-900 text-sm">
                             {r.name}
                           </p>
-                          {r.is_sponsored && (
-                            <span className="text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                              제휴
-                            </span>
-                          )}
                         </div>
+                        {getRestaurantCommercialLabel(
+                          getRestaurantCommercialLabelType(r),
+                        ) && (
+                          <span
+                            className={`mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                              getRestaurantCommercialLabelType(r) ===
+                              RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-orange-50 text-orange-700'
+                            }`}
+                          >
+                            {getRestaurantCommercialLabel(
+                              getRestaurantCommercialLabelType(r),
+                            )}
+                          </span>
+                        )}
                         {r.address && (
                           <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                             <MapPin size={12} weight="fill" /> {r.address}
