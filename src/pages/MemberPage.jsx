@@ -358,15 +358,8 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
           )}
           {activeTab === 'events' && <EventsTab events={events} />}
         </div>
-        {hasOpenedMap && (
-          <div
-            className="absolute inset-0"
-            aria-hidden={activeTab !== 'map'}
-            style={{
-              visibility: activeTab === 'map' ? 'visible' : 'hidden',
-              pointerEvents: activeTab === 'map' ? 'auto' : 'none',
-            }}
-          >
+        {hasOpenedMap && activeTab === 'map' && (
+          <div className="absolute inset-0">
             <MapTab
               restaurants={restaurants}
               member={member}
