@@ -782,7 +782,7 @@ export function SpotCard({
     reviewBoxTouchStartRef.current = null
   }
 
-  const guideContent = selected.one_line_review && (!isTallCollapsed || !hasImages) && (
+  const guideContent = (selected.one_line_review || showUsullangStars) && (!isTallCollapsed || !hasImages) && (
     <div
       className="mb-3"
       style={{ marginTop: spotCardHeightMode === 'full' ? 8 : speechBubbleGapPx }}
@@ -811,34 +811,36 @@ export function SpotCard({
           ))}
         </div>
       )}
-      <div className="relative w-full">
-        <div
-          aria-hidden="true"
-          className="block w-[97.5%] origin-left select-none"
-          style={{
-            aspectRatio: '3435 / 612',
-            backgroundColor: '#f97316',
-            mask: 'url(/spotcard-speech-bubble.png) center / contain no-repeat',
-            WebkitMask:
-              'url(/spotcard-speech-bubble.png) center / contain no-repeat',
-          }}
-        />
-        <div
-          className="absolute flex items-center justify-center px-6 sm:px-8 md:px-10"
-          style={{
-            left: '8%',
-            right: '8%',
-            top: '10%',
-            bottom: '15%',
-            overflow: 'hidden',
-          }}
-        >
-          <RichText
-            text={selected.one_line_review}
-            className="block max-w-full break-keep text-center text-[clamp(12px,3.2vw,16px)] font-semibold leading-tight text-white"
+      {selected.one_line_review && (
+        <div className="relative w-full">
+          <div
+            aria-hidden="true"
+            className="block w-[97.5%] origin-left select-none"
+            style={{
+              aspectRatio: '3435 / 612',
+              backgroundColor: '#f97316',
+              mask: 'url(/spotcard-speech-bubble.png) center / contain no-repeat',
+              WebkitMask:
+                'url(/spotcard-speech-bubble.png) center / contain no-repeat',
+            }}
           />
+          <div
+            className="absolute flex items-center justify-center px-6 sm:px-8 md:px-10"
+            style={{
+              left: '8%',
+              right: '8%',
+              top: '10%',
+              bottom: '15%',
+              overflow: 'hidden',
+            }}
+          >
+            <RichText
+              text={selected.one_line_review}
+              className="block max-w-full break-keep text-center text-[clamp(12px,3.2vw,16px)] font-semibold leading-tight text-white"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 
@@ -1027,12 +1029,12 @@ export function SpotCard({
           )}
 
           {/* 한 줄 평가 */}
-          {spotCardHeightMode !== 'full' && selected.one_line_review && (!isTallCollapsed || !hasImages) && (
+          {spotCardHeightMode !== 'full' && (selected.one_line_review || showUsullangStars) && (!isTallCollapsed || !hasImages) && (
             <div className="mb-3" style={{ marginTop: speechBubbleGapPx }}>
               <p className="mb-2 text-left text-xs font-semibold text-gray-500">
                 우슐랭
               </p>
-              {spotCardHeightMode === 'full' && showUsullangStars && (
+              {showUsullangStars && (
                 <div
                   className="mb-6 flex items-center justify-center gap-3 text-orange-500"
                   aria-label={`우슐랭 별 ${usullangStarCount}개`}
@@ -1047,7 +1049,7 @@ export function SpotCard({
                   ))}
                 </div>
               )}
-              <div className="relative w-full">
+              {selected.one_line_review && <div className="relative w-full">
                 <div
                   aria-hidden="true"
                   className="block w-[97.5%] origin-left select-none"
@@ -1075,7 +1077,7 @@ export function SpotCard({
                     className="block max-w-full break-keep text-center text-[clamp(14px,4vw,18px)] font-semibold leading-tight text-white"
                   />
                 </div>
-              </div>
+              </div>}
             </div>
           )}
 
