@@ -539,7 +539,10 @@ export function SpotCard({
     [],
   )
 
-  const isDesktop = WIN_W >= 768
+  const hasDesktopPointer = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  const isDesktop = WIN_W >= 768 && hasDesktopPointer
   const isTallSpotCard = selected?.spot_card_height === 'tall'
   const spotCardHeightMode =
     selected?.spot_card_height === 'full' || selected?.spot_card_height === 'tall'
