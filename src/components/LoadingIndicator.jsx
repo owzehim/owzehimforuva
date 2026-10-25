@@ -1,6 +1,12 @@
-export default function LoadingIndicator({ label = '로딩 중...' }) {
+export default function LoadingIndicator({ label = '로딩 중...', fullScreen = false }) {
   return (
-    <div className="flex items-center gap-2.5" role="status" aria-live="polite">
+    <div
+      className={fullScreen
+        ? 'fixed inset-0 z-[5000] flex items-center justify-center bg-white dark:bg-[#121212]'
+        : 'flex w-full items-center justify-center gap-2.5'}
+      role="status"
+      aria-live="polite"
+    >
       <span
         aria-hidden="true"
         className="app-loading-spinner h-5 w-5 animate-spin rounded-full border-2"

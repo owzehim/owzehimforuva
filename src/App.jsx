@@ -192,7 +192,7 @@ function App() {
     return (
       <DevScreenInteractionLock>
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#121212]">
-          <LoadingIndicator />
+          <LoadingIndicator fullScreen />
         </div>
       </DevScreenInteractionLock>
     )
@@ -208,9 +208,9 @@ function App() {
     : 'loading'
   const protectWithConsent = (element, unauthenticatedPath = '/login') => {
     if (!protectedSession) {
-      return appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to={isOtpPending ? '/login' : unauthenticatedPath} />
+      return appSession && !isOtpPending ? <LoadingIndicator fullScreen /> : <Navigate to={isOtpPending ? '/login' : unauthenticatedPath} />
     }
-    if (consentForCurrentUser === 'loading') return <LoadingIndicator />
+    if (consentForCurrentUser === 'loading') return <LoadingIndicator fullScreen />
     if (consentForCurrentUser === 'error') {
       return <DevScreenInteractionLock><LegalConsentPage statusError onRetry={refreshLegalConsent} /></DevScreenInteractionLock>
     }
@@ -220,9 +220,9 @@ function App() {
 
   const renderLegalConsent = () => {
     if (!protectedSession) {
-      return appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to="/login" replace />
+      return appSession && !isOtpPending ? <LoadingIndicator fullScreen /> : <Navigate to="/login" replace />
     }
-    if (consentForCurrentUser === 'loading') return <LoadingIndicator />
+    if (consentForCurrentUser === 'loading') return <LoadingIndicator fullScreen />
     if (consentForCurrentUser === 'error') {
       return <LegalConsentPage statusError onRetry={refreshLegalConsent} />
     }
@@ -263,7 +263,7 @@ function App() {
           element={
             devScreen(
               !adminRoleLoaded
-                ? <LoadingIndicator />
+                ? <LoadingIndicator fullScreen />
                 : isAdmin
                   ? protectWithConsent(<AdminPage />)
                   : <Navigate to={appSession ? '/member' : '/login'} />
