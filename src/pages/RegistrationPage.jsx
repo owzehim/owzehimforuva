@@ -21,6 +21,19 @@ const isMobileChromeBrowser = typeof navigator !== 'undefined'
   && /(?:Chrome|CriOS)\//.test(navigator.userAgent)
   && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
+function isCompactPortraitViewport() {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.matchMedia !== 'function' ||
+    !window.matchMedia('(orientation: portrait)').matches
+  ) {
+    return false;
+  }
+
+  const screenHeight = window.screen?.availHeight || window.screen?.height || window.innerHeight;
+  return Math.min(window.innerHeight, screenHeight) <= 760;
+}
+
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
   'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia',
@@ -866,7 +879,7 @@ export default function RegistrationPage() {
         : (language === 'ko' ? '이메일 주소를 확인하고 인증 링크를 다시 받아보세요.' : 'Check your email address and request a new confirmation link.');
 
       return (
-        <div className="phone-app-shell registration-page-enter" style={{ ...s.page, height: '100svh', overflowY: 'auto', boxSizing: 'border-box', padding: '24px 16px', fontFamily: 'var(--font-app)' }}>
+        <div className="phone-app-shell viewport-height-shell registration-page-enter" style={{ ...s.page, height: '100svh', overflowY: 'auto', boxSizing: 'border-box', padding: '24px 16px', fontFamily: 'var(--font-app)' }}>
           <style>{registrationMotionCss}</style>
           <div style={{ ...s.emailCard, position: 'relative', top: 'auto', transform: 'none', margin: 'auto 0' }}>
             <div style={{ textAlign: 'center', marginBottom: '12px' }}>
@@ -930,7 +943,7 @@ export default function RegistrationPage() {
 
     return (
       <div
-        className="phone-app-shell registration-page-enter"
+        className="phone-app-shell viewport-height-shell registration-page-enter"
         onDragStart={(event) => event.preventDefault()}
         style={{ ...s.page, fontFamily: 'var(--font-app)', WebkitTapHighlightColor: 'transparent' }}
       >
@@ -999,7 +1012,7 @@ export default function RegistrationPage() {
   if (showSignupCaptcha) {
     return (
       <div
-        className="phone-app-shell registration-page-enter"
+        className="phone-app-shell viewport-height-shell registration-page-enter"
         onDragStart={(event) => event.preventDefault()}
         style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
       >
@@ -1051,7 +1064,7 @@ export default function RegistrationPage() {
 
   return (
     <div
-      className="phone-app-shell registration-page-enter"
+      className="phone-app-shell viewport-height-shell registration-page-enter"
       onDragStart={(event) => event.preventDefault()}
       style={{
         ...s.page,
@@ -1094,6 +1107,7 @@ export default function RegistrationPage() {
       {step === 'about' && (
         <div key="about" className="registration-step" style={s.stepShell}>
           <NameStep
+            compactViewport={isCompactPortraitViewport()}
             formData={formData}
             handleChange={handleChange}
             goNext={goNext}
@@ -1107,6 +1121,7 @@ export default function RegistrationPage() {
       {step === 'academic' && (
         <div key="academic" className="registration-step registration-step-academic" style={s.stepShell}>
           <AcademicStep
+            compactViewport={isCompactPortraitViewport()}
             formData={formData}
             handleChange={handleChange}
             handleEducationLevelChange={handleEducationLevelChange}
@@ -1125,6 +1140,7 @@ export default function RegistrationPage() {
       {step === 'account' && (
         <div key="account" className="registration-step registration-step-account" style={s.stepShell}>
           <AccountStep
+            compactViewport={isCompactPortraitViewport()}
             formData={formData}
             handleChange={handleChange}
             handleSubmit={handleAccountSubmit}
@@ -1222,7 +1238,7 @@ function ProfileHero({
   );
 }
 
-function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
+function NameStep({ compactViewport, formData, handleChange, goNext, language, t, isComplete }) {
   return (
     <div style={s.form}>
       <div style={{ ...s.formContent, ...s.promptFormContent }}>
@@ -1232,7 +1248,7 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
             : 'Please fill in your information to sign up'}
         </h1>
 
-        <div style={{ ...s.nameGrid, ...s.stageOneFieldStart }}>
+        <div style={{ ...s.nameGrid, ...s.stageOneFieldStart, ...(compactViewport ? s.compactStageOneFieldStart : {}) }}>
           <Field label={t.firstName} id="firstName">
             <input
               id="firstName"
@@ -1318,7 +1334,7 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
         </div>
       </div>
 
-      <div style={getBottomActionStyle()}>
+      <div style={getBottomActionStyle(compactViewport)}>
         <button type="button" onClick={goNext} disabled={!isComplete} style={getNextButtonStyle(isComplete)}>
           {t.next}
         </button>
@@ -1378,6 +1394,7 @@ function ProfileCropModal({
 
 // ?? Step 2: Academic info ??????????????????????????????????????????????????????
 function AcademicStep({
+  compactViewport,
   formData,
   handleChange,
   handleEducationLevelChange,
@@ -1397,7 +1414,7 @@ function AcademicStep({
             : 'Please enter your academic information'}
         </h1>
 
-        <div style={{ ...s.fieldStack, ...s.stageTwoFieldStart }}>
+        <div style={{ ...s.fieldStack, ...s.stageTwoFieldStart, ...(compactViewport ? s.compactStageTwoFieldStart : {}) }}>
           <Field label={t.university} id="university">
             <TypeaheadSelect
               name="university"
@@ -1477,7 +1494,7 @@ function AcademicStep({
         </div>
       </div>
 
-      <div style={getBottomActionStyle()}>
+      <div style={getBottomActionStyle(compactViewport)}>
         <button
           type="button"
           onClick={goNext}
@@ -1496,6 +1513,7 @@ function AcademicStep({
 
 // ?? Step 3: Account & login info ???????????????????????????????????????????????
 function AccountStep({
+  compactViewport,
   formData,
   handleChange,
   handleSubmit,
@@ -1539,7 +1557,7 @@ function AccountStep({
           />
         </div>
 
-        <div style={{ ...s.fieldStack, ...s.accountFieldStart }}>
+        <div style={{ ...s.fieldStack, ...s.accountFieldStart, ...(compactViewport ? s.compactAccountFieldStart : {}) }}>
           <Field label={t.email} id="email">
             <input
               id="email"
@@ -1636,7 +1654,7 @@ function AccountStep({
 
       </div>
 
-      <div style={getBottomActionStyle()}>
+      <div style={getBottomActionStyle(compactViewport)}>
         <button
           type="submit"
           disabled={loading || !isComplete}
@@ -2049,11 +2067,17 @@ const s = {
     left: 0,
     right: 0,
   },
+  compactStageOneFieldStart: {
+    top: '96px',
+  },
   stageTwoFieldStart: {
     position: 'absolute',
     top: '141px',
     left: 0,
     right: 0,
+  },
+  compactStageTwoFieldStart: {
+    top: '102px',
   },
   accountProfileSlot: {
     position: 'absolute',
@@ -2068,6 +2092,9 @@ const s = {
     top: '204px',
     left: 0,
     right: 0,
+  },
+  compactAccountFieldStart: {
+    top: '176px',
   },
   aboutTopGrid: {
     display: 'grid',
@@ -2694,7 +2721,7 @@ const s = {
   },
 };
 
-function getBottomActionStyle() {
+function getBottomActionStyle(compactViewport = false) {
   return {
     ...s.bottomAction,
     // Keep the action at the same screen position across browsers and prevent
@@ -2706,7 +2733,7 @@ function getBottomActionStyle() {
     width: AUTH_BOX_WIDTH,
     maxWidth: AUTH_BOX_WIDTH,
     margin: '0 auto',
-    paddingBottom: 'calc(env(safe-area-inset-bottom) + 84px)',
+    paddingBottom: `calc(env(safe-area-inset-bottom) + ${compactViewport ? '56px' : '84px'})`,
     zIndex: 20,
     backgroundColor: 'var(--reg-page-bg)',
   };
