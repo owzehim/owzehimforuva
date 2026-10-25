@@ -38,7 +38,7 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.text-gray-400 {
+html:not(.dark) .text-gray-400 {
   color: #6b7280;
 }
 
