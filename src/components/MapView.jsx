@@ -6,6 +6,11 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 maplibregl.setWorkerUrl(maplibreWorkerUrl)
 
 import { getMapIconSvg } from '../lib/mapCategories'
+import {
+  getRestaurantCommercialLabel,
+  getRestaurantCommercialLabelType,
+  RESTAURANT_COMMERCIAL_LABEL_TYPES,
+} from '../lib/restaurantCommercialLabel'
 import { MapPinSimple } from '@phosphor-icons/react'
 
 if (typeof window !== 'undefined' && !document.getElementById('map-view-performance-style')) {
@@ -105,6 +110,8 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     const isPaidAd = r.commercial_display_type === 'paid_ad'
     const isSponsored = r.is_sponsored
     const isHighlighted = isPaidAd || isSponsored
+    const commercialLabelType = getRestaurantCommercialLabelType(r)
+    const commercialLabel = getRestaurantCommercialLabel(commercialLabelType)
     const markerColor = isPaidAd ? '#16A34A' : '#f97316'
     const size = isHighlighted ? 42 : 34
     const bg = isHighlighted ? markerColor : dark ? '#121212' : 'white'
@@ -132,7 +139,10 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     el.setAttribute('data-selected', isSelected ? 'true' : 'false')
     el.setAttribute('role', 'button')
     el.setAttribute('tabindex', '0')
-    el.setAttribute('aria-label', `${displayName} 지도에서 선택`)
+    el.setAttribute(
+      'aria-label',
+      `${displayName}${commercialLabel ? `, ${commercialLabel}` : ''} 지도에서 선택`,
+    )
     el.style.cssText = `
       display: flex;
       flex-direction: column;
@@ -187,6 +197,27 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
     el.appendChild(markerCircle)
     el.appendChild(label)
+
+    if (commercialLabel) {
+      const disclosure = document.createElement('div')
+      disclosure.className = 'marker-commercial-label'
+      const isPaidAdLabel =
+        commercialLabelType === RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
+      disclosure.textContent = commercialLabel
+      disclosure.style.cssText = `
+        display: ${isSelected ? 'block' : 'none'};
+        background: ${dark ? (isPaidAdLabel ? '#052e16' : '#431407') : isPaidAdLabel ? '#f0fdf4' : '#fff7ed'};
+        color: ${isPaidAdLabel ? '#16A34A' : '#c2410c'};
+        font-size: 8px;
+        font-weight: 700;
+        line-height: 11px;
+        padding: 1px 4px;
+        border-radius: 4px;
+        white-space: nowrap;
+        box-shadow: ${dark ? '0 1px 3px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.12)'};
+      `
+      el.appendChild(disclosure)
+    }
 
     return el
   }, [])
@@ -360,6 +391,8 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       if (!markerData) return
       const { element, isSponsored, isPaidAd } = markerData
       element.setAttribute('data-selected', isSelected ? 'true' : 'false')
+      const disclosure = element.querySelector('.marker-commercial-label')
+      if (disclosure) disclosure.style.display = isSelected ? 'block' : 'none'
       const circle = element.querySelector('.marker-circle')
       if (!circle) return
 
