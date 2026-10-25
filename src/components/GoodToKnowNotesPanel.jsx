@@ -366,7 +366,7 @@ export function GoodToKnowNotesPanel({
       `}</style>
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-gray-500">회원 한마디</p>
+          <p className="text-xs font-semibold text-gray-500">가본 사람 한마디</p>
           <p className="mt-0.5 text-[10px] text-gray-400">최근 10개</p>
         </div>
         <button

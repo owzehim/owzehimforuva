@@ -1003,35 +1003,25 @@ export function SpotCard({
                     />
                   ) : (
                     <div className="flex h-full min-h-0 flex-col py-3">
-                      <p className="text-xs font-semibold text-gray-500">회원 한마디</p>
+                      <p className="text-xs font-semibold text-gray-500">가본 사람 한마디</p>
                       <div className="flex min-h-0 flex-1 items-center justify-center px-4">
                         <p className="text-center text-xs leading-relaxed text-gray-400">
-                          회원만 한마디를 볼 수 있어요.
+                          로그인하면 가본 사람 한마디를 읽고 작성할 수 있어요
                         </p>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4">
-                <button
-                  type="button"
-                  aria-label="우슐랭 보기"
-                  aria-pressed={reviewBoxPanel === 'guide'}
-                  onClick={() => setReviewBoxPanel('guide')}
-                  className="rounded-full p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
-                >
-                  <span className={'block h-1.5 rounded-full transition-all ' + (reviewBoxPanel === 'guide' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="회원 한마디 보기"
-                  aria-pressed={reviewBoxPanel === 'notes'}
-                  onClick={() => setReviewBoxPanel('notes')}
-                  className="rounded-full p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
-                >
-                  <span className={'block h-1.5 rounded-full transition-all ' + (reviewBoxPanel === 'notes' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')} />
-                </button>
+              <div className="relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4" aria-hidden="true">
+                <span className={
+                  'h-1.5 rounded-full transition-all ' +
+                  (reviewBoxPanel === 'guide' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
+                } />
+                <span className={
+                  'h-1.5 rounded-full transition-all ' +
+                  (reviewBoxPanel === 'notes' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
+                } />
               </div>
             </section>
           )}
