@@ -175,12 +175,14 @@ export default function ScanPage() {
         className="bg-white px-2 py-3 flex items-center flex-shrink-0"
         style={{
           paddingTop: 'calc(env(safe-area-inset-top) + 12px)',
+          minHeight: 'calc(env(safe-area-inset-top) + 56px)',
           backgroundColor: isLoading ? loadingBg : undefined,
         }}
       >
         <button
           onClick={() => navigate('/member')}
-          className="text-gray-500 hover:text-gray-800 px-2 py-1 rounded-lg hover:bg-gray-100"
+          className="fixed left-[14px] z-10 flex h-11 w-11 items-center justify-center text-gray-500 hover:text-gray-800"
+          style={{ top: 'calc(env(safe-area-inset-top) + 6px)' }}
           aria-label="뒤로"
         >
           <ArrowLeft size={20} weight="bold" />

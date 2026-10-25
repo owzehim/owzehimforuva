@@ -75,6 +75,7 @@ export default function ThirdPartyLicensesPage({ embedded = false, languageOverr
             type="button"
             onClick={() => navigate(-1)}
             className="flex h-10 items-center gap-1 rounded-full px-2 text-sm font-medium text-gray-600 dark:text-gray-300"
+            style={{ position: 'relative', top: 'calc(env(safe-area-inset-top) - 6px)' }}
           >
             <CaretLeft size={18} /> {copy.back}
           </button>

@@ -1917,7 +1917,7 @@ const s = {
   languageToggle: {
     position: 'fixed',
     right: '32px',
-    top: 'max(22px, calc(env(safe-area-inset-top) + 10px))',
+    top: 'calc(env(safe-area-inset-top) + 10px)',
     minWidth: '72px',
     height: '36px',
     padding: '0 12px',

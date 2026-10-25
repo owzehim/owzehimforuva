@@ -511,7 +511,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
               }
               setIndex((value) => Math.max(0, value - 1))
             }}
-            className="absolute left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
+            className="fixed left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
             style={{ top: 'calc(env(safe-area-inset-top) + 6px)' }}
             aria-label={index === 0 ? 'Back to settings' : 'Previous slide'}
           >
