@@ -376,7 +376,7 @@ export default function LoginPage() {
           type="button"
           onClick={() => navigate('/legal?lang=ko')}
           className="fixed inset-x-4 z-20 mx-auto max-w-sm text-center text-[11px] font-medium text-gray-400 underline underline-offset-2 dark:text-gray-500"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 24px)' }}
         >
           이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
         </button>

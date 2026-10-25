@@ -126,7 +126,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
           </div>
         )}
 
-        <div className="pt-6">
+        <div className="pt-8">
           {error && <p className="mb-3 text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
 
           <button
