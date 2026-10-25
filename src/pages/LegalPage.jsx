@@ -28,9 +28,10 @@ export default function LegalPage() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex h-10 items-center gap-1 rounded-full px-2 text-sm font-medium text-gray-600 dark:text-gray-300"
+            className="flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
+            aria-label={closeLabel}
           >
-            <CaretLeft size={18} /> {closeLabel}
+            <CaretLeft size={24} weight="bold" />
           </button>
           <button
             type="button"
