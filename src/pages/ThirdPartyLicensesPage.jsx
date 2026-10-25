@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CaretLeft } from '@phosphor-icons/react'
 
-export default function ThirdPartyLicensesPage() {
+export default function ThirdPartyLicensesPage({ embedded = false, languageOverride }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const language = searchParams.get('lang') === 'en' ? 'en' : 'ko'
+  const language = languageOverride || (searchParams.get('lang') === 'en' ? 'en' : 'ko')
   const copy = language === 'ko'
     ? {
         back: '뒤로',
@@ -44,6 +44,25 @@ export default function ThirdPartyLicensesPage() {
     }
   }, [])
 
+  const licenseContent = loadError ? (
+    <p className="text-sm text-gray-500 dark:text-gray-400">{copy.error}</p>
+  ) : licenseText ? (
+    <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6">
+      {licenseText}
+    </pre>
+  ) : (
+    <p className="text-sm text-gray-500 dark:text-gray-400">{copy.loading}</p>
+  )
+
+  if (embedded) {
+    return (
+      <article id="legal-document-content" className="legal-document-content mx-auto max-w-3xl px-5 py-7 sm:px-8">
+        <h1 className="mb-5 text-2xl font-bold">{copy.title}</h1>
+        {licenseContent}
+      </article>
+    )
+  }
+
   return (
     <main className="legal-page min-h-dvh bg-white text-gray-900 dark:bg-[#121212] dark:text-white">
       <header className="legal-page-controls sticky top-0 z-10 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-[#2c2c2e] dark:bg-[#121212]/95">
@@ -58,16 +77,8 @@ export default function ThirdPartyLicensesPage() {
           <h1 className="text-lg font-bold">{copy.title}</h1>
         </div>
       </header>
-      <article className="legal-document-content mx-auto max-w-3xl px-5 py-7 sm:px-8">
-        {loadError ? (
-          <p className="text-sm text-gray-500">{copy.error}</p>
-        ) : licenseText ? (
-          <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6">
-            {licenseText}
-          </pre>
-        ) : (
-          <p className="text-sm text-gray-500">{copy.loading}</p>
-        )}
+      <article id="legal-document-content" className="legal-document-content mx-auto max-w-3xl px-5 py-7 sm:px-8">
+        {licenseContent}
       </article>
     </main>
   )

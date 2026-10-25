@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CaretLeft } from '@phosphor-icons/react'
 import { LEGAL_DOCUMENT_VERSION, legalDocuments } from '../content/legalDocuments'
+import ThirdPartyLicensesPage from './ThirdPartyLicensesPage'
 
 const documentKeys = ['terms', 'privacy', 'community']
 
@@ -10,6 +11,7 @@ export default function LegalPage() {
   const [searchParams] = useSearchParams()
   const [language, setLanguage] = useState(searchParams.get('lang') === 'en' ? 'en' : 'ko')
   const [activeKey, setActiveKey] = useState('terms')
+  const [showLicenses, setShowLicenses] = useState(false)
   const document = legalDocuments[activeKey]
   const content = language === 'ko' ? document.ko : document
   const closeLabel = language === 'ko' ? '뒤로' : 'Back'
@@ -43,46 +45,53 @@ export default function LegalPage() {
             <button
               key={key}
               type="button"
-              onClick={() => setActiveKey(key)}
-              aria-pressed={activeKey === key}
-              className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${activeKey === key ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 dark:bg-[#242426] dark:text-gray-300'}`}
+              onClick={() => {
+                setActiveKey(key)
+                setShowLicenses(false)
+              }}
+              aria-pressed={!showLicenses && activeKey === key}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold ${!showLicenses && activeKey === key ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 dark:bg-[#242426] dark:text-gray-300'}`}
             >
               {documentLabels[key]}
             </button>
           ))}
           <button
             type="button"
-            onClick={() => navigate(`/licenses?lang=${language}`)}
-            className="shrink-0 rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold dark:border-gray-700"
+            onClick={() => setShowLicenses(true)}
+            className="shrink-0 rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:text-gray-300"
           >
             {language === 'ko' ? '오픈소스 라이선스' : 'Open-source licenses'}
           </button>
           <button
             type="button"
             onClick={() => window.print()}
-            className="ml-auto shrink-0 rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold dark:border-gray-700"
+            className="ml-auto shrink-0 rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:text-gray-300"
           >
             {language === 'ko' ? 'PDF 저장' : 'Save as PDF'}
           </button>
         </nav>
       </header>
 
-      <article id="legal-document-content" className="legal-document-content mx-auto max-w-3xl px-5 py-7 sm:px-8">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {language === 'ko' ? '문서 버전' : 'Document version'}: {LEGAL_DOCUMENT_VERSION}
-        </p>
-        <h1 className="mt-2 text-2xl font-bold">{content.title}</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {language === 'ko' ? '시행일' : 'Effective Date'}: {content.effectiveDate}
-        </p>
-        <div className="mt-6 space-y-3 text-sm leading-7 text-gray-700 dark:text-gray-200">
-          {content.body.split('\n').map((line, index) => (
-            <p key={`${activeKey}-${language}-${index}`} className={line.trim() ? '' : 'h-1'}>
-              {line}
-            </p>
-          ))}
-        </div>
-      </article>
+      {showLicenses ? (
+        <ThirdPartyLicensesPage embedded languageOverride={language} />
+      ) : (
+        <article id="legal-document-content" className="legal-document-content mx-auto max-w-3xl px-5 py-7 sm:px-8">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {language === 'ko' ? '문서 버전' : 'Document version'}: {LEGAL_DOCUMENT_VERSION}
+          </p>
+          <h1 className="mt-2 text-2xl font-bold">{content.title}</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {language === 'ko' ? '시행일' : 'Effective Date'}: {content.effectiveDate}
+          </p>
+          <div className="mt-6 space-y-3 text-sm leading-7 text-gray-700 dark:text-gray-200">
+            {content.body.split('\n').map((line, index) => (
+              <p key={`${activeKey}-${language}-${index}`} className={line.trim() ? '' : 'h-1'}>
+                {line}
+              </p>
+            ))}
+          </div>
+        </article>
+      )}
     </main>
   )
 }
