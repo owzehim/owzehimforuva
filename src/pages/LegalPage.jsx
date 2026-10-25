@@ -23,25 +23,26 @@ export default function LegalPage() {
 
   return (
     <main className="legal-page min-h-dvh bg-white text-gray-900 dark:bg-[#121212] dark:text-white">
-      <header className="legal-page-controls sticky top-0 z-10 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-[#2c2c2e] dark:bg-[#121212]/95">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
-            aria-label={closeLabel}
-          >
-            <CaretLeft size={24} weight="bold" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setLanguage((current) => current === 'ko' ? 'en' : 'ko')}
-            className="rounded-full border border-gray-200 px-3 py-2 text-xs font-semibold dark:border-gray-700"
-          >
-            {language === 'ko' ? 'English' : '한국어'}
-          </button>
-        </div>
-        <nav aria-label={language === 'ko' ? '법률 문서' : 'Legal documents'} className="mx-auto mt-3 flex max-w-3xl gap-2 overflow-x-auto">
+      <header className="legal-page-controls sticky top-0 z-10 border-b border-gray-100 bg-white/95 px-4 pb-3 backdrop-blur dark:border-[#2c2c2e] dark:bg-[#121212]/95">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="fixed left-[14px] z-20 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
+          style={{ top: 'max(18px, calc(env(safe-area-inset-top) + 6px))' }}
+          aria-label={closeLabel}
+        >
+          <CaretLeft size={24} weight="bold" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setLanguage((current) => current === 'ko' ? 'en' : 'ko')}
+          className="fixed right-8 z-20 flex h-9 min-w-[72px] items-center justify-center rounded-full border border-gray-200 bg-white px-3 text-[13px] font-semibold text-[#374151] dark:border-[#2c2c2e] dark:bg-[#121212] dark:text-[#c7c7cc]"
+          style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}
+        >
+          {language === 'ko' ? 'English' : '한국어'}
+        </button>
+        <div className="mx-auto max-w-3xl" style={{ height: 'calc(env(safe-area-inset-top) + 56px)' }} />
+        <nav aria-label={language === 'ko' ? '법률 문서' : 'Legal documents'} className="mx-auto mt-4 flex max-w-3xl gap-2 overflow-x-auto">
           {documentKeys.map((key) => (
             <button
               key={key}
@@ -59,7 +60,8 @@ export default function LegalPage() {
           <button
             type="button"
             onClick={() => setShowLicenses(true)}
-            className="shrink-0 rounded-full border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:text-gray-300"
+            aria-pressed={showLicenses}
+            className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold ${showLicenses ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300'}`}
           >
             {language === 'ko' ? '오픈소스 라이선스' : 'Open-source licenses'}
           </button>

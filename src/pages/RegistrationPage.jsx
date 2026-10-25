@@ -1919,7 +1919,7 @@ const s = {
     minWidth: '72px',
     height: '36px',
     padding: '0 12px',
-    borderRadius: '6px',
+    borderRadius: '9999px',
     border: '1px solid var(--reg-soft-border)',
     backgroundColor: 'var(--reg-card-bg)',
     color: 'var(--reg-subtext)',
