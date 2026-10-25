@@ -213,7 +213,7 @@ function MemberRow({ member, stampState, latestReward, totalStamps, restaurantId
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-orange-400"
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-orange-400 focus-visible:border-orange-600 dark:focus-visible:border-orange-400"
               />
             </div>
             <div className="flex flex-col gap-1 flex-1">
@@ -223,7 +223,7 @@ function MemberRow({ member, stampState, latestReward, totalStamps, restaurantId
                 placeholder="사유 입력"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-orange-400"
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-orange-400 focus-visible:border-orange-600 dark:focus-visible:border-orange-400"
               />
             </div>
           </div>

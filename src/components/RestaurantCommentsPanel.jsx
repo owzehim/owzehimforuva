@@ -201,7 +201,7 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
               rows={3}
               autoFocus
               placeholder="식당에 대한 짧은 한마디를 남겨 주세요"
-              className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-orange-400"
+              className="w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-orange-400 focus-visible:border-orange-600 dark:focus-visible:border-orange-400"
             />
             <div className="mt-2 flex items-center justify-between">
               <label className="flex items-center gap-1.5 text-xs text-gray-600">

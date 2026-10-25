@@ -860,7 +860,7 @@ function RichEditor({ value, onChange, placeholder, rows = 3 }) {
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-visible">
+    <div className="border border-gray-200 rounded-lg overflow-visible focus-within:border-orange-600">
       <div className="flex items-center gap-1 px-2 py-1 border-b border-gray-100 bg-gray-50 flex-wrap">
         <button
           type="button"
