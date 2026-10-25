@@ -10,6 +10,7 @@ import StampCardEditPanel from '../features/stampCard/components/StampCardEditPa
 import StampCardMemberPanel from '../features/stampCard/components/StampCardMemberPanel'
 import { fetchConfigBySpot } from '../features/stampCard/api/config'
 import { preparePublicImage } from '../lib/preparePublicImage'
+import { useModalFocus } from '../hooks/useModalFocus'
 import {
   getRestaurantCommercialLabel,
   getRestaurantCommercialLabelType,
@@ -309,6 +310,12 @@ function ReportsTab() {
   const [noticeStatus, setNoticeStatus] = useState({})
   const [sendingNotice, setSendingNotice] = useState({})
   const [noticeDraft, setNoticeDraft] = useState(null)
+  const noticeDialogRef = useRef(null)
+  const handleNoticeDialogKeyDown = useModalFocus(
+    noticeDialogRef,
+    () => setNoticeDraft(null),
+    { enabled: Boolean(noticeDraft) },
+  )
   const [noticeSendError, setNoticeSendError] = useState('')
   const [savingReportId, setSavingReportId] = useState(null)
   const [decisionSelections, setDecisionSelections] = useState({})
@@ -718,7 +725,15 @@ function ReportsTab() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-6" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setNoticeDraft(null)
         }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="report-email-title" className="flex max-h-[94dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <section
+            ref={noticeDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="report-email-title"
+            tabIndex={-1}
+            onKeyDown={handleNoticeDialogKeyDown}
+            className="flex max-h-[94dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
             <header className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
               <div>
                 <h3 id="report-email-title" className="font-semibold text-gray-900">이메일 미리보기 및 수정</h3>

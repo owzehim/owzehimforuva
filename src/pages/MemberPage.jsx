@@ -5,7 +5,7 @@ import { getSafeHttpsUrl, richTextToPlainText } from '../lib/sanitizeHtml'
 import { SpotCard, RichText } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
-import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, ArrowsVertical, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning, Image as ImageIcon } from '@phosphor-icons/react'
+import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, ArrowsVertical, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning, Image as ImageIcon, X } from '@phosphor-icons/react'
 import { useReviewPrompt } from '../hooks/useReviewPrompt'
 import ReviewModal from '../components/ReviewModal'
 import ActivityStatsCard from '../components/ActivityStatsCard'
@@ -17,6 +17,7 @@ import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { isMembershipActive } from '../domain/member/membershipStatus'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { useDevInteractionLock } from '../lib/devInteractionLock'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 const MapView = lazy(() => import('../components/MapView'))
 const QRScanner = lazy(() => import('../components/QRScanner'))
@@ -1923,6 +1924,7 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   }))
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
+  const dialogRef = useRef(null)
 
   const activeImageRatio = imageRatios[index] || 1
   const lightboxImageMaxHeight = Math.max(
@@ -1974,21 +1976,11 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
     setIndex(startIndex)
   }, [startIndex, imgs])
 
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') handleClose()
-      if (e.key === 'ArrowRight') goToIndex(index + 1)
-      if (e.key === 'ArrowLeft') goToIndex(index - 1)
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imgs.length, index])
-
   const handleClose = () => {
     setVisible(false)
     setTimeout(() => onClose?.(), 250)
   }
+  const handleDialogKeyDown = useModalFocus(dialogRef, handleClose)
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX
@@ -2037,6 +2029,22 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
         }
       `}</style>
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="이벤트 사진 보기"
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          handleDialogKeyDown(event)
+          if (event.defaultPrevented) return
+          if (event.key === 'ArrowRight') {
+            event.preventDefault()
+            goToIndex(index + 1)
+          } else if (event.key === 'ArrowLeft') {
+            event.preventDefault()
+            goToIndex(index - 1)
+          }
+        }}
         className="no-highlight-zone"
         onClick={handleClose}
         onTouchStart={handleTouchStart}
@@ -2057,6 +2065,14 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
           WebkitTapHighlightColor: 'transparent',
         }}
       >
+        <button
+          type="button"
+          onClick={(event) => { event.stopPropagation(); handleClose() }}
+          aria-label="이벤트 사진 보기 닫기"
+          className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          <X size={22} weight="bold" aria-hidden="true" />
+        </button>
         <div
           onClick={(e) => e.stopPropagation()}
           className={visible ? 'lightbox-zoom-enter' : ''}
@@ -2142,22 +2158,39 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
               }}
             >
               {imgs.map((_, i) => (
-                <div
+                <button
+                  type="button"
                   key={i}
                   onClick={(e) => {
                     e.stopPropagation()
                     goToIndex(i)
                   }}
+                  aria-label={`사진 ${i + 1} 보기`}
+                  aria-current={i === index ? 'true' : undefined}
+                  className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
                   style={{
-                    width: i === index ? 8 : 6,
-                    height: i === index ? 8 : 6,
+                    width: 32,
+                    height: 32,
+                    padding: 0,
+                    display: 'grid',
+                    placeItems: 'center',
+                    border: 0,
+                    background: 'transparent',
                     borderRadius: '999px',
-                    background:
-                      i === index ? '#fff' : 'rgba(255,255,255,0.4)',
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
                   }}
-                />
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: i === index ? 8 : 6,
+                      height: i === index ? 8 : 6,
+                      borderRadius: '999px',
+                      background: i === index ? '#fff' : 'rgba(255,255,255,0.4)',
+                      transition: 'all 0.2s',
+                    }}
+                  />
+                </button>
               ))}
             </div>
           )}
@@ -2258,6 +2291,7 @@ function EventsTab({ events }) {
   const [expandedId, setExpandedId] = useState(null)
   const [slideIndexes, setSlideIndexes] = useState({})
   const [eventListOpen, setEventListOpen] = useState(getStoredEventListOpen)
+  const eventListDialogRef = useRef(null)
   const [eventListClosing, setEventListClosing] = useState(false)
   const [eventListNewestFirst, setEventListNewestFirst] = useState(true)
   const [eventCardOpen, setEventCardOpen] = useState(false)
@@ -2884,6 +2918,7 @@ function EventsTab({ events }) {
       setEventListClosing(false)
     }, 220)
   }
+  const handleEventListKeyDown = useModalFocus(eventListDialogRef, closeEventList, { enabled: eventListOpen })
 
   const selectEventFromList = async (ev) => {
     window.sessionStorage.removeItem(MEMBER_EVENT_LIST_OPEN_KEY)
@@ -3825,6 +3860,12 @@ const effectiveDateColor = isDragging
 
       {eventListOpen && (
         <div
+          ref={eventListDialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="이벤트 목록"
+          tabIndex={-1}
+          onKeyDown={handleEventListKeyDown}
           className="fixed inset-0"
           style={{
             zIndex: 120,

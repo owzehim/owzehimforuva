@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { getPastelColor } from '../lib/avatarColor'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import AdminBadge from './AdminBadge'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 const MAX_NOTE_LENGTH = 200
 
@@ -73,6 +74,8 @@ export function GoodToKnowNotesPanel({
   const [reportGoodFaith, setReportGoodFaith] = useState(false)
   const [reportSubmitting, setReportSubmitting] = useState(false)
   const [todayKey, setTodayKey] = useState('')
+  const reportDialogRef = useRef(null)
+  const composerDialogRef = useRef(null)
   const touchStartRef = useRef(null)
   const hasNoteToday = notes.some((note) => (
     note.is_mine && formatAmsterdamDay(note.created_at) === todayKey
@@ -358,6 +361,17 @@ export function GoodToKnowNotesPanel({
     touchStartRef.current = null
   }
 
+  const handleReportDialogKeyDown = useModalFocus(
+    reportDialogRef,
+    () => setReportTarget(null),
+    { enabled: Boolean(reportTarget), closeOnEscape: !reportSubmitting },
+  )
+  const handleComposerDialogKeyDown = useModalFocus(
+    composerDialogRef,
+    closeComposer,
+    { enabled: composerOpen },
+  )
+
   return (
     <div className="relative flex h-full min-h-0 flex-col py-3">
       <style>{`
@@ -472,12 +486,18 @@ export function GoodToKnowNotesPanel({
           onClick={() => setReportTarget(null)}
         >
           <form
+            ref={reportDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="note-report-dialog-title"
+            tabIndex={-1}
             onSubmit={reportNote}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={handleReportDialogKeyDown}
             className="w-full max-w-[360px] space-y-3 rounded-2xl bg-white p-4 shadow-xl"
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-800">한마디 신고</p>
+              <p id="note-report-dialog-title" className="text-sm font-semibold text-gray-800">한마디 신고</p>
               <button type="button" onClick={() => setReportTarget(null)} aria-label="신고창 닫기" className="text-gray-400">
                 <X size={17} weight="bold" />
               </button>
@@ -562,13 +582,19 @@ export function GoodToKnowNotesPanel({
           onTouchMove={(event) => event.preventDefault()}
         >
           <form
+            ref={composerDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="note-composer-dialog-title"
+            tabIndex={-1}
             onSubmit={saveNote}
             onClick={(event) => event.stopPropagation()}
             onTouchMove={(event) => event.stopPropagation()}
+            onKeyDown={handleComposerDialogKeyDown}
             className="good-to-know-note-modal w-full max-w-[320px] rounded-2xl bg-white p-4 shadow-xl"
           >
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-semibold text-gray-800">{editingNote ? '나의 한마디 수정' : '나의 한마디'}</p>
+              <p id="note-composer-dialog-title" className="text-sm font-semibold text-gray-800">{editingNote ? '나의 한마디 수정' : '나의 한마디'}</p>
               <button
                 type="button"
                 onClick={closeComposer}

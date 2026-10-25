@@ -112,7 +112,7 @@ function PasswordField({ label, value, onChange, autoComplete = 'new-password' }
   const isSecret = autoComplete !== 'one-time-code'
 
   return (
-    <div className="flex h-[54px] items-center rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-[#2c2c2e] dark:bg-[#111111]">
+    <div className="flex h-[54px] items-center rounded-lg border border-gray-300 bg-white px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600 dark:border-[#2c2c2e] dark:bg-[#111111]">
       <label className="flex min-w-0 flex-1 cursor-text flex-col justify-center gap-1">
         <span className="text-xs font-normal leading-none text-gray-500 dark:text-gray-400">{label}</span>
         <input

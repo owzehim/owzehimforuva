@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { X } from '@phosphor-icons/react'
+import { useModalFocus } from '../../../hooks/useModalFocus'
 import { useStampCardConfig } from '../hooks/useStampCardConfig'
 import { useUserStampVisits } from '../hooks/useUserStampVisits'
 import StampCard from './StampCard'
@@ -16,6 +18,7 @@ export default function StampCardModal({ restaurantId, userId, onClose }) {
   const [visible, setVisible] = useState(false)
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
+  const dialogRef = useRef(null)
 
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true))
@@ -25,15 +28,7 @@ export default function StampCardModal({ restaurantId, userId, onClose }) {
     setVisible(false)
     setTimeout(() => onClose?.(), 250)
   }
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === 'Escape') handleClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const handleDialogKeyDown = useModalFocus(dialogRef, handleClose)
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX
@@ -99,6 +94,12 @@ export default function StampCardModal({ restaurantId, userId, onClose }) {
         }}
       >
         <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="스탬프 카드"
+          tabIndex={-1}
+          onKeyDown={handleDialogKeyDown}
           onClick={(e) => e.stopPropagation()}
           className={visible ? 'lightbox-zoom-enter' : ''}
           style={{
@@ -112,6 +113,14 @@ export default function StampCardModal({ restaurantId, userId, onClose }) {
             alignItems: 'center',
           }}
         >
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="스탬프 카드 닫기"
+            className="mb-2 self-end flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            <X size={22} weight="bold" aria-hidden="true" />
+          </button>
           {!loading && config && (
             <div style={{ width: '100%' }}>
               <StampCard

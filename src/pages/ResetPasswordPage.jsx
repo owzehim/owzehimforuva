@@ -264,7 +264,7 @@ export default function ResetPasswordPage() {
 
 function ResetField({ label, children }) {
   return (
-    <label className="flex h-[54px] cursor-text flex-col justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2">
+    <label className="flex h-[54px] cursor-text flex-col justify-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600">
       <span className="text-xs font-normal leading-none text-gray-500">{label}</span>
       {children}
     </label>

@@ -3,8 +3,14 @@ import { useCallback, useEffect } from 'react'
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-export function useModalFocus(dialogRef, onClose) {
+export function useModalFocus(
+  dialogRef,
+  onClose,
+  { enabled = true, closeOnEscape = true } = {},
+) {
   useEffect(() => {
+    if (!enabled) return undefined
+
     const opener = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null
@@ -14,10 +20,13 @@ export function useModalFocus(dialogRef, onClose) {
     return () => {
       if (opener?.isConnected) opener.focus()
     }
-  }, [dialogRef])
+  }, [dialogRef, enabled])
 
   return useCallback((event) => {
+    if (!enabled) return
+
     if (event.key === 'Escape') {
+      if (!closeOnEscape) return
       event.preventDefault()
       onClose()
       return
@@ -51,5 +60,5 @@ export function useModalFocus(dialogRef, onClose) {
       event.preventDefault()
       first.focus()
     }
-  }, [dialogRef, onClose])
+  }, [closeOnEscape, dialogRef, enabled, onClose])
 }
