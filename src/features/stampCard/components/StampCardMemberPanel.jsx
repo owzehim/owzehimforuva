@@ -7,6 +7,7 @@ import { isPendingRewardAvailable } from '../rewardAvailability'
 export default function StampCardMemberPanel({ restaurantId, spotName, totalStamps, onClose }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [slideIn, setSlideIn] = useState(false)
 
   // Slide-up on mount
@@ -21,9 +22,15 @@ export default function StampCardMemberPanel({ restaurantId, spotName, totalStam
     const load = async () => {
       try {
         const data = await fetchAllMemberStampData(restaurantId, totalStamps)
-        if (active) setRows(data)
+        if (active) {
+          setRows(data)
+          setLoadError(false)
+        }
       } catch (error) {
-        if (active) console.error('fetchAllMemberStampData error:', error)
+        if (active) {
+          console.error('fetchAllMemberStampData error:', error)
+          setLoadError(true)
+        }
       } finally {
         if (active) setLoading(false)
       }
@@ -34,10 +41,12 @@ export default function StampCardMemberPanel({ restaurantId, spotName, totalStam
 
   const load = async () => {
     setLoading(true)
+    setLoadError(false)
     try {
       setRows(await fetchAllMemberStampData(restaurantId, totalStamps))
     } catch (error) {
       console.error('fetchAllMemberStampData error:', error)
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -75,6 +84,17 @@ export default function StampCardMemberPanel({ restaurantId, spotName, totalStam
         {loading ? (
           <div className="flex justify-center mt-16">
             <div className="w-8 h-8 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+          </div>
+        ) : loadError ? (
+          <div className="text-center mt-16">
+            <p className="text-sm text-gray-600">스탬프 회원 목록을 불러오지 못했습니다.</p>
+            <button
+              type="button"
+              onClick={load}
+              className="mt-3 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700"
+            >
+              다시 시도
+            </button>
           </div>
         ) : rows.length === 0 ? (
           <p className="text-center text-gray-400 text-sm mt-16">멤버가 없습니다</p>
