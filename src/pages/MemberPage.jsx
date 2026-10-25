@@ -27,7 +27,6 @@ const MEMBER_TABS = ['qr', 'events', 'map']
 const MEMBER_EVENT_LIST_OPEN_KEY = 'uvain_member_event_list_open'
 const MEMBER_BOTTOM_TAB_PADDING = 'clamp(28px, 9.8vw, 42px)'
 const REOPEN_WELCOME_SLIDES_KEY = 'uvain_reopen_welcome_slides'
-const EVENT_IMAGE_HORIZONTAL_ANGLE_TAN = Math.tan(50 * Math.PI / 180)
 
 function getStoredMemberTab() {
   if (typeof window === 'undefined') return 'qr'
@@ -2322,10 +2321,8 @@ function EventsTab({ events }) {
   const eventPreviewRef = useRef(null)
   const eventPreviewTouchStartX = useRef(null)
   const eventPreviewTouchStartY = useRef(null)
-  const eventPreviewTouchLastY = useRef(null)
   const eventPreviewGestureAxis = useRef(null)
   const eventCardGestureAxis = useRef(null)
-  const eventPreviewSuppressClick = useRef(false)
   const eventImageBoxRatioRef = useRef(1)
   const imageAspectRatiosRef = useRef({})
   const eventCardClosingEventIdRef = useRef(null)
@@ -2630,11 +2627,12 @@ function EventsTab({ events }) {
       const absDx = Math.abs(dx)
       const absDy = Math.abs(dy)
 
-      if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
+      if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) >= 10) {
+        // Lock the gesture once movement is intentional. The photo carousel
+        // wins diagonal gestures; vertical movement must be clearly dominant
+        // to reach the card's description/scroll behavior.
         eventPreviewGestureAxis.current =
-          absDx > 10 && absDy <= absDx * EVENT_IMAGE_HORIZONTAL_ANGLE_TAN
-            ? 'x'
-            : 'y'
+          absDy > absDx * 1.25 ? 'y' : 'x'
         eventCardGestureAxis.current = eventPreviewGestureAxis.current
       }
 
@@ -2654,44 +2652,8 @@ function EventsTab({ events }) {
     if (!eventCardOpen) return
     eventPreviewTouchStartX.current = e.touches[0].clientX
     eventPreviewTouchStartY.current = e.touches[0].clientY
-    eventPreviewTouchLastY.current = e.touches[0].clientY
     eventPreviewGestureAxis.current = null
     eventCardGestureAxis.current = null
-  }
-
-  const handleEventPreviewTouchMove = (e) => {
-    if (
-      !eventCardOpen ||
-      eventPreviewTouchStartX.current == null ||
-      eventPreviewTouchStartY.current == null
-    ) return
-
-    const dx = e.touches[0].clientX - eventPreviewTouchStartX.current
-    const dy = e.touches[0].clientY - eventPreviewTouchStartY.current
-    const absDx = Math.abs(dx)
-    const absDy = Math.abs(dy)
-
-    if (!eventPreviewGestureAxis.current && Math.max(absDx, absDy) > 8) {
-      if (absDx > 10 && absDy <= absDx * EVENT_IMAGE_HORIZONTAL_ANGLE_TAN) {
-        eventPreviewGestureAxis.current = 'x'
-      } else {
-        eventPreviewGestureAxis.current = 'y'
-      }
-      eventCardGestureAxis.current = eventPreviewGestureAxis.current
-    }
-
-    if (eventPreviewGestureAxis.current === 'x') {
-      e.preventDefault()
-      e.stopPropagation()
-      return
-    }
-
-    if (eventPreviewGestureAxis.current === 'y') {
-      eventPreviewTouchLastY.current = e.touches[0].clientY
-      return
-    }
-
-    eventPreviewTouchLastY.current = e.touches[0].clientY
   }
 
   const handleEventPreviewTouchEnd = (e) => {
@@ -2705,24 +2667,25 @@ function EventsTab({ events }) {
     const absDy = Math.abs(dy)
     const currentSlide = slideIndexes[displayEvent.id] || 0
 
-    if (
-      eventPreviewGestureAxis.current === 'x' &&
-      displayImages.length > 1 &&
-      absDx > 28 &&
-      absDy <= absDx * EVENT_IMAGE_HORIZONTAL_ANGLE_TAN
-    ) {
+    let gestureAxis = eventPreviewGestureAxis.current
+    if (!gestureAxis && Math.max(absDx, absDy) >= 10) {
+      gestureAxis = absDy > absDx * 1.25 ? 'y' : 'x'
+      eventCardGestureAxis.current = gestureAxis
+    }
+
+    if (gestureAxis === 'x') {
       e.stopPropagation()
-      eventPreviewSuppressClick.current = true
-      if (dx < 0) {
-        setSlide(displayEvent.id, Math.min(currentSlide + 1, displayImages.length - 1))
-      } else {
-        setSlide(displayEvent.id, Math.max(currentSlide - 1, 0))
+      if (absDx > 28 && displayImages.length > 1) {
+        if (dx < 0) {
+          setSlide(displayEvent.id, Math.min(currentSlide + 1, displayImages.length - 1))
+        } else {
+          setSlide(displayEvent.id, Math.max(currentSlide - 1, 0))
+        }
       }
     }
 
     eventPreviewTouchStartX.current = null
     eventPreviewTouchStartY.current = null
-    eventPreviewTouchLastY.current = null
     eventPreviewGestureAxis.current = null
   }
 
@@ -3671,7 +3634,6 @@ const effectiveDateColor = isDragging
                       <div
                         ref={eventPreviewRef}
                         onTouchStart={handleEventPreviewTouchStart}
-                        onTouchMove={handleEventPreviewTouchMove}
                         onTouchEnd={handleEventPreviewTouchEnd}
                         style={{
                           position: 'relative',
