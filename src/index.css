@@ -198,7 +198,8 @@ select {
 #root input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):focus,
 #root textarea:focus,
 #root select:focus,
-#root .registration-field:focus-within {
+#root .registration-field:focus-within,
+textarea.good-to-know-note-textarea:focus {
   border-color: #2563eb !important;
 }
 
