@@ -526,7 +526,7 @@ export function GoodToKnowNotesPanel({
                 maxLength={2000}
                 rows={3}
                 placeholder="이 콘텐츠가 문제라고 생각하는 이유를 적어 주세요"
-                className="mt-1.5 w-full resize-none rounded-lg border border-gray-200 p-2.5 text-sm outline-none focus:border-orange-400"
+                className="mt-1.5 w-full resize-none rounded-lg border border-gray-200 p-2.5 text-sm outline-none focus:border-orange-400 focus-visible:border-orange-600 dark:focus-visible:border-orange-400"
               />
             </label>
             <label className="block text-xs font-medium text-gray-600">
@@ -609,7 +609,7 @@ export function GoodToKnowNotesPanel({
               maxLength={MAX_NOTE_LENGTH}
               rows={3}
               placeholder="추천 메뉴나 매장 분위기, 다음 사람을 위한 꿀팁을 남겨주세요!"
-              className="good-to-know-note-textarea w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-orange-400"
+              className="good-to-know-note-textarea w-full resize-none rounded-xl border border-gray-200 p-3 text-sm outline-none focus:border-orange-400 focus-visible:border-orange-600 dark:focus-visible:border-orange-400"
             />
             <div className="mt-2 flex items-center justify-between">
               <label className="flex items-center gap-1.5 text-xs text-gray-600">
