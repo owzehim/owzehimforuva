@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChatDots, Flag, PencilSimple, Plus, Trash, UserCircle, X } from '@phosphor-icons/react'
+import { ChatDots, Flag, Footprints, PencilSimple, Plus, Trash, UserCircle, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { getPastelColor } from '../lib/avatarColor'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
@@ -91,7 +91,7 @@ export function GoodToKnowNotesPanel({
 
     const { data, error: loadError } = await supabase
       .from('restaurant_notes_safe')
-      .select('id, restaurant_id, is_mine, username, profile_image_url, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags, author_is_admin')
+      .select('id, restaurant_id, is_mine, username, profile_image_url, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags, author_is_admin, is_visit_verified')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -427,6 +427,16 @@ export function GoodToKnowNotesPanel({
                   <p className="flex min-w-0 items-center gap-1 truncate text-[11px] font-semibold text-gray-700">
                     <span className="truncate">{note.is_anonymous ? '익명' : note.username}</span>
                     {!note.is_anonymous && note.author_is_admin && <AdminBadge size={13} />}
+                    {note.is_visit_verified && (
+                      <span
+                        role="img"
+                        aria-label="이 매장 QR 방문 확인"
+                        title="이 매장 QR 방문 확인"
+                        className="inline-flex flex-shrink-0 items-center text-orange-500"
+                      >
+                        <Footprints size={13} weight="fill" aria-hidden="true" />
+                      </span>
+                    )}
                   </p>
                   <div className="flex flex-shrink-0 items-center gap-1.5">
                     <span className="text-[10px] text-gray-400">{formatNoteDate(note.created_at)}</span>
