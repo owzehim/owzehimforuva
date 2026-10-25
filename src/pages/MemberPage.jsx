@@ -123,7 +123,6 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
         ? { ...memberData, profile_image_url: await createProfileImageSignedUrl(memberData.profile_image_url) }
         : memberData
       setMember(memberWithSignedImage || null)
-      setIsAdmin(isAdminUser)
       const shouldShowWelcomeSlides =
         reopenWelcomeSlides ||
         (Boolean(memberData) && !memberData.tutorial_completed_at)
