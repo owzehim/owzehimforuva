@@ -120,7 +120,7 @@ export default function LoginPage() {
     <main
       className="phone-app-shell login-page scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]"
       onDragStart={(event) => event.preventDefault()}
-      style={{ userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
+      style={{ WebkitTapHighlightColor: 'transparent' }}
     >
       <button
         type="button"
@@ -229,6 +229,13 @@ export default function LoginPage() {
                   회원가입
                 </button>
               </p>
+              <button
+                type="button"
+                onClick={() => navigate('/legal?lang=ko')}
+                className="block w-full pt-1 text-center text-[11px] text-gray-500 underline underline-offset-2 dark:text-gray-400"
+              >
+                이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
+              </button>
             </form>
           )}
 

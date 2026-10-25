@@ -3,7 +3,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
-import { getConsentAcceptedAt, getConsentReceiptRows } from '../_shared/legalConsent.js'
+import {
+  getConsentAcceptedAt,
+  getConsentReceiptRows,
+} from '../_shared/legalConsent.js'
 import { getStudentNumberRegistrationFields } from '../_shared/memberStudentNumber.js'
 
 function text(value: unknown, maxLength = 200) {
@@ -181,7 +184,7 @@ serve(async (req) => {
       // Profile photos are uploaded later through the private owner-scoped
       // Storage flow. Never persist a client-supplied external image URL.
       profile_image_url: null,
-      privacy_policy_version: text(registration.privacy_policy_version, 80),
+      privacy_policy_version: registration.privacy_policy_version,
       privacy_accepted_at: consentAcceptedAt,
       is_member: false,
       membership_valid_until: null,

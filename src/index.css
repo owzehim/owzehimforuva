@@ -5,7 +5,7 @@
   src: url("/fonts/AlienBlock-Regular.ttf") format("truetype");
   font-weight: 400 900;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -32,18 +32,36 @@ body {
   min-height: 100dvh;
 }
 
-/* This is an app-like interface, not a document reader. Keep every screen
-   non-selectable and disable the browser's native image dragging. */
+/* Disable native image dragging while keeping app text selectable. */
 #root,
 #root * {
-  user-select: none;
-  -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+.text-gray-400 {
+  color: #6b7280;
 }
 
 #root img {
   -webkit-user-drag: none;
   user-drag: none;
+}
+
+#root .legal-document-content,
+#root .legal-document-content * {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+@media print {
+  .legal-page-controls {
+    display: none !important;
+  }
+
+  #legal-document-content {
+    max-width: none !important;
+    padding: 0 !important;
+  }
 }
 
 :lang(ko) {
@@ -259,7 +277,7 @@ select {
 }
 
 .dark .force-light .text-gray-400 {
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .app-loading-spinner {

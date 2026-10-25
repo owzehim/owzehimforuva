@@ -1,4 +1,6 @@
-export const LEGAL_DOCUMENT_VERSION = '2026-10-24-04';
+import { legalDocumentsKo } from './legalDocumentsKo.js'
+
+export const LEGAL_DOCUMENT_VERSION = '2026-10-24-07';
 
 export const legalDocuments = {
   terms: {
@@ -7,6 +9,8 @@ export const legalDocuments = {
     body: `UvA-IN Terms and Conditions
 
 Effective Date: 24 October 2026
+
+This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
 Welcome to UvA-IN. These Terms and Conditions govern your use of the UvA-IN mobile application and the services provided through it.
 
@@ -42,11 +46,15 @@ Participating restaurants and businesses independently determine available disco
 
 UvA-IN does not guarantee that any specific reward, discount, product, or service will always be available.
 
+When a partnership ends, any unredeemed reward connected to that partner expires immediately and can no longer be redeemed.
+
 7. QR Check-ins and Digital Stamp Cards
 
 The App allows members to collect digital stamps by scanning QR codes at participating partner locations. Each successful scan may generate stamp or reward progress.
 
 UvA-IN may reject duplicate, fraudulent, or technically invalid scans. Digital rewards have no cash value and may not be exchanged or transferred unless explicitly stated.
+
+When a partner relationship ends, existing stamp-visit, review, and note records are preserved. Reward records are retained for 12 months after the partnership ends and then deleted.
 
 8. Reviews and Feedback
 
@@ -72,13 +80,15 @@ UvA-IN aims to provide reliable service, but uninterrupted availability cannot b
 
 All software, branding, logos, designs, text, and other content within the App remain the property of UvA-IN or their respective owners. No part of the App may be copied, modified, or distributed without prior written permission.
 
+You retain ownership of content you submit. You grant UvA-IN a non-exclusive, royalty-free licence to host, store, reproduce, and display that content only as needed to operate and maintain the App and its community features. This licence ends when you delete the content or your account, except where limited retention is required for backups, moderation records, or legal obligations.
+
 12. Limitation of Liability
 
-To the maximum extent permitted by law, UvA-IN is not liable for indirect, incidental, or consequential damages arising from use of the App. Partner businesses remain responsible for the products, services, and experiences they provide.
+To the maximum extent permitted by law, UvA-IN is not liable for indirect, incidental, or consequential damages arising from use of the App. Nothing in these Terms excludes or limits liability that cannot be excluded or limited under applicable law, including mandatory liability relating to intent, gross negligence, death or personal injury, or data-protection obligations. Partner businesses remain responsible for the products, services, and experiences they provide.
 
 13. Suspension and Termination
 
-You may stop using the App and request deletion of your account at any time. UvA-IN may suspend or terminate your membership or restrict access to membership features if these Terms are violated, fraudulent activity is detected, eligibility can no longer be verified, or action is required by law.
+You may stop using the App and request deletion of your account at any time. UvA-IN may suspend or terminate your membership or restrict access to membership features if these Terms are violated, fraudulent activity is detected, eligibility can no longer be verified, or action is required by law. Where reasonably possible, we will notify you of the action and the reason, and give you a way to ask us to review it. We may act without advance notice where necessary to address an urgent security risk or comply with law.
 
 14. Changes to the Service
 
@@ -99,6 +109,7 @@ Website: www.uva-in.nl
 Email: uvaksa16@gmail.com
 
 By creating an account, you confirm that you have read, understood, and agree to these Terms and Conditions together with the UvA-IN Privacy Policy and Community Guidelines.`,
+    ko: legalDocumentsKo.terms,
   },
   privacy: {
     title: 'Privacy Policy',
@@ -106,6 +117,8 @@ By creating an account, you confirm that you have read, understood, and agree to
     body: `UvA-IN Privacy Policy
 
 Effective Date: 24 October 2026
+
+This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
 UvA-IN is committed to protecting your privacy and handling your personal information responsibly. This Privacy Policy explains how we collect, use, store, share, protect, and retain your personal data when you use the UvA-IN mobile application.
 
@@ -170,6 +183,8 @@ Content report records are kept while they are being handled and for up to 12 mo
 
 The minimum partner transaction records needed to verify rewards and handle related questions, fraud, or disputes are retained for no more than 12 months from the transaction date. Partner businesses are instructed to delete or irreversibly anonymize these records when that period ends. If a specific record must be retained to meet a legal accounting obligation, only the necessary record is kept separately, with restricted access, for the legally required period.
 
+If a partner relationship ends, any unredeemed in-App reward expires immediately. Reward records are retained for 12 months after the partnership ends and then deleted. Ending a partnership does not itself delete the related stamp-visit, review, or note history.
+
 Records that have been irreversibly anonymized so that a person can no longer reasonably be identified may be retained for statistical purposes.
 
 8. Automatic Anonymization
@@ -200,6 +215,7 @@ Data controller: UvA-IN
 Website: www.uva-in.nl
 Privacy contact: Woojay Lim (임우재)
 Telephone: +31 6 4271 4078`,
+    ko: legalDocumentsKo.privacy,
   },
   community: {
     title: 'Community Guidelines',
@@ -207,6 +223,8 @@ Telephone: +31 6 4271 4078`,
     body: `UvA-IN Community Guidelines
 
 Effective Date: 24 October 2026
+
+This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
 UvA-IN exists to connect students with local businesses, create meaningful experiences, and build a trusted community where everyone benefits. These Community Guidelines explain the standards expected from every member.
 
@@ -289,5 +307,6 @@ Website: www.uva-in.nl
 Email: uvaksa16@gmail.com
 
 Thank you for helping us build a trusted student community where students and local businesses can connect with confidence.`,
+    ko: legalDocumentsKo.community,
   },
 };

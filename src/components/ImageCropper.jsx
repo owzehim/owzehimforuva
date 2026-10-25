@@ -8,7 +8,7 @@ const compressImage = async (file) => {
     return await imageCompression(file, {
       maxSizeMB: 1.2,
       maxWidthOrHeight: 1920,
-      useWebWorker: true,
+      useWebWorker: false,
     })
   } catch {
     return file

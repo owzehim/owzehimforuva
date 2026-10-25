@@ -11,6 +11,8 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
     autoRefreshToken: true,
     detectSessionInUrl: shouldAutoDetectSessionInUrl(
       typeof window === 'undefined' ? '/' : window.location.pathname,
+      typeof window === 'undefined' ? '' : window.location.search,
+      typeof window === 'undefined' ? '' : window.location.hash,
     ),
   },
   global: { fetch: apiKeyOnlyFetch(supabasePublishableKey) },

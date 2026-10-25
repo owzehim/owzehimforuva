@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { hasAdminRole } from './lib/adminRoles'
 import LoginPage from './pages/LoginPage'
@@ -14,34 +14,26 @@ import SettingsPage from './pages/SettingsPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import ContentReportPage from './pages/ContentReportPage'
+import LegalPage from './pages/LegalPage'
+import ThirdPartyLicensesPage from './pages/ThirdPartyLicensesPage'
+import LegalConsentPage from './pages/LegalConsentPage'
 import { useSingleDeviceSession } from './hooks/useSingleDeviceSession'
 import { useTheme } from './hooks/useTheme'
 import { WifiX } from '@phosphor-icons/react'
 import LoadingIndicator from './components/LoadingIndicator'
 import { hasAppAccessClaim } from './domain/auth/authRules'
+import { LEGAL_DOCUMENT_VERSION } from './content/legalDocuments'
+import { hasCurrentLegalConsent } from './domain/legalConsent'
 
 const OTP_PENDING_KEY = 'uvain_otp_pending_email'
 const OTP_PENDING_EVENT = 'uvain-otp-pending-change'
-
-function isStandaloneApp() {
-  if (typeof window === 'undefined') return false
-  return (
-    window.matchMedia?.('(display-mode: fullscreen)').matches ||
-    window.matchMedia?.('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true
-  )
-}
-
-function hasAlienBlockFont() {
-  return typeof document === 'undefined' || !document.fonts
-    ? true
-    : document.fonts.check('900 1em "Alien Block"')
-}
 
 function App() {
   useTheme()
   const [session, setSession] = useState(undefined)
   const [adminRoleState, setAdminRoleState] = useState(null)
+  const [legalConsentState, setLegalConsentState] = useState(null)
+  const [legalConsentCheckKey, setLegalConsentCheckKey] = useState(0)
   const [isOffline, setIsOffline] = useState(() =>
     typeof navigator !== 'undefined' && !navigator.onLine,
   )
@@ -49,37 +41,42 @@ function App() {
     typeof window !== 'undefined' &&
     Boolean(window.sessionStorage.getItem(OTP_PENDING_KEY))
   )
-  const [, setAlienBlockReady] = useState(hasAlienBlockFont)
-
-  useEffect(() => {
-    let cancelled = false
-
-    const loadAlienBlock = async () => {
-      if (!navigator.onLine || !document.fonts) return
-
-      setAlienBlockReady(false)
-      try {
-        await document.fonts.load('900 1em "Alien Block"')
-      } finally {
-        if (!cancelled) setAlienBlockReady(true)
-      }
-    }
-
-    loadAlienBlock()
-    window.addEventListener('online', loadAlienBlock)
-
-    return () => {
-      cancelled = true
-      window.removeEventListener('online', loadAlienBlock)
-    }
-  }, [])
-
   const appSession = hasAppAccessClaim(session?.access_token) ? session : null
   const userId = appSession?.user?.id ?? null
   const sessionClaimed = useSingleDeviceSession(isOtpPending ? null : appSession)
   const protectedSession = Boolean(appSession && !isOtpPending && sessionClaimed)
   const adminRoleLoaded = !userId || adminRoleState?.userId === userId
   const isAdmin = adminRoleLoaded && adminRoleState?.isAdmin === true
+
+  const refreshLegalConsent = useCallback(() => {
+    setLegalConsentCheckKey((current) => current + 1)
+  }, [])
+
+  useEffect(() => {
+    if (!userId || isOtpPending || !sessionClaimed) {
+      setLegalConsentState(null)
+      return undefined
+    }
+
+    let cancelled = false
+    setLegalConsentState({ userId, status: 'loading' })
+
+    supabase.functions.invoke('manage-legal-consent', { body: { action: 'status' } })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error || data?.success !== true) {
+          setLegalConsentState({ userId, status: 'error' })
+          return
+        }
+        const accepted = hasCurrentLegalConsent(data.receipts, LEGAL_DOCUMENT_VERSION)
+        setLegalConsentState({ userId, status: accepted ? 'accepted' : 'required' })
+      })
+      .catch(() => {
+        if (!cancelled) setLegalConsentState({ userId, status: 'error' })
+      })
+
+    return () => { cancelled = true }
+  }, [userId, isOtpPending, sessionClaimed, appSession?.access_token, legalConsentCheckKey])
 
   useEffect(() => {
     let cancelled = false
@@ -138,33 +135,6 @@ function App() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!isStandaloneApp()) return undefined
-
-    const viewport = document.querySelector('meta[name="viewport"]')
-    const previousViewport = viewport?.getAttribute('content')
-    viewport?.setAttribute(
-      'content',
-      'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content',
-    )
-
-    const preventPinch = (e) => {
-      if (e.touches?.length > 1) e.preventDefault()
-    }
-    const preventGesture = (e) => e.preventDefault()
-
-    document.addEventListener('touchmove', preventPinch, { passive: false })
-    document.addEventListener('gesturestart', preventGesture)
-    document.addEventListener('gesturechange', preventGesture)
-
-    return () => {
-      if (previousViewport) viewport?.setAttribute('content', previousViewport)
-      document.removeEventListener('touchmove', preventPinch)
-      document.removeEventListener('gesturestart', preventGesture)
-      document.removeEventListener('gesturechange', preventGesture)
-    }
-  }, [])
-
   if (isOffline) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white px-8 text-center dark:bg-[#121212]">
@@ -199,6 +169,37 @@ function App() {
     (new URLSearchParams(window.location.search).has('code') ||
       window.location.hash.includes('access_token'))
 
+  const consentForCurrentUser = legalConsentState?.userId === userId
+    ? legalConsentState.status
+    : 'loading'
+  const protectWithConsent = (element, unauthenticatedPath = '/login') => {
+    if (!protectedSession) {
+      return appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to={isOtpPending ? '/login' : unauthenticatedPath} />
+    }
+    if (consentForCurrentUser === 'loading') return <LoadingIndicator />
+    if (consentForCurrentUser === 'error') {
+      return <LegalConsentPage statusError onRetry={refreshLegalConsent} />
+    }
+    if (consentForCurrentUser === 'required') return <Navigate to="/legal-consent" replace />
+    return element
+  }
+
+  const renderLegalConsent = () => {
+    if (!protectedSession) {
+      return appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to="/login" replace />
+    }
+    if (consentForCurrentUser === 'loading') return <LoadingIndicator />
+    if (consentForCurrentUser === 'error') {
+      return <LegalConsentPage statusError onRetry={refreshLegalConsent} />
+    }
+    if (consentForCurrentUser === 'accepted') return <Navigate to="/member" replace />
+    return (
+      <LegalConsentPage
+        onAccepted={() => setLegalConsentState({ userId, status: 'accepted' })}
+      />
+    )
+  }
+
   return (
     <BrowserRouter>
       <InstallBanner />
@@ -210,36 +211,37 @@ function App() {
 
         <Route
           path="/member"
-          element={protectedSession ? <MemberPage /> : (appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to={isOtpPending || session ? '/login' : '/public'} />)}
+          element={protectWithConsent(<MemberPage userId={userId} userEmail={appSession?.user?.email || ''} isAdmin={isAdmin} />, '/public')}
         />
         <Route
           path="/settings"
-          element={protectedSession ? <SettingsPage /> : (appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to="/login" />)}
+          element={protectWithConsent(<SettingsPage userId={userId} isAdmin={isAdmin} />)}
         />
         <Route
           path="/settings/password"
-          element={protectedSession ? <ChangePasswordPage /> : (appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to="/login" />)}
+          element={protectWithConsent(<ChangePasswordPage />)}
         />
 
         <Route
           path="/admin"
           element={
-            appSession && !isOtpPending && !sessionClaimed
+            !adminRoleLoaded
               ? <LoadingIndicator />
-              : adminRoleLoaded && isAdmin && !isOtpPending && sessionClaimed
-              ? <AdminPage />
-              : adminRoleLoaded
-                ? <Navigate to={appSession ? '/member' : '/login'} />
-                : <LoadingIndicator />
+              : isAdmin
+                ? protectWithConsent(<AdminPage />)
+                : <Navigate to={appSession ? '/member' : '/login'} />
           }
         />
 
         <Route
           path="/scan"
-          element={protectedSession ? <ScanPage /> : (appSession && !isOtpPending ? <LoadingIndicator /> : <Navigate to="/login" />)}
+          element={protectWithConsent(<ScanPage />)}
         />
 
         <Route path="/public" element={<PublicPage />} />
+        <Route path="/legal" element={<LegalPage />} />
+        <Route path="/legal-consent" element={renderLegalConsent()} />
+        <Route path="/licenses" element={<ThirdPartyLicensesPage />} />
         <Route path="/report-content" element={<ContentReportPage />} />
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/email-confirmed" element={<EmailConfirmedPage />} />

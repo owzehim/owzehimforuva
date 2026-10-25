@@ -12,17 +12,16 @@ import { shouldShowReviewPrompt } from '../domain/reviewDomain'
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Fetches the next review prompt that is due for the current user.
+ * Fetches the next review prompt that is due for a user.
  *
- * @param {{ testMode?: boolean }} options
+ * @param {{ userId: string, testMode?: boolean }} options
  *   testMode: if true, pretends it's 50 min in the future so any
  *   pending prompt is immediately considered due. Remove for production.
  *
  * @returns {Promise<{ data: object|null, error: object|null }>}
  */
-export async function getPendingReviewPrompt({ testMode = false } = {}) {
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return { data: null, error: { message: '로그인이 필요합니다.' } }
+export async function getPendingReviewPrompt({ userId, testMode = false } = {}) {
+  if (!userId) return { data: null, error: { message: '로그인이 필요합니다.' } }
 
   const { data, error } = await supabase
     .from('review_prompts')
@@ -34,7 +33,7 @@ export async function getPendingReviewPrompt({ testMode = false } = {}) {
       status,
       partnerships ( name )
     `)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('status', 'pending')
     .order('prompt_at', { ascending: true })
 

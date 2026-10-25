@@ -16,7 +16,7 @@ import { refreshStoreReviewSummary } from './useStoreReviewSummary'
 import { validateReviewInput } from '../domain/reviewDomain'
 import { isProductionEnv } from '../lib/appEnv'
 
-export function useReviewPrompt() {
+export function useReviewPrompt(userId) {
   const [prompt, setPrompt]           = useState(null)
   const [open, setOpen]               = useState(false)
   const [rating, setRating]           = useState(null)
@@ -27,12 +27,12 @@ export function useReviewPrompt() {
   const [errors, setErrors]           = useState({})
   const [submitError, setSubmitError] = useState(null)
 
-  const fetchedRef = useRef(false)
+  const fetchedUserIdRef = useRef(null)
 
   // ── 1. On mount: check for a due prompt ──────────────────
   useEffect(() => {
-    if (fetchedRef.current) return
-    fetchedRef.current = true
+    if (!userId || fetchedUserIdRef.current === userId) return
+    fetchedUserIdRef.current = userId
 
     async function checkForPrompt() {
       setLoading(true)
@@ -41,6 +41,7 @@ export function useReviewPrompt() {
       // by passing a now that is 50 min in the future.
       // To revert: remove the override and use getPendingReviewPrompt() as-is.
       const { data: allPending, error } = await getPendingReviewPrompt({
+        userId,
         testMode: !isProductionEnv,
       })
 
@@ -61,7 +62,7 @@ export function useReviewPrompt() {
 
     const timerId = setTimeout(checkForPrompt, 10_000)
     return () => clearTimeout(timerId)
-  }, [])
+  }, [userId])
 
   // ── 2. Tag toggle ─────────────────────────────────────────
   const toggleTag = useCallback((tagKey) => {

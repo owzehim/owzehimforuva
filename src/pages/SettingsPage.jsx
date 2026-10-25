@@ -9,7 +9,6 @@ import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { legalDocuments } from '../content/legalDocuments'
-import { hasAdminRole } from '../lib/adminRoles'
 import AdminBadge from '../components/AdminBadge'
 
 function isValidUsername(value) {
@@ -71,7 +70,7 @@ async function getCroppedImgAsBlob(imageSrc, pixelCrop) {
 
 // ─── Page component ───────────────────────────────────────────────────────────
 
-export default function SettingsPage() {
+export default function SettingsPage({ userId, isAdmin }) {
   const navigate = useNavigate()
   const [member, setMember] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -86,7 +85,6 @@ export default function SettingsPage() {
   const [usernameDraft, setUsernameDraft] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
   const [usernameError, setUsernameError] = useState('')
-  const [isAdminUser, setIsAdminUser] = useState(false)
   const fileInputRef = useRef(null)
 
   const [cropImageSrc, setCropImageSrc] = useState(null)
@@ -97,22 +95,21 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError || !user) { navigate('/login'); return }
-      const [{ data: memberData, error: memberError }, adminRole] = await Promise.all([
-        supabase.from('members').select('*').eq('user_id', user.id).maybeSingle(),
-        hasAdminRole(user.id),
-      ])
+      if (!userId) { navigate('/login'); return }
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle()
       if (memberError) console.error('load member error:', memberError)
       const memberWithSignedImage = memberData?.profile_image_url
         ? { ...memberData, profile_image_url: await createProfileImageSignedUrl(memberData.profile_image_url) }
         : memberData
       setMember(memberWithSignedImage || null)
-      setIsAdminUser(adminRole)
       setLoading(false)
     }
     load()
-  }, [navigate])
+  }, [navigate, userId])
 
   useEffect(() => {
     const edgeWidth = 30
@@ -396,16 +393,12 @@ export default function SettingsPage() {
       className="phone-app-shell flex flex-col bg-white no-highlight-zone dark:bg-[#121212]"
       style={{
         minHeight: '100dvh',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
         WebkitTapHighlightColor: 'transparent',
       }}
     >
       <style>{`
         .no-highlight-zone,
         .no-highlight-zone * {
-          -webkit-user-select: none;
-          user-select: none;
           -webkit-tap-highlight-color: transparent;
         }
       `}</style>
@@ -535,7 +528,7 @@ export default function SettingsPage() {
                     <span className={`text-xs font-medium text-gray-500 dark:text-gray-400 ${username ? '' : 'italic'}`}>
                       {usernameDisplay}
                     </span>
-                    {isAdminUser && <AdminBadge size={14} />}
+                    {isAdmin && <AdminBadge size={14} />}
                     <button
                       type="button"
                       onClick={handleUsernameEditStart}
@@ -579,6 +572,14 @@ export default function SettingsPage() {
               </div>
               <ThemeToggle />
             </div>
+
+            <button
+              type="button"
+              onClick={() => navigate('/legal?lang=ko')}
+              className="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-center text-sm font-semibold text-gray-700 shadow-sm dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
+            >
+              이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
+            </button>
 
             <button
               type="button"
@@ -694,7 +695,7 @@ export default function SettingsPage() {
                   개인정보처리방침
                 </h2>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  시행일: {legalDocuments.privacy.effectiveDate}
+                  시행일: {legalDocuments.privacy.ko.effectiveDate}
                 </p>
               </div>
               <button
@@ -705,8 +706,8 @@ export default function SettingsPage() {
                 닫기
               </button>
             </div>
-            <div className="mt-4 overflow-y-auto rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-700 dark:bg-[#202020] dark:text-gray-200">
-              <p className="whitespace-pre-wrap">{legalDocuments.privacy.body}</p>
+            <div className="legal-document-content mt-4 overflow-y-auto rounded-xl bg-gray-50 p-4 text-sm leading-6 text-gray-700 dark:bg-[#202020] dark:text-gray-200">
+              <p className="whitespace-pre-wrap">{legalDocuments.privacy.ko.body}</p>
             </div>
           </section>
         </div>

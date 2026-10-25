@@ -47,6 +47,10 @@ if (typeof window !== 'undefined' && !document.getElementById('map-view-performa
       border: 3px solid #f97316 !important;
       box-shadow: 0 3px 12px rgba(249,115,22,0.5) !important;
     }
+    .custom-marker:focus-visible .marker-circle {
+      outline: 3px solid #2563eb;
+      outline-offset: 2px;
+    }
   `
   document.head.appendChild(style)
 }
@@ -64,7 +68,7 @@ function isDarkMode() {
   return typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
 }
 
-export default function MapView({ restaurants, selected, onSelect }) {
+export default function MapView({ restaurants, selected, onSelect, active = true }) {
   const mapContainer = useRef(null)
   const map = useRef(null)
   const markersRef = useRef(new Map())
@@ -87,6 +91,14 @@ export default function MapView({ restaurants, selected, onSelect }) {
   useEffect(() => {
     restaurantsRef.current = restaurants
   }, [restaurants])
+
+  useEffect(() => {
+    if (!active || !map.current) return undefined
+    const frame = window.requestAnimationFrame(() => {
+      map.current?.resize()
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [active])
 
   const createMarkerElement = useCallback((r, isSelected = false) => {
     const dark = isDarkMode()
@@ -113,6 +125,9 @@ export default function MapView({ restaurants, selected, onSelect }) {
     el.className = 'custom-marker'
     el.setAttribute('data-id', r.id)
     el.setAttribute('data-selected', isSelected ? 'true' : 'false')
+    el.setAttribute('role', 'button')
+    el.setAttribute('tabindex', '0')
+    el.setAttribute('aria-label', `${displayName} 지도에서 선택`)
     el.style.cssText = `
       display: flex;
       flex-direction: column;
@@ -194,6 +209,11 @@ export default function MapView({ restaurants, selected, onSelect }) {
         .addTo(map.current)
 
       el.addEventListener('click', () => onSelect(r))
+      el.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onSelect(r)
+      })
 
       markersRef.current.set(r.id, { marker, element: el, isSponsored: r.is_sponsored })
     })
@@ -393,6 +413,10 @@ export default function MapView({ restaurants, selected, onSelect }) {
     removeUserLocationMarker()
     setIsTrackingLocation(false)
   }, [removeUserLocationMarker])
+
+  useEffect(() => {
+    if (!active && isTrackingLocation) stopLocationTracking()
+  }, [active, isTrackingLocation, stopLocationTracking])
 
   const updateUserLocationMarker = useCallback((latitude, longitude, shouldCenter = false) => {
     if (!map.current) return

@@ -128,10 +128,11 @@ serve(async (req) => {
 
     const { data: reward, error: rewardError } = await admin
       .from('stamp_card_rewards')
-      .select('id, restaurant_id, redeemed')
+      .select('id, restaurant_id, redeemed, expires_at')
       .eq('id', rewardId)
       .eq('user_id', user.id)
       .eq('redeemed', false)
+      .is('expires_at', null)
       .maybeSingle()
 
     if (rewardError) {
@@ -163,7 +164,7 @@ serve(async (req) => {
     if (UUID_PATTERN.test(storeId)) {
       const { data: restaurantById, error: restaurantLookupError } = await admin
         .from('restaurants')
-        .select('id')
+        .select('id, is_archived')
         .eq('id', storeId)
         .maybeSingle()
 
@@ -171,19 +172,25 @@ serve(async (req) => {
         console.error('Restaurant lookup failed:', restaurantLookupError)
         return json({ success: false, message: '매장 정보를 확인하지 못했습니다.' }, 500)
       }
+      if (restaurantById?.is_archived) {
+        return json({ success: false, message: '제휴 종료로 사용할 수 없는 리워드입니다.' }, 403)
+      }
       restaurantId = restaurantById?.id ?? null
     }
 
     if (!restaurantId) {
       const { data: restaurantByPartnership, error: partnershipLookupError } = await admin
         .from('restaurants')
-        .select('id')
+        .select('id, is_archived')
         .eq('partnership_id', storeId)
         .maybeSingle()
 
       if (partnershipLookupError) {
         console.error('Partner restaurant lookup failed:', partnershipLookupError)
         return json({ success: false, message: '매장 정보를 확인하지 못했습니다.' }, 500)
+      }
+      if (restaurantByPartnership?.is_archived) {
+        return json({ success: false, message: '제휴 종료로 사용할 수 없는 리워드입니다.' }, 403)
       }
       restaurantId = restaurantByPartnership?.id ?? null
     }
@@ -202,6 +209,7 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .eq('restaurant_id', restaurantId)
       .eq('redeemed', false)
+      .is('expires_at', null)
       .select('id')
       .maybeSingle()
 

@@ -1,4 +1,5 @@
 const DOCUMENT_KEYS = ['terms', 'privacy', 'community']
+export const CURRENT_LEGAL_DOCUMENT_VERSION = '2026-10-24-07'
 
 function documentVersion(value) {
   return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= 80

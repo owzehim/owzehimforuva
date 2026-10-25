@@ -143,6 +143,7 @@ serve(async (req) => {
         .update({ redeemed: false, redeemed_at: null })
         .eq('id', rewardId)
         .eq('redeemed', true)
+        .is('expires_at', null)
         .select('id')
         .maybeSingle()
 
@@ -162,6 +163,17 @@ serve(async (req) => {
     }
 
     if (action === 'resetProgress') {
+      const { data: restaurant, error: restaurantError } = await admin
+        .from('restaurants')
+        .select('is_archived')
+        .eq('id', restaurantId)
+        .maybeSingle()
+
+      if (restaurantError) throw restaurantError
+      if (!restaurant || restaurant.is_archived) {
+        return json({ success: false, message: '보관된 매장 기록은 변경할 수 없습니다.' }, 409)
+      }
+
       const { error: rewardsError } = await admin
         .from('stamp_card_rewards')
         .delete()
@@ -212,7 +224,7 @@ serve(async (req) => {
 
           const { data: latestRewardRows, error: rewardsError } = await admin
             .from('stamp_card_rewards')
-            .select('*')
+            .select('id, user_id, restaurant_id, card_cycle, redeemed, redeemed_at, created_at, expires_at')
             .eq('user_id', member.user_id)
             .eq('restaurant_id', restaurantId)
             .order('created_at', { ascending: false })
@@ -221,7 +233,10 @@ serve(async (req) => {
           if (rewardsError) throw rewardsError
 
           const latestReward = latestRewardRows?.[0] ?? null
-          const pendingReward = latestReward?.redeemed === false ? latestReward : null
+          const pendingReward = latestReward?.redeemed === false &&
+            (!latestReward.expires_at || Date.parse(latestReward.expires_at) > Date.now())
+            ? latestReward
+            : null
 
           return {
             member,
