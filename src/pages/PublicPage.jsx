@@ -6,6 +6,7 @@ import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_I
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
 import { MapPin, Lock, ForkKnife, Calendar, CalendarDots, Users } from '@phosphor-icons/react'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
+import { useDevInteractionLock } from '../lib/devInteractionLock'
 
 const MapView = lazy(() => import('../components/MapView'))
 
@@ -21,6 +22,7 @@ export default function PublicPage() {
   const [hasOpenedMap, setHasOpenedMap] = useState(() => getStoredPublicTab() === 'map')
   const [restaurants, setRestaurants] = useState([])
   const navigate = useNavigate()
+  const lockInteractions = useDevInteractionLock(activeTab !== 'map')
 
   useEffect(() => {
     const resetScroll = () => {
@@ -73,6 +75,7 @@ export default function PublicPage() {
     <div
       className={
         'phone-app-shell flex flex-col overflow-hidden no-highlight-zone ' +
+        (lockInteractions ? 'dev-no-zoom-selection ' : '') +
         (activeTab === 'membership'
           ? 'bg-black'
           : 'bg-white dark:bg-[#121212]')
@@ -80,6 +83,7 @@ export default function PublicPage() {
       style={{
         height: '100dvh',
         WebkitTapHighlightColor: 'transparent',
+        touchAction: lockInteractions ? 'pan-x pan-y' : undefined,
       }}
     >
       <style>{`

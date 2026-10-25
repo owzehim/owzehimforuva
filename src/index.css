@@ -54,6 +54,18 @@ body {
   -webkit-user-drag: none !important;
 }
 
+.dev-no-zoom-selection,
+.dev-no-zoom-selection * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+}
+
+.dev-no-zoom-selection {
+  touch-action: pan-x pan-y;
+  min-height: 100dvh;
+}
+
 @media print {
   .legal-page-controls {
     display: none !important;

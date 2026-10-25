@@ -41,7 +41,7 @@ export default function LegalPage() {
           type="button"
           onClick={() => setLanguage((current) => current === 'ko' ? 'en' : 'ko')}
           className="fixed right-8 z-20 flex h-9 min-w-[72px] items-center justify-center rounded-full border border-gray-200 bg-white px-3 text-[13px] font-semibold text-[#374151] dark:border-[#2c2c2e] dark:bg-[#121212] dark:text-[#c7c7cc]"
-          style={{ top: 'calc(env(safe-area-inset-top) + 10px)' }}
+          style={{ top: 'max(22px, calc(env(safe-area-inset-top) + 10px))' }}
         >
           {language === 'ko' ? 'English' : '한국어'}
         </button>

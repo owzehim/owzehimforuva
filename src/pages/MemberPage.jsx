@@ -16,6 +16,7 @@ import LoadingIndicator from '../components/LoadingIndicator'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { isMembershipActive } from '../domain/member/membershipStatus'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
+import { useDevInteractionLock } from '../lib/devInteractionLock'
 
 const MapView = lazy(() => import('../components/MapView'))
 const QRScanner = lazy(() => import('../components/QRScanner'))
@@ -44,6 +45,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
   const [activeTab, setActiveTab] = useState(getStoredMemberTab)
   const [tabKey, setTabKey] = useState(0)
   const [hasOpenedMap, setHasOpenedMap] = useState(() => getStoredMemberTab() === 'map')
+  const lockInteractions = useDevInteractionLock(activeTab !== 'map')
   const [events, setEvents] = useState([])
   const [restaurants, setRestaurants] = useState([])
   const [qrCardLifted, setQrCardLifted] = useState(false)
@@ -211,7 +213,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#121212]">
+      <div className={`min-h-screen flex items-center justify-center bg-white dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`} style={{ touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}>
         <LoadingIndicator />
       </div>
     )
@@ -221,8 +223,8 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
 
   return (
     <div
-      className="member-app-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212]"
-      style={{ height: '100dvh' }}
+      className={`member-app-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`}
+      style={{ height: '100dvh', touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}
     >
       {/* Review modal */}
       <ReviewModal
