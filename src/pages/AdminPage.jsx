@@ -604,7 +604,7 @@ function ReportsTab() {
     community_guidelines: '커뮤니티 가이드라인 위반',
   }[reason] || '기존 신고')
 
-  if (loading) return <LoadingIndicator />
+  if (loading) return <div className="flex min-h-[40vh] items-center justify-center"><LoadingIndicator /></div>
 
   return (
     <div className="space-y-3">
@@ -1280,7 +1280,7 @@ function MembersTab() {
       </div>
 
       {loading ? (
-        <LoadingIndicator />
+        <div className="flex min-h-[40vh] items-center justify-center"><LoadingIndicator /></div>
       ) : members.length === 0 ? (
         <p className="text-gray-500 text-sm">멤버가 없어요.</p>
       ) : (
