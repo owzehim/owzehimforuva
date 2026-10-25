@@ -253,7 +253,7 @@ export default function ReviewModal({
               placeholder="이곳에서의 경험을 공유해 주세요."
               maxLength={200}
               rows={3}
-              className="w-full px-3 py-2.5 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-2xl resize-none focus:outline-none focus:border-orange-400 focus-visible:border-orange-600 dark:focus-visible:border-orange-400 placeholder:text-gray-400"
+              className="w-full px-3 py-2.5 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-2xl resize-none focus:outline-none focus:border-blue-600 focus-visible:border-blue-600 dark:focus-visible:border-blue-400 placeholder:text-gray-400"
             />
             <p className="text-xs text-gray-400">
               닉네임을 설정하기 전에 작성한 한마디는 익명으로 표시돼요. 나중에 닉네임을 설정해도 기존 한마디는 계속 익명으로 남아요.
