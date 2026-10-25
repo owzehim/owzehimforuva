@@ -2549,7 +2549,7 @@ function RestaurantForm({
         >
           <option value={RESTAURANT_COMMERCIAL_LABEL_TYPES.NONE}>표시 없음</option>
           <option value={RESTAURANT_COMMERCIAL_LABEL_TYPES.MEMBER_DISCOUNT}>
-            회원 할인 제공
+            할인 제공
           </option>
           <option value={RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD}>유료 광고</option>
         </select>
@@ -3097,7 +3097,7 @@ function RestaurantsTab() {
                             className={`mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                               getRestaurantCommercialLabelType(r) ===
                               RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
-                                ? 'bg-green-50 text-green-800'
+                                ? 'bg-green-50 text-[#16A34A]'
                                 : 'bg-orange-50 text-orange-700'
                             }`}
                           >

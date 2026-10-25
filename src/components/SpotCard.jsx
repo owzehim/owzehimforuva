@@ -906,7 +906,7 @@ export function SpotCard({
                 className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
                   getRestaurantCommercialLabelType(selected) ===
                   RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
-                    ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300'
+                    ? 'bg-green-50 text-[#16A34A] dark:bg-green-950 dark:text-[#16A34A]'
                     : 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                 }`}
               >
