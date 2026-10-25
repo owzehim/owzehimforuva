@@ -633,13 +633,6 @@ function MembershipCarousel() {
         >
           로그인
         </button>
-        <button
-          type="button"
-          onClick={() => navigate('/legal?lang=ko')}
-          className="mx-auto mt-2 block w-full text-center text-[11px] font-medium text-white/85 underline underline-offset-2"
-        >
-          이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
-        </button>
       </div>
     </div>
   )
