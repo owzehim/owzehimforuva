@@ -47,7 +47,7 @@ export function getConsentReceiptRows(userId, registration, acceptedAt) {
     accepted_at: acceptedAt,
   }))
 
-  if (registration.age_16_plus_confirmed !== true) return null
+  if (registration.age_16_plus_confirmed !== true) return documentReceipts
 
   return [
     ...documentReceipts,
