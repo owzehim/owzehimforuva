@@ -62,7 +62,11 @@ function isValidRegistration(value: unknown) {
     text(profile.university, 160) &&
     typeof profile.education_level === 'string' &&
     ALLOWED_EDUCATION_LEVELS.has(profile.education_level) &&
-    (yearOfBirth === null || (yearOfBirth !== undefined && yearOfBirth >= 1900 && yearOfBirth <= new Date().getFullYear())) &&
+    (yearOfBirth === null || (
+      yearOfBirth !== undefined &&
+      yearOfBirth >= 1900 &&
+      yearOfBirth <= new Date().getFullYear() - 16
+    )) &&
     (yearNumber === null || (yearNumber !== undefined && yearNumber >= 1 && yearNumber <= 20)) &&
     typeof profile.privacy_policy_version === 'string' &&
     profile.privacy_policy_version.length <= 80 &&

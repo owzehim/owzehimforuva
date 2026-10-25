@@ -307,8 +307,15 @@ const SORTED_UNIVERSITIES = [...UNIVERSITY_OPTIONS].sort((a, b) => a.localeCompa
 const SORTED_MAJORS = [...new Set(MAJOR_OPTIONS)].sort((a, b) => a.localeCompare(b)).concat(CUSTOM_TYPE_OPTION);
 
 const filled = (value) => String(value || '').trim().length > 0;
+const isUnderSixteenByBirthYear = (value) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return false;
+  const year = Number(normalized);
+  return Number.isInteger(year) && year > new Date().getFullYear() - 16;
+};
 
 function getRegistrationStepComplete(step, formData, yearOptions = []) {
+  if (step === 'about' && isUnderSixteenByBirthYear(formData.yearOfBirth)) return false;
   if (!isProductionEnv) return true;
 
   if (step === 'about') {
@@ -394,6 +401,7 @@ const translations = {
     firstNameKorean: 'First name (Korean, optional)',
     lastNameKorean: 'Last name (Korean, optional)',
     yearOfBirth: 'Year of birth (optional)',
+    underSixteenByBirthYear: 'You must be at least 16 years old to register.',
     gender: 'Gender (optional)',
     nationality: 'Nationality (optional)',
     university: 'University *',
@@ -439,6 +447,7 @@ const translations = {
     firstNameKorean: '이름 (한글, 선택사항)',
     lastNameKorean: '성 (한글, 선택사항)',
     yearOfBirth: '출생 연도 (선택사항)',
+    underSixteenByBirthYear: '만 16세 이상만 가입할 수 있습니다.',
     gender: '성별 (선택사항)',
     nationality: '국적 (선택사항)',
     university: '대학교 *',
@@ -1277,6 +1286,11 @@ function NameStep({ formData, handleChange, goNext, language, t, isComplete }) {
                 min="1950"
                 max={new Date().getFullYear()}
               />
+              {isUnderSixteenByBirthYear(formData.yearOfBirth) && (
+                <p role="alert" style={{ ...s.helperText, color: 'var(--reg-danger-text)' }}>
+                  {t.underSixteenByBirthYear}
+                </p>
+              )}
             </Field>
             <Field label={t.gender} id="gender">
               <TypeaheadSelect
