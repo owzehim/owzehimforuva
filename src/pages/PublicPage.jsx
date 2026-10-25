@@ -148,15 +148,8 @@ export default function PublicPage() {
         <div className="h-full" style={{ display: activeTab === 'membership' ? 'block' : 'none' }}>
           {activeTab === 'membership' && <MembershipCarousel />}
         </div>
-        {hasOpenedMap && (
-          <div
-            className="absolute inset-0"
-            aria-hidden={activeTab !== 'map'}
-            style={{
-              visibility: activeTab === 'map' ? 'visible' : 'hidden',
-              pointerEvents: activeTab === 'map' ? 'auto' : 'none',
-            }}
-          >
+        {hasOpenedMap && activeTab === 'map' && (
+          <div className="absolute inset-0">
             <PublicMapTab restaurants={restaurants} active={activeTab === 'map'} />
           </div>
         )}
