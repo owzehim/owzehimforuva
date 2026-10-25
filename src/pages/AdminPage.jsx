@@ -2554,7 +2554,7 @@ function RestaurantForm({
           <option value={RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD}>유료 광고</option>
         </select>
         <p className="mt-1 text-xs text-gray-400">
-          유료 광고는 파란색 지도 마커와 함께 표시됩니다.
+          유료 광고는 초록색 지도 마커와 함께 표시됩니다.
         </p>
       </div>
 
@@ -3097,7 +3097,7 @@ function RestaurantsTab() {
                             className={`mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                               getRestaurantCommercialLabelType(r) ===
                               RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
-                                ? 'bg-blue-50 text-blue-700'
+                                ? 'bg-green-50 text-green-800'
                                 : 'bg-orange-50 text-orange-700'
                             }`}
                           >
