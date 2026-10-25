@@ -1768,6 +1768,7 @@ function Field({ label, children, variant = 'input', style, id }) {
   return (
     <div
       ref={fieldRef}
+      className={variant === 'input' ? 'registration-field' : undefined}
       onClick={handleFieldClick}
       style={{
         ...(variant === 'group' ? groupFieldStyle : fieldStyle),

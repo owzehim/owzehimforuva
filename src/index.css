@@ -195,6 +195,13 @@ select {
   font-size: max(16px, 1rem);
 }
 
+#root input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):focus,
+#root textarea:focus,
+#root select:focus,
+#root .registration-field:focus-within {
+  border-color: #2563eb !important;
+}
+
 @media (min-width: 768px) and (min-height: 640px) and (display-mode: browser) {
   .phone-app-shell,
   .member-app-shell {
