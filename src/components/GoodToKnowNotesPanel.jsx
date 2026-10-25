@@ -463,7 +463,7 @@ export function GoodToKnowNotesPanel({
                     {!isMine && userId && (
                       <button type="button" aria-label="한마디 신고" onClick={() => openReport(note)} className="text-gray-400"><Flag size={13} /></button>
                     )}
-                    {isAdmin && (
+                    {isAdmin && !isMine && (
                       <button type="button" aria-label="관리자 한마디 삭제" onClick={() => deleteNote(note.id)} className="text-red-400"><Trash size={13} /></button>
                     )}
                   </div>

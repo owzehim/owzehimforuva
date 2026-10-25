@@ -173,7 +173,7 @@ export function RestaurantCommentsPanel({ restaurantId, userId, username, canCom
                     </>
                   )}
                   {!isMine && userId && <button type="button" aria-label="리뷰 신고" onClick={() => reportComment(comment.id)} className="text-gray-400"><Flag size={13} /></button>}
-                  {isAdmin && <button type="button" aria-label="관리자 삭제" onClick={() => deleteComment(comment.id)} className="text-red-400"><Trash size={13} /></button>}
+                  {isAdmin && !isMine && <button type="button" aria-label="관리자 삭제" onClick={() => deleteComment(comment.id)} className="text-red-400"><Trash size={13} /></button>}
                 </div>
               </div>
               <p className="mt-1 break-words text-xs leading-relaxed text-gray-600">{comment.body}</p>
