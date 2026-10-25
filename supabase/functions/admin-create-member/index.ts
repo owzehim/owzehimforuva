@@ -1,6 +1,6 @@
 import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession } from '../_shared/requireVerifiedLogin.ts'
@@ -13,7 +13,7 @@ function isValidDate(value: unknown) {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
   const configuredOrigins = Deno.env.get('CORS_ALLOWED_ORIGINS') || ''
   const corsHeaders = getCorsHeaders(origin, configuredOrigins)
@@ -27,7 +27,7 @@ serve(async (req) => {
   if (req.method !== 'POST') return json({ success: false, message: '허용되지 않은 요청입니다.' }, 405)
 
   let createdUserId: string | null = null
-  let admin: ReturnType<typeof createClient> | null = null
+  let admin: any = null
 
   try {
     const authHeader = req.headers.get('Authorization') || ''
