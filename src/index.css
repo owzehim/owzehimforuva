@@ -222,6 +222,29 @@ textarea.good-to-know-note-textarea:focus {
   }
 }
 
+/* A phone browser can expose a desktop-sized CSS viewport while keeping its
+   physical screen narrow. Keep the app full-width on those touch devices. */
+@media (orientation: portrait) and (min-width: 768px) and (max-device-width: 600px) {
+  .phone-app-shell,
+  .member-app-shell {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-shadow: none;
+    --member-screen-width: min(calc(100vw - 32px), 1200px);
+    --app-screen-width: min(calc(100vw - 32px), 1200px);
+  }
+
+  .phone-app-shell .max-w-xs,
+  .phone-app-shell .max-w-sm,
+  .phone-app-shell .max-w-md,
+  .member-app-shell .max-w-xs,
+  .member-app-shell .max-w-sm,
+  .member-app-shell .max-w-md {
+    max-width: min(calc(100vw - 32px), 1200px) !important;
+  }
+}
+
 @media (display-mode: standalone), (display-mode: fullscreen), (max-height: 639px), (pointer: coarse) and (orientation: landscape) {
   .phone-app-shell,
   .member-app-shell {
