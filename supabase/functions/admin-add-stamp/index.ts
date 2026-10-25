@@ -6,9 +6,7 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession } from '../_shared/requireVerifiedLogin.ts'
 import { recordAdminAction } from '../_shared/adminAudit.ts'
 
-function computeStampState(visits: any[], totalStamps: number, pendingReward: any = null) {
-  const totalVisits = visits.length
-
+function computeStampState(totalVisits: number, totalStamps: number, pendingReward: any = null) {
   if (pendingReward) {
     const currentCycle = pendingReward.card_cycle ?? Math.floor(Math.max(totalVisits - 1, 0) / totalStamps) + 1
     return {
@@ -18,9 +16,7 @@ function computeStampState(visits: any[], totalStamps: number, pendingReward: an
       isCardFull: true,
       hasPendingReward: true,
       pendingReward,
-      currentCycleVisits: visits
-        .filter((visit) => visit.card_cycle === currentCycle)
-        .slice(0, totalStamps),
+      currentCycleVisits: [],
     }
   }
 
@@ -38,7 +34,6 @@ function computeStampState(visits: any[], totalStamps: number, pendingReward: an
 
   const remainder = totalVisits % totalStamps
   const currentCycle = Math.floor(totalVisits / totalStamps) + 1
-  const cycleStart = totalVisits - remainder
 
   return {
     totalVisits,
@@ -47,7 +42,7 @@ function computeStampState(visits: any[], totalStamps: number, pendingReward: an
     isCardFull: false,
     hasPendingReward: false,
     pendingReward: null,
-    currentCycleVisits: remainder === 0 ? [] : visits.slice(cycleStart, cycleStart + totalStamps),
+    currentCycleVisits: [],
   }
 }
 
@@ -201,38 +196,15 @@ Deno.serve(async (req) => {
     const safeTotalStamps = Math.max(1, Number(totalStamps || 10))
 
     if (action === 'listMembers') {
-      const { data: members, error: membersError } = await admin
-        .from('members')
-        .select('id, user_id, first_name, last_name')
-        .not('user_id', 'is', null)
-        .order('last_name', { ascending: true })
-        .order('first_name', { ascending: true })
+      const { data: memberSummaries, error: summariesError } = await admin.rpc(
+        'admin_list_stamp_card_members',
+        { p_restaurant_id: restaurantId },
+      )
 
-      if (membersError) throw membersError
-      if (!members?.length) return json({ success: true, rows: [] })
+      if (summariesError) throw summariesError
 
-      const rows = await Promise.all(
-        members.map(async (member) => {
-          const { data: visits, error: visitsError } = await admin
-            .from('stamp_card_visits')
-            .select('*')
-            .eq('user_id', member.user_id)
-            .eq('restaurant_id', restaurantId)
-            .order('visited_at', { ascending: true })
-
-          if (visitsError) throw visitsError
-
-          const { data: latestRewardRows, error: rewardsError } = await admin
-            .from('stamp_card_rewards')
-            .select('id, user_id, restaurant_id, card_cycle, redeemed, redeemed_at, created_at, expires_at')
-            .eq('user_id', member.user_id)
-            .eq('restaurant_id', restaurantId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-
-          if (rewardsError) throw rewardsError
-
-          const latestReward = latestRewardRows?.[0] ?? null
+      const rows = (Array.isArray(memberSummaries) ? memberSummaries : []).map(
+        ({ member, visitCount, latestReward }: any) => {
           const pendingReward = latestReward?.redeemed === false &&
             (!latestReward.expires_at || Date.parse(latestReward.expires_at) > Date.now())
             ? latestReward
@@ -240,10 +212,10 @@ Deno.serve(async (req) => {
 
           return {
             member,
-            stampState: computeStampState(visits ?? [], safeTotalStamps, pendingReward),
+            stampState: computeStampState(Number(visitCount || 0), safeTotalStamps, pendingReward),
             latestReward,
           }
-        }),
+        },
       )
 
       return json({ success: true, rows })
