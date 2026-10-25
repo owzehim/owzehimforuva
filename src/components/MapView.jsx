@@ -105,7 +105,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     const isPaidAd = r.commercial_display_type === 'paid_ad'
     const isSponsored = r.is_sponsored
     const isHighlighted = isPaidAd || isSponsored
-    const markerColor = isPaidAd ? '#2563eb' : '#f97316'
+    const markerColor = isPaidAd ? '#15803d' : '#f97316'
     const size = isHighlighted ? 42 : 34
     const bg = isHighlighted ? markerColor : dark ? '#121212' : 'white'
     const border = isHighlighted
@@ -116,7 +116,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     const shadow = isSelected
       ? '0 3px 12px rgba(249,115,22,0.5)'
       : isPaidAd
-        ? '0 3px 12px rgba(37,99,235,0.45)'
+        ? '0 3px 12px rgba(21,128,61,0.45)'
         : isSponsored
           ? '0 3px 12px rgba(249,115,22,0.4)'
           : dark
@@ -371,7 +371,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
       if (isPaidAd) {
         circle.style.border = `3px solid ${dark ? '#121212' : 'white'}`
-        circle.style.boxShadow = '0 3px 12px rgba(37,99,235,0.45)'
+        circle.style.boxShadow = '0 3px 12px rgba(21,128,61,0.45)'
       } else if (isSponsored) {
         circle.style.border = `3px solid ${dark ? '#121212' : 'white'}`
         circle.style.boxShadow = '0 3px 12px rgba(249,115,22,0.4)'
