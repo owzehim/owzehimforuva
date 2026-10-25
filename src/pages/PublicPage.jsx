@@ -74,7 +74,7 @@ export default function PublicPage() {
   return (
     <div
       className={
-        'phone-app-shell flex flex-col overflow-hidden no-highlight-zone ' +
+        'phone-app-shell viewport-height-shell flex flex-col overflow-hidden no-highlight-zone ' +
         (lockInteractions ? 'dev-no-zoom-selection ' : '') +
         (activeTab === 'membership'
           ? 'bg-black'

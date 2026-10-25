@@ -23,13 +23,21 @@ html,
 body {
   width: 100%;
   min-width: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
   overscroll-behavior: none;
   font-family: var(--font-app);
 }
 
 #root {
   width: 100%;
+  min-height: 100vh;
   min-height: 100dvh;
+}
+
+.viewport-height-shell {
+  height: 100vh;
+  height: 100dvh;
 }
 
 /* Disable native image dragging while keeping app text selectable. */
