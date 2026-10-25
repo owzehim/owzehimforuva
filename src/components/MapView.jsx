@@ -102,23 +102,28 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
   const createMarkerElement = useCallback((r, isSelected = false) => {
     const dark = isDarkMode()
+    const isPaidAd = r.commercial_display_type === 'paid_ad'
     const isSponsored = r.is_sponsored
-    const size = isSponsored ? 42 : 34
-    const bg = isSponsored ? '#f97316' : dark ? '#121212' : 'white'
-    const border = isSponsored
+    const isHighlighted = isPaidAd || isSponsored
+    const markerColor = isPaidAd ? '#2563eb' : '#f97316'
+    const size = isHighlighted ? 42 : 34
+    const bg = isHighlighted ? markerColor : dark ? '#121212' : 'white'
+    const border = isHighlighted
       ? `3px solid ${dark ? '#121212' : 'white'}`
       : isSelected
         ? '3px solid #f97316'
         : `2px solid ${dark ? '#f97316' : '#e5e7eb'}`
     const shadow = isSelected
       ? '0 3px 12px rgba(249,115,22,0.5)'
-      : isSponsored
-        ? '0 3px 12px rgba(249,115,22,0.4)'
-        : dark
-          ? '0 2px 10px rgba(0,0,0,0.55)'
-          : '0 2px 6px rgba(0,0,0,0.15)'
+      : isPaidAd
+        ? '0 3px 12px rgba(37,99,235,0.45)'
+        : isSponsored
+          ? '0 3px 12px rgba(249,115,22,0.4)'
+          : dark
+            ? '0 2px 10px rgba(0,0,0,0.55)'
+            : '0 2px 6px rgba(0,0,0,0.15)'
     const displayName = r.map_label || r.name || ''
-    const iconColor = isSponsored ? (dark ? '#121212' : 'white') : '#f97316'
+    const iconColor = isHighlighted ? (dark ? '#121212' : 'white') : '#f97316'
     const iconSvg = getMapIconSvg(r.category, iconColor)
 
     const el = document.createElement('div')
@@ -154,8 +159,8 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
     const iconContainer = document.createElement('div')
     iconContainer.style.cssText = `
-      width: ${isSponsored ? 24 : 16}px;
-      height: ${isSponsored ? 24 : 16}px;
+      width: ${isHighlighted ? 24 : 16}px;
+      height: ${isHighlighted ? 24 : 16}px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -197,7 +202,9 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     if (valid.length === 0) return
 
     const sorted = [...valid].sort(
-      (a, b) => (a.is_sponsored ? 1 : 0) - (b.is_sponsored ? 1 : 0),
+      (a, b) =>
+        (a.is_sponsored || a.commercial_display_type === 'paid_ad' ? 1 : 0) -
+        (b.is_sponsored || b.commercial_display_type === 'paid_ad' ? 1 : 0),
     )
     const selectedId = selectedRef.current?.id ?? null
 
@@ -215,7 +222,12 @@ export default function MapView({ restaurants, selected, onSelect, active = true
         onSelect(r)
       })
 
-      markersRef.current.set(r.id, { marker, element: el, isSponsored: r.is_sponsored })
+      markersRef.current.set(r.id, {
+        marker,
+        element: el,
+        isSponsored: r.is_sponsored,
+        isPaidAd: r.commercial_display_type === 'paid_ad',
+      })
     })
 
     selectedMarkerIdRef.current = markersRef.current.has(selectedId) ? selectedId : null
@@ -346,7 +358,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
     const setMarkerSelected = (markerData, isSelected) => {
       if (!markerData) return
-      const { element, isSponsored } = markerData
+      const { element, isSponsored, isPaidAd } = markerData
       element.setAttribute('data-selected', isSelected ? 'true' : 'false')
       const circle = element.querySelector('.marker-circle')
       if (!circle) return
@@ -357,7 +369,10 @@ export default function MapView({ restaurants, selected, onSelect, active = true
         return
       }
 
-      if (isSponsored) {
+      if (isPaidAd) {
+        circle.style.border = `3px solid ${dark ? '#121212' : 'white'}`
+        circle.style.boxShadow = '0 3px 12px rgba(37,99,235,0.45)'
+      } else if (isSponsored) {
         circle.style.border = `3px solid ${dark ? '#121212' : 'white'}`
         circle.style.boxShadow = '0 3px 12px rgba(249,115,22,0.4)'
       } else {
