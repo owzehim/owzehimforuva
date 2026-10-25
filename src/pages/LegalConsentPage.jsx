@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, CircleNotch, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { LEGAL_DOCUMENT_VERSION, legalDocuments } from '../content/legalDocuments'
+import { useModalFocus } from '../hooks/useModalFocus'
 
 const DOCUMENT_KEYS = ['terms', 'privacy', 'community']
 
@@ -156,6 +157,8 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
 
 function LegalDocumentModal({ document, language, onClose }) {
   const content = language === 'ko' ? document.ko : document
+  const dialogRef = useRef(null)
+  const handleDialogKeyDown = useModalFocus(dialogRef, onClose)
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/60 p-4">
@@ -163,6 +166,9 @@ function LegalDocumentModal({ document, language, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="legal-consent-document-title"
+        ref={dialogRef}
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
         className="flex max-h-[82dvh] w-full max-w-[720px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white text-gray-900 shadow-2xl dark:border-gray-700 dark:bg-[#1c1c1e] dark:text-white"
       >
         <header className="flex items-start justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-700">
@@ -181,7 +187,11 @@ function LegalDocumentModal({ document, language, onClose }) {
             <X size={18} />
           </button>
         </header>
-        <div className="legal-document-content overflow-y-auto overscroll-contain px-4 py-4">
+        <div
+          className="legal-document-content overflow-y-auto overscroll-contain px-4 py-4"
+          tabIndex={0}
+          aria-label={language === 'ko' ? '약관 본문' : 'Policy document text'}
+        >
           {content.body.split('\n').map((line, index) => (
             <p
               key={`${content.title}-${index}`}

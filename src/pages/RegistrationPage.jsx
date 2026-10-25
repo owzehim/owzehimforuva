@@ -15,6 +15,7 @@ import { getPastelColor } from '../lib/avatarColor';
 import CaptchaChallenge from '../components/CaptchaChallenge';
 import { isCaptchaEnabled } from '../lib/captcha';
 import { checkSignupEmailConfirmation, resendConfirmationEmail } from '../api/authRepository';
+import { useModalFocus } from '../hooks/useModalFocus';
 
 const isMobileChromeBrowser = typeof navigator !== 'undefined'
   && /(?:Chrome|CriOS)\//.test(navigator.userAgent)
@@ -1702,15 +1703,25 @@ function LegalAgreementList({
 }
 
 function LegalDocumentModal({ document, language, onClose }) {
+  const dialogRef = useRef(null);
+  const handleDialogKeyDown = useModalFocus(dialogRef, onClose);
   if (!document) return null;
   const content = language === 'ko' ? document.ko : document;
 
   return (
     <div style={s.legalOverlay}>
-      <div style={s.legalModal}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="registration-legal-document-title"
+        tabIndex={-1}
+        onKeyDown={handleDialogKeyDown}
+        style={s.legalModal}
+      >
         <div style={s.legalModalHeader}>
           <div>
-            <h2 style={s.legalModalTitle}>{content.title}</h2>
+            <h2 id="registration-legal-document-title" style={s.legalModalTitle}>{content.title}</h2>
             <p style={s.legalModalDate}>
               {language === 'ko' ? '시행일' : 'Effective Date'}: {content.effectiveDate}
             </p>
@@ -1719,7 +1730,12 @@ function LegalDocumentModal({ document, language, onClose }) {
             {language === 'ko' ? '닫기' : 'Close'}
           </button>
         </div>
-        <div className="legal-document-content" style={s.legalModalBody}>
+        <div
+          className="legal-document-content"
+          style={s.legalModalBody}
+          tabIndex={0}
+          aria-label={language === 'ko' ? '약관 본문' : 'Policy document text'}
+        >
           {content.body.split('\n').map((line, index) => (
             <p
               key={`${content.title}-${index}`}
