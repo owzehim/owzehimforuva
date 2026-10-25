@@ -223,7 +223,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
 
   return (
     <div
-      className={`member-app-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`}
+      className={`member-app-shell viewport-height-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`}
       style={{ height: '100dvh', touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}
     >
       {/* Review modal */}
