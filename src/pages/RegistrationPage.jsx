@@ -2003,7 +2003,7 @@ const s = {
   },
   registrationPrompt: {
     margin: '0 0 8px',
-    fontSize: '24px',
+    fontSize: '20px',
     lineHeight: 1.28,
     fontWeight: 700,
     color: 'var(--reg-text)',
