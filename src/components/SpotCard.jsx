@@ -95,15 +95,15 @@ function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
   const maxCount = hasMemberReviews ? sorted[0].count : 0
 
   return (
-    <div className="spot-card-compact-tags pb-0">
+    <div className="pb-0">
       <div className="pt-3">
-        <div className="spot-card-compact-tag-heading mb-3">
+        <div className="mb-3">
           <p className="text-xs font-semibold text-gray-500">
             멤버 평가
           </p>
         </div>
 
-        <div className="spot-card-compact-tag-rows flex flex-col gap-2.5 pl-4">
+        <div className="flex flex-col gap-2.5 pl-4">
           {displayTags.map((tag) => {
             const IconComponent = TAG_ICON_COMPONENTS[tag.icon]
             const pct =
@@ -517,6 +517,7 @@ export function SpotCard({
   const cardRef = useRef(null)
   const previousSpotRef = useRef(null)
   const reviewBoxTouchStartRef = useRef(null)
+  const contentScrollTouchRef = useRef(null)
 
   const imgs = selected?.image_urls || EMPTY_IMAGE_URLS
   const reviewBoxPanel = reviewBoxPanelState.selectedId === selectedId
@@ -665,14 +666,50 @@ export function SpotCard({
     startHeightRef.current = spotCardHeightMode === 'full'
       ? cardHeight
       : cardRef.current?.offsetHeight || MIN_HEIGHT
-    setIsDragging(true)
+    const scrollableContent = e.target.closest?.('.spot-card-expanded-content')
+    const canScrollCardContent = Boolean(
+      scrollableContent &&
+      spotCardHeightMode === 'full' &&
+      !isCollapsed &&
+      window.matchMedia('(orientation: portrait) and (max-width: 380px) and (max-height: 660px)').matches,
+    )
+    contentScrollTouchRef.current = canScrollCardContent
+      ? { element: scrollableContent, mode: 'content' }
+      : null
+    setIsDragging(!canScrollCardContent)
   }
 
   const handleTouchMove = (e) => {
-    if (!isDragging) return
-
     lastYRef.current = e.touches[0].clientY
     const delta = startYRef.current - e.touches[0].clientY
+
+    const contentTouch = contentScrollTouchRef.current
+    if (contentTouch) {
+      const { element } = contentTouch
+      const atTop = element.scrollTop <= 0
+      const atBottom = element.scrollTop + element.clientHeight >= element.scrollHeight - 1
+      if (delta > 0 && !atBottom) {
+        contentTouch.mode = 'content'
+        setIsDragging(false)
+        return
+      }
+      if (delta < 0 && !atTop) {
+        contentTouch.mode = 'content'
+        setIsDragging(false)
+        return
+      }
+      if (delta > 0 && atBottom) {
+        contentTouch.mode = 'content'
+        setIsDragging(false)
+        return
+      }
+      if (delta < 0 && atTop) {
+        contentTouch.mode = 'sheet'
+        setIsDragging(true)
+      }
+    }
+
+    if (!isDragging && contentTouch?.mode !== 'sheet') return
 
     // Prevent scroll when clearly vertical swipe (like membership card)
     if (Math.abs(delta) > 10) {
@@ -682,7 +719,11 @@ export function SpotCard({
   }
 
   const handleTouchEnd = () => {
+    const contentTouch = contentScrollTouchRef.current
+    contentScrollTouchRef.current = null
     setIsDragging(false)
+
+    if (contentTouch && contentTouch.mode !== 'sheet') return
 
     const delta = startYRef.current - lastYRef.current
     const startH = startHeightRef.current
@@ -910,7 +951,15 @@ export function SpotCard({
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
-        <div className="flex-1 px-5" style={{ overflowY: 'hidden' }}>
+        <div
+          className={
+            'flex-1 px-5 ' +
+            (spotCardHeightMode === 'full' && !isCollapsed
+              ? 'spot-card-expanded-content'
+              : '')
+          }
+          style={{ overflowY: 'hidden' }}
+        >
           {/* ?? Place info ?? */}
           <div className="pt-1 pb-3">
             {/* Store name */}
@@ -983,7 +1032,7 @@ export function SpotCard({
           {/* Review box: swipe left for member notes. */}
           {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
-              className="spot-card-compact-review mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out"
+              className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out"
               aria-label="리뷰 박스"
               onTouchStart={handleReviewBoxTouchStart}
               onTouchMove={handleReviewBoxTouchMove}
