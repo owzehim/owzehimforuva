@@ -283,9 +283,9 @@ select {
   font-size: max(16px, 1rem);
 }
 
-#root input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(.border-none):not(.border-0):focus,
-#root textarea:not(.border-none):not(.border-0):focus,
-#root select:not(.border-none):not(.border-0):focus {
+#root input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(.border-none):focus,
+#root textarea:not(.border-none):focus,
+#root select:not(.border-none):focus {
   border-color: #2563eb !important;
   box-shadow: 0 0 0 2px #2563eb !important;
   outline: none !important;
