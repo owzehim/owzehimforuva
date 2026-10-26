@@ -2342,6 +2342,7 @@ function EventsTab({ events }) {
   const [eventListNewestFirst, setEventListNewestFirst] = useState(true)
   const [eventCardOpen, setEventCardOpen] = useState(false)
   const [eventPhotoZoomScale, setEventPhotoZoomScale] = useState(1)
+  const [eventPhotoZoomOffset, setEventPhotoZoomOffset] = useState({ x: 0, y: 0 })
   const [eventPhotoIsPinching, setEventPhotoIsPinching] = useState(false)
   const [eventPhotoZoomBounds, setEventPhotoZoomBounds] = useState(null)
   const [eventCardClosing, setEventCardClosing] = useState(false)
@@ -2370,6 +2371,11 @@ function EventsTab({ events }) {
   const eventPreviewTouchStartX = useRef(null)
   const eventPreviewTouchStartY = useRef(null)
   const eventPinchStartDistance = useRef(null)
+  const eventPinchStartCenter = useRef(null)
+  const eventPinchMode = useRef(null)
+  const eventPhotoZoomBoundsRef = useRef(null)
+  const eventPhotoZoomOffsetRef = useRef({ x: 0, y: 0 })
+  const eventPhotoPanStart = useRef(null)
   const eventPreviewGestureAxis = useRef(null)
   const eventCardGestureAxis = useRef(null)
   const eventImageBoxRatioRef = useRef(1)
@@ -2411,11 +2417,21 @@ function EventsTab({ events }) {
     setCalMonth(new Date(d.getFullYear(), d.getMonth(), 1))
   }, [selectedEvent])
 
-  const setSlide = (id, idx) => {
+  const resetEventPhotoZoom = () => {
+    eventPinchStartDistance.current = null
+    eventPinchStartCenter.current = null
+    eventPinchMode.current = null
+    eventPhotoZoomBoundsRef.current = null
+    eventPhotoPanStart.current = null
+    eventPhotoZoomOffsetRef.current = { x: 0, y: 0 }
     setEventPhotoZoomScale(1)
+    setEventPhotoZoomOffset({ x: 0, y: 0 })
     setEventPhotoIsPinching(false)
     setEventPhotoZoomBounds(null)
-    eventPinchStartDistance.current = null
+  }
+
+  const setSlide = (id, idx) => {
+    resetEventPhotoZoom()
     setSlideIndexes((p) => ({
       ...p,
       [id]: idx,
@@ -2487,10 +2503,7 @@ function EventsTab({ events }) {
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
     const shouldFadeToFirst = eventId && (slideIndexes[eventId] || 0) !== 0
 
-    eventPinchStartDistance.current = null
-    setEventPhotoZoomScale(1)
-    setEventPhotoIsPinching(false)
-    setEventPhotoZoomBounds(null)
+    resetEventPhotoZoom()
 
     if (eventId && imageAspectRatiosRef.current[eventId]?.[0]) {
       eventImageBoxRatioRef.current = imageAspectRatiosRef.current[eventId][0]
@@ -2670,7 +2683,7 @@ function EventsTab({ events }) {
     const preventVerticalScrollDuringHorizontalSwipe = (event) => {
       if (!eventCardOpen) return
 
-      if (event.touches.length === 2 && eventPinchStartDistance.current) {
+      if (eventPinchMode.current === 'pinch' && event.touches.length === 2 && eventPinchStartDistance.current) {
         event.preventDefault()
         event.stopPropagation()
         const [first, second] = event.touches
@@ -2678,9 +2691,40 @@ function EventsTab({ events }) {
           second.clientX - first.clientX,
           second.clientY - first.clientY,
         )
-        setEventPhotoZoomScale(
-          Math.min(3, Math.max(1, distance / eventPinchStartDistance.current)),
-        )
+        const center = {
+          x: (first.clientX + second.clientX) / 2,
+          y: (first.clientY + second.clientY) / 2,
+        }
+        const scale = Math.min(3, Math.max(1, distance / eventPinchStartDistance.current))
+        const bounds = eventPhotoZoomBoundsRef.current
+        const startCenter = eventPinchStartCenter.current
+        setEventPhotoZoomScale(scale)
+        if (bounds && startCenter) {
+          const imageCenterX = bounds.left + bounds.width / 2
+          const imageCenterY = bounds.top + bounds.height / 2
+          const offset = {
+            x: center.x - (imageCenterX + scale * (startCenter.x - imageCenterX)),
+            y: center.y - (imageCenterY + scale * (startCenter.y - imageCenterY)),
+          }
+          eventPhotoZoomOffsetRef.current = offset
+          setEventPhotoZoomOffset(offset)
+        }
+        return
+      }
+
+      if (eventPinchMode.current === 'pan' && event.touches.length === 1) {
+        event.preventDefault()
+        event.stopPropagation()
+        const touch = event.touches[0]
+        const panStart = eventPhotoPanStart.current
+        if (panStart) {
+          const offset = {
+            x: panStart.offset.x + touch.clientX - panStart.x,
+            y: panStart.offset.y + touch.clientY - panStart.y,
+          }
+          eventPhotoZoomOffsetRef.current = offset
+          setEventPhotoZoomOffset(offset)
+        }
         return
       }
 
@@ -2725,6 +2769,13 @@ function EventsTab({ events }) {
         second.clientX - first.clientX,
         second.clientY - first.clientY,
       )
+      eventPinchStartCenter.current = {
+        x: (first.clientX + second.clientX) / 2,
+        y: (first.clientY + second.clientY) / 2,
+      }
+      eventPinchMode.current = 'pinch'
+      eventPhotoZoomOffsetRef.current = { x: 0, y: 0 }
+      setEventPhotoZoomOffset({ x: 0, y: 0 })
       eventPreviewTouchStartX.current = null
       eventPreviewTouchStartY.current = null
       eventPreviewGestureAxis.current = 'pinch'
@@ -2733,12 +2784,14 @@ function EventsTab({ events }) {
       setEventPhotoIsPinching(true)
       const rect = eventActiveImageRef.current?.getBoundingClientRect()
       if (rect) {
-        setEventPhotoZoomBounds({
+        const bounds = {
           left: rect.left,
           top: rect.top,
           width: rect.width,
           height: rect.height,
-        })
+        }
+        eventPhotoZoomBoundsRef.current = bounds
+        setEventPhotoZoomBounds(bounds)
       }
       e.stopPropagation()
       return
@@ -2752,16 +2805,21 @@ function EventsTab({ events }) {
 
   const handleEventPreviewTouchEnd = (e) => {
     if (!eventCardOpen) return
-    if (eventPinchStartDistance.current) {
-      if (e.touches.length < 2) {
-        eventPinchStartDistance.current = null
+    if (eventPinchMode.current) {
+      if (e.touches.length === 1 && eventPinchMode.current === 'pinch') {
+        const touch = e.touches[0]
+        eventPinchMode.current = 'pan'
+        eventPhotoPanStart.current = {
+          x: touch.clientX,
+          y: touch.clientY,
+          offset: eventPhotoZoomOffsetRef.current,
+        }
+      } else if (e.touches.length === 0) {
+        resetEventPhotoZoom()
         eventPreviewTouchStartX.current = null
         eventPreviewTouchStartY.current = null
         eventPreviewGestureAxis.current = null
         eventCardGestureAxis.current = null
-        setEventPhotoZoomScale(1)
-        setEventPhotoIsPinching(false)
-        setEventPhotoZoomBounds(null)
       }
       e.stopPropagation()
       return
@@ -3451,7 +3509,7 @@ const effectiveDateColor = isDragging
             objectFit: 'cover',
             borderRadius: 12,
             boxShadow: '0 10px 36px rgba(0,0,0,0.38)',
-            transform: `scale(${eventPhotoZoomScale})`,
+            transform: `translate3d(${eventPhotoZoomOffset.x}px, ${eventPhotoZoomOffset.y}px, 0) scale(${eventPhotoZoomScale})`,
             transformOrigin: 'center center',
             transition: eventPhotoIsPinching ? 'none' : 'transform 160ms ease-out',
             zIndex: 2147483647,
