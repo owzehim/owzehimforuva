@@ -444,7 +444,7 @@ function SpotImageThumbnail({ url, index, onTap, darkMode }) {
   return (
     <div
       onClick={onTap}
-      className="relative flex-shrink-0 overflow-hidden rounded-xl"
+      className="spot-card-short-photo-thumbnail relative flex-shrink-0 overflow-hidden rounded-xl"
       style={{
         width: '100px',
         height: '125px',
@@ -967,7 +967,7 @@ export function SpotCard({
 
           {/* Images */}
           {spotCardHeightMode === 'full' && (hasImages ? (
-            <div className="mb-2">
+            <div className="spot-card-short-photo-strip mb-2">
               <ImageThumbnails
                 imgs={imgs}
                 onTap={(i) => setLightboxIndex(i)}

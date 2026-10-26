@@ -3420,7 +3420,7 @@ const effectiveDateColor = isDragging
             )}
 
             <div
-              className="absolute left-0 right-0 px-6"
+              className="event-date-hero absolute left-0 right-0 px-6"
               style={{
                 top: eventDateTop,
                 zIndex: 5,
@@ -3451,7 +3451,7 @@ const effectiveDateColor = isDragging
                     }}
                   >
                     <span
-  className="text-[89px] font-medium leading-[0.82] tracking-normal text-gray-950 dark:text-white"
+  className="event-date-number text-[89px] font-medium leading-[0.82] tracking-normal text-gray-950 dark:text-white"
   style={{
     transform: 'scaleY(1.15)',
     transformOrigin: 'top left',
@@ -3459,25 +3459,25 @@ const effectiveDateColor = isDragging
 >
   {eventDateParts.dateNum}
 </span>
-                    <p className="mt-5 text-[34px] font-semibold leading-none uppercase text-gray-950 dark:text-white">
+                    <p className="event-date-month mt-5 text-[34px] font-semibold leading-none uppercase text-gray-950 dark:text-white">
                       {eventDateParts.monthName}
                     </p>
-                    <div className="mt-1 flex w-full items-baseline gap-2">
-                      <p className="text-[34px] font-medium leading-none text-gray-700 dark:text-gray-200">
+                    <div className="event-date-row mt-1 flex w-full items-baseline gap-2">
+                      <p className="event-date-secondary text-[34px] font-medium leading-none text-gray-700 dark:text-gray-200">
                         {eventDateParts.dayName}
                       </p>
-                      <span className="text-[34px] font-medium leading-none text-gray-700 dark:text-gray-200">
+                      <span className="event-date-secondary text-[34px] font-medium leading-none text-gray-700 dark:text-gray-200">
                         •
                       </span>
-                      <p className="text-[34px] font-medium leading-none text-gray-700 dark:text-gray-200">
+                      <p className="event-date-secondary text-[34px] font-medium leading-none text-gray-700 dark:text-gray-200">
                         {eventDateParts.year}
                       </p>
-                      <span className="hidden text-[34px] font-medium leading-none text-gray-700 dark:text-gray-200">
+                      <span className="event-date-secondary hidden text-[34px] font-medium leading-none text-gray-700 dark:text-gray-200">
                         •
                       </span>
                       <p
                         className={
-                          'ml-auto shrink-0 text-right text-[34px] font-medium leading-none ' +
+                          'event-date-status ml-auto shrink-0 text-right text-[34px] font-medium leading-none ' +
                           (isNextSelected
                             ? 'text-orange-500'
                             : 'text-gray-700 dark:text-gray-200')
@@ -3492,7 +3492,7 @@ const effectiveDateColor = isDragging
             </div>
 
             <div
-              className="absolute left-0 right-0 px-6"
+              className="event-compact-details absolute left-0 right-0 px-6"
               style={{
                 top: eventDetailsTop,
                 bottom: eventCardOpen ? '48%' : '250px',
@@ -3510,11 +3510,11 @@ const effectiveDateColor = isDragging
                       : `${eventSwipeDirection > 0 ? 'eventContentSlideInFromRight' : 'eventContentSlideInFromLeft'} 0.34s cubic-bezier(0.22,1,0.36,1)`,
                 }}
               >
-                <h1 className="mt-3 text-[34px] font-black leading-tight tracking-normal text-gray-950 dark:text-white">
+                <h1 className="event-compact-title mt-3 text-[34px] font-black leading-tight tracking-normal text-gray-950 dark:text-white">
                   {displayEvent.title || 'Untitled event'}
                 </h1>
 
-                <div className="mt-3 space-y-1 text-[13px] font-medium text-gray-700 dark:text-gray-200">
+                <div className="event-compact-metadata mt-3 space-y-1 text-[13px] font-medium text-gray-700 dark:text-gray-200">
                   {getPrimaryEventDate(displayEvent) && (
                     <div className="flex items-center gap-2">
                       <Clock size={18} weight="fill" color="#f97316" />
@@ -3539,7 +3539,7 @@ const effectiveDateColor = isDragging
                       onClick={() => openParticipationForm(displayEvent)}
                       disabled={!canOpenParticipationForm}
                       className={
-                        'mt-5 hidden w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold transition-colors ' +
+                        'event-compact-participation-button mt-5 hidden w-full items-center justify-center rounded-xl px-4 py-3 text-sm font-bold transition-colors ' +
                         (canOpenParticipationForm
                           ? 'bg-gray-950 text-white active:bg-gray-800 dark:bg-white dark:text-gray-950 dark:active:bg-gray-200'
                           : 'cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500')
@@ -3554,7 +3554,7 @@ const effectiveDateColor = isDragging
 
             {showParticipationButton && (
               <div
-                className="absolute left-0 right-0 px-6"
+                className="event-floating-participation-button absolute left-0 right-0 px-6"
                 style={{
                   bottom: `calc(${eventCollapsedCardHeight} + 2px)`,
                   zIndex: 10,
