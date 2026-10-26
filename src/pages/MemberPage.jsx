@@ -1,4 +1,5 @@
 ﻿import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getSafeHttpsUrl, richTextToPlainText } from '../lib/sanitizeHtml'
@@ -2342,6 +2343,7 @@ function EventsTab({ events }) {
   const [eventCardOpen, setEventCardOpen] = useState(false)
   const [eventPhotoZoomScale, setEventPhotoZoomScale] = useState(1)
   const [eventPhotoIsPinching, setEventPhotoIsPinching] = useState(false)
+  const [eventPhotoZoomBounds, setEventPhotoZoomBounds] = useState(null)
   const [eventCardClosing, setEventCardClosing] = useState(false)
   const [eventSwipeDirection, setEventSwipeDirection] = useState(0)
   const [loadedEventPreviewImages, setLoadedEventPreviewImages] = useState({})
@@ -2364,6 +2366,7 @@ function EventsTab({ events }) {
   const eventCardStartY = useRef(null)
   const eventCardScrollRef = useRef(null)
   const eventPreviewRef = useRef(null)
+  const eventActiveImageRef = useRef(null)
   const eventPreviewTouchStartX = useRef(null)
   const eventPreviewTouchStartY = useRef(null)
   const eventPinchStartDistance = useRef(null)
@@ -2411,6 +2414,7 @@ function EventsTab({ events }) {
   const setSlide = (id, idx) => {
     setEventPhotoZoomScale(1)
     setEventPhotoIsPinching(false)
+    setEventPhotoZoomBounds(null)
     eventPinchStartDistance.current = null
     setSlideIndexes((p) => ({
       ...p,
@@ -2486,6 +2490,7 @@ function EventsTab({ events }) {
     eventPinchStartDistance.current = null
     setEventPhotoZoomScale(1)
     setEventPhotoIsPinching(false)
+    setEventPhotoZoomBounds(null)
 
     if (eventId && imageAspectRatiosRef.current[eventId]?.[0]) {
       eventImageBoxRatioRef.current = imageAspectRatiosRef.current[eventId][0]
@@ -2726,6 +2731,15 @@ function EventsTab({ events }) {
       eventCardGestureAxis.current = 'pinch'
       setEventPhotoZoomScale(1)
       setEventPhotoIsPinching(true)
+      const rect = eventActiveImageRef.current?.getBoundingClientRect()
+      if (rect) {
+        setEventPhotoZoomBounds({
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        })
+      }
       e.stopPropagation()
       return
     }
@@ -2747,6 +2761,7 @@ function EventsTab({ events }) {
         eventCardGestureAxis.current = null
         setEventPhotoZoomScale(1)
         setEventPhotoIsPinching(false)
+        setEventPhotoZoomBounds(null)
       }
       e.stopPropagation()
       return
@@ -3421,6 +3436,32 @@ const effectiveDateColor = isDragging
           50% { opacity: 0.88; }
         }
       `}</style>
+      {eventPhotoZoomBounds && typeof document !== 'undefined' && createPortal(
+        <img
+          src={displayImages[displayImageSlide]}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          style={{
+            position: 'fixed',
+            left: eventPhotoZoomBounds.left,
+            top: eventPhotoZoomBounds.top,
+            width: eventPhotoZoomBounds.width,
+            height: eventPhotoZoomBounds.height,
+            objectFit: 'cover',
+            borderRadius: 12,
+            boxShadow: '0 10px 36px rgba(0,0,0,0.38)',
+            transform: `scale(${eventPhotoZoomScale})`,
+            transformOrigin: 'center center',
+            transition: eventPhotoIsPinching ? 'none' : 'transform 160ms ease-out',
+            zIndex: 2147483647,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+        />,
+        document.body,
+      )}
       <div
         className="relative h-full overflow-hidden bg-white text-gray-950 no-highlight-zone dark:bg-[#121212] dark:text-white"
         onTouchStart={handleFrameworkTouchStart}
@@ -3806,6 +3847,7 @@ const effectiveDateColor = isDragging
                               }}
                             >
                               <img
+                                ref={index === displayImageSlide ? eventActiveImageRef : null}
                                 src={url}
                                 alt=""
                                 loading={index === displayImageSlide ? 'eager' : 'lazy'}
@@ -3829,14 +3871,10 @@ const effectiveDateColor = isDragging
                                   height: '100%',
                                   objectFit: 'cover',
                                   display: 'block',
-                                  opacity: loadedEventPreviewImages[url] ? 1 : 0,
-                                  transform: index === displayImageSlide
-                                    ? `scale(${eventPhotoZoomScale})`
-                                    : 'scale(1)',
-                                  transformOrigin: 'center center',
-                                  transition: eventPhotoIsPinching
-                                    ? 'opacity 0.28s ease'
-                                    : 'opacity 0.28s ease, transform 160ms ease-out',
+                                  opacity: eventPhotoZoomBounds && index === displayImageSlide
+                                    ? 0
+                                    : loadedEventPreviewImages[url] ? 1 : 0,
+                                  transition: 'opacity 0.28s ease',
                                 }}
                             draggable={false}
                               />
