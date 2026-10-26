@@ -2417,6 +2417,7 @@ function EventsTab({ events }) {
 
   // SpotCard-style Lightbox index
   const [lightboxIndex, setLightboxIndex] = useState(null)
+  const [lightboxImages, setLightboxImages] = useState([])
 
   const [imageAspectRatios, setImageAspectRatios] = useState({})
   const [calMonth, setCalMonth] = useState(() => {
@@ -2718,7 +2719,8 @@ function EventsTab({ events }) {
   }
 
   // Helper to open lightbox at specific index
-  const openLightboxAt = (index) => {
+  const openLightboxAt = (imgs, index) => {
+    setLightboxImages(imgs)
     setLightboxIndex(index)
   }
 
@@ -3256,7 +3258,7 @@ function EventsTab({ events }) {
                               objectFit: 'contain',
                             }}
                             draggable={false}
-                            onClick={() => openLightboxAt(i)}
+                            onClick={() => openLightboxAt(imgs, i)}
                           />
                         </div>
                       ))}
@@ -3443,6 +3445,13 @@ const effectiveDateColor = isDragging
           50% { opacity: 0.88; }
         }
       `}</style>
+      {lightboxIndex !== null && (
+        <EventLightbox
+          imgs={lightboxImages}
+          startIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
       <div
         className="relative h-full overflow-hidden bg-white text-gray-950 no-highlight-zone dark:bg-[#121212] dark:text-white"
         onTouchStart={handleFrameworkTouchStart}
