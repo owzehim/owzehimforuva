@@ -292,14 +292,15 @@ select {
 }
 
 #root .registration-field:focus-within,
-#root .input-focus-frame:focus-within {
+#root .input-focus-frame:focus-within,
+#root label:has(> input:focus, > textarea:focus, > select:focus)[class*='border'],
+#root div:has(> input:focus, > textarea:focus, > select:focus)[class*='border'] {
   border-color: #2563eb !important;
   box-shadow: 0 0 0 2px #2563eb !important;
 }
 
-#root .registration-field input:focus,
-#root .registration-field textarea:focus,
-#root .registration-field select:focus {
+#root :is(.registration-field, .input-focus-frame) :is(input, textarea, select):focus,
+#root :is(label, div)[class*='border']:has(> input:focus, > textarea:focus, > select:focus) > :is(input, textarea, select):focus {
   border-color: transparent !important;
   box-shadow: none !important;
 }
