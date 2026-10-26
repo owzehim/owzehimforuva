@@ -418,7 +418,9 @@ export default function SettingsPage({ userId, isAdmin }) {
     <div
       className="phone-app-shell flex flex-col bg-white no-highlight-zone dark:bg-[#121212]"
       style={{
-        minHeight: '100dvh',
+        height: '100dvh',
+        minHeight: 0,
+        overflow: 'hidden',
         WebkitTapHighlightColor: 'transparent',
       }}
     >
@@ -445,7 +447,7 @@ export default function SettingsPage({ userId, isAdmin }) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto space-y-6 px-4 pt-3 pb-6" style={{ maxWidth: 'var(--app-screen-width)' }}>
 
           {/* Profile card */}
@@ -803,7 +805,7 @@ export default function SettingsPage({ userId, isAdmin }) {
 }
 
 const settingsBackButtonStyle = {
-  position: 'fixed',
+  position: 'absolute',
   left: '14px',
   top: 'calc(env(safe-area-inset-top) + 6px)',
   zIndex: 10,
