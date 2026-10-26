@@ -166,6 +166,67 @@ html:not(.dark) .text-gray-400 {
   animation: participationSlideUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Keep event details and photos clear of the bottom tab bar on short phones. */
+@media (orientation: portrait) and (max-width: 480px) and (max-height: 700px) {
+  .event-date-number {
+    font-size: clamp(62px, 20vw, 78px) !important;
+  }
+
+  .event-date-month {
+    margin-top: 0.875rem !important;
+    font-size: clamp(24px, 8vw, 31px) !important;
+  }
+
+  .event-date-row {
+    margin-top: 0 !important;
+  }
+
+  .event-date-secondary,
+  .event-date-status {
+    font-size: clamp(23px, 7.8vw, 30px) !important;
+  }
+
+  .event-compact-details {
+    top: clamp(128px, 40vw, 156px) !important;
+    bottom: calc(
+      var(--member-screen-width, min(calc(100vw - 32px), 398px)) * 0.653 + 56px
+    ) !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 4px;
+  }
+
+  .event-compact-details::-webkit-scrollbar {
+    display: none;
+  }
+
+  .event-compact-title {
+    margin-top: 0.5rem !important;
+    font-size: clamp(27px, 8.4vw, 32px) !important;
+    line-height: 1.08 !important;
+  }
+
+  .event-compact-metadata {
+    margin-top: 0.5rem !important;
+  }
+
+  .event-compact-participation-button {
+    display: flex !important;
+    margin-top: 0.75rem !important;
+  }
+
+  .event-floating-participation-button {
+    display: none !important;
+  }
+
+  .spot-card-short-photo-thumbnail,
+  .spot-card-short-photo-thumbnail img {
+    height: 95px !important;
+  }
+}
+
 .event-description-rich,
 .event-description-rich * {
   color: #111827 !important;
