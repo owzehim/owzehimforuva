@@ -424,7 +424,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
   const [benefitsAcknowledgementVisible, setBenefitsAcknowledgementVisible] = useState(false)
   const tourLayout = {
     contentTopOffset: 'clamp(0px, calc((100dvh - 667px) * 0.1), 24px)',
-    animationTextGap: 'clamp(12px, calc(12px + (100dvh - 667px) * 0.04), 20px)',
+    animationTextGap: 'clamp(4px, calc(12px + (100dvh - 667px) * 0.08), 20px)',
     controlsBottomOffset: 'clamp(22px, calc((100dvh - 640px) * 0.42), 82px)',
   }
   const firstName = member?.first_name_korean || member?.first_name_ko || member?.first_name || ''
@@ -639,6 +639,23 @@ function WelcomeSlides({ member, onFinish, onBack }) {
           .welcome-tour-demo-shell { height: 281px; }
           .welcome-tour-demo-shell > div { transform: scale(0.78); }
           .welcome-tour-content-region { justify-content: flex-start; }
+        }
+        @media (max-height: 660px) {
+          .welcome-tour-demo-shell { height: 240px; }
+          .welcome-tour-demo-shell > div { transform: scale(0.67); }
+          .welcome-tour-title { font-size: 28px; }
+          .welcome-tour-body { font-size: 14px; line-height: 1.55; }
+        }
+        @media (max-height: 640px) {
+          .welcome-tour-demo-shell { height: 210px; }
+          .welcome-tour-demo-shell > div { transform: scale(0.58); }
+        }
+        @media (max-height: 600px) {
+          .welcome-tour-demo-shell { height: 190px; }
+          .welcome-tour-demo-shell > div { transform: scale(0.53); }
+          .welcome-tour-content-region { padding-left: 20px; padding-right: 20px; }
+          .welcome-tour-title { font-size: 26px; }
+          .welcome-tour-body { margin-top: 10px; line-height: 1.4; }
         }
         @keyframes welcomeSlideIn {
           from { opacity: 0; }
