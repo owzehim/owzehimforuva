@@ -17,6 +17,8 @@
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   --member-screen-width: min(calc(100vw - 32px), 398px);
   --app-screen-width: min(calc(100vw - 32px), 398px);
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
 }
 
 html,
@@ -153,8 +155,9 @@ html:not(.dark) .text-gray-400 {
 }
 
 .zoom-viewport-minimap {
-  position: absolute;
+  position: fixed;
   z-index: 10001;
+  box-sizing: content-box;
   padding: 6px;
   border-radius: 10px;
   background: rgba(17, 17, 17, 0.9);
@@ -162,7 +165,7 @@ html:not(.dark) .text-gray-400 {
   opacity: 0;
   pointer-events: none;
   transform: scale(var(--inverse-zoom)) translateY(4px);
-  transform-origin: bottom right;
+  transform-origin: top left;
   transition: opacity 180ms ease, transform 180ms ease;
 }
 

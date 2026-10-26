@@ -18,6 +18,9 @@ function readViewport() {
   const layoutWidth = document.documentElement.clientWidth || window.innerWidth
   const layoutHeight = document.documentElement.clientHeight || window.innerHeight
   if (!layoutWidth || !layoutHeight) return null
+  const rootStyle = window.getComputedStyle(document.documentElement)
+  const safeTop = Number.parseFloat(rootStyle.getPropertyValue('--safe-area-inset-top')) || 0
+  const safeLeft = Number.parseFloat(rootStyle.getPropertyValue('--safe-area-inset-left')) || 0
 
   return {
     scale: visualViewport.scale || 1,
@@ -27,8 +30,8 @@ function readViewport() {
     visibleHeight: visualViewport.height,
     offsetLeft: visualViewport.offsetLeft,
     offsetTop: visualViewport.offsetTop,
-    pageLeft: visualViewport.pageLeft,
-    pageTop: visualViewport.pageTop,
+    safeLeft,
+    safeTop,
   }
 }
 
@@ -87,14 +90,12 @@ export default function ZoomViewportMinimap() {
   const mapWidth = 58
   const mapHeight = Math.max(96, Math.min(150, mapWidth * viewport.layoutHeight / viewport.layoutWidth))
   const scaleCompensation = 1 / viewport.scale
-  const panelWidth = mapWidth + 12
-  const panelHeight = mapHeight + 12
   const visibleWidth = Math.max(4, Math.min(100, viewport.visibleWidth / viewport.layoutWidth * 100))
   const visibleHeight = Math.max(4, Math.min(100, viewport.visibleHeight / viewport.layoutHeight * 100))
   const left = Math.max(0, Math.min(100 - visibleWidth, viewport.offsetLeft / viewport.layoutWidth * 100))
   const top = Math.max(0, Math.min(100 - visibleHeight, viewport.offsetTop / viewport.layoutHeight * 100))
-  const screenLeft = viewport.pageLeft + viewport.visibleWidth - 10 * scaleCompensation - panelWidth
-  const screenTop = viewport.pageTop + viewport.visibleHeight - 76 * scaleCompensation - panelHeight
+  const screenLeft = viewport.offsetLeft + (viewport.safeLeft + 10) * scaleCompensation
+  const screenTop = viewport.offsetTop + (viewport.safeTop + 10) * scaleCompensation
 
   return (
     <div
