@@ -429,7 +429,7 @@ export default function SettingsPage({ userId, isAdmin }) {
       `}</style>
       {/* Header */}
       <div
-        className="relative bg-white px-4 py-3 flex items-center gap-2 flex-shrink-0 dark:bg-[#121212]"
+        className="relative z-50 flex flex-shrink-0 items-center gap-2 bg-white px-4 dark:bg-[#121212]"
         style={settingsHeaderStyle}
       >
         <button
@@ -802,10 +802,10 @@ export default function SettingsPage({ userId, isAdmin }) {
 }
 
 const settingsBackButtonStyle = {
-  position: 'fixed',
+  position: 'absolute',
   left: '14px',
-  top: 'calc(env(safe-area-inset-top) + 6px)',
-  zIndex: 50,
+  top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
+  zIndex: 1,
   background: 'none',
   border: 'none',
   fontSize: '24px',
@@ -820,6 +820,7 @@ const settingsBackButtonStyle = {
 }
 
 const settingsHeaderStyle = {
-  paddingTop: 'calc(env(safe-area-inset-top) + 6px)',
-  minHeight: 'calc(env(safe-area-inset-top) + 56px)',
+  height: 'calc(env(safe-area-inset-top, 0px) + 56px)',
+  minHeight: 'calc(env(safe-area-inset-top, 0px) + 56px)',
+  boxSizing: 'border-box',
 }
