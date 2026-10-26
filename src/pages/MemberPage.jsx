@@ -628,7 +628,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       <style>{`
         .welcome-tour-content-region { scrollbar-width: none; }
         .welcome-tour-content-region::-webkit-scrollbar { display: none; }
-        .welcome-tour-demo-shell { height: 360px; }
+        .welcome-tour-demo-shell { height: 360px; width: 100%; flex: 0 0 auto; }
         .welcome-tour-title { font-size: clamp(30px, 8.6vw, 34px); line-height: 1.1; }
         .welcome-tour-body { font-size: clamp(14px, 4vw, 16px); line-height: 1.75; }
         @media (max-height: 760px) {
