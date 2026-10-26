@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Image as ImageIcon, MapPin, Ticket, Star, StarFour, X } from '@phosphor-icons/react'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
@@ -155,6 +156,10 @@ const EMPTY_IMAGE_URLS = Object.freeze([])
 function Lightbox({ imgs, startIndex, onClose }) {
   const [index, setIndex] = useState(startIndex)
   const [visible, setVisible] = useState(false)
+  const [zoomScale, setZoomScale] = useState(1)
+  const [zoomOffset, setZoomOffset] = useState({ x: 0, y: 0 })
+  const [zoomGestureActive, setZoomGestureActive] = useState(false)
+  const [zoomBounds, setZoomBounds] = useState(null)
   const [imageRatios, setImageRatios] = useState({})
   const [lightboxBounds, setLightboxBounds] = useState(() => ({
     width: window.innerWidth * 0.9,
@@ -163,16 +168,59 @@ function Lightbox({ imgs, startIndex, onClose }) {
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const dialogRef = useRef(null)
+  const activePhotoRef = useRef(null)
+  const pinchStartDistance = useRef(null)
+  const pinchStartCenter = useRef(null)
+  const zoomGestureMode = useRef(null)
+  const zoomBoundsRef = useRef(null)
+  const zoomOffsetRef = useRef({ x: 0, y: 0 })
+  const panStart = useRef(null)
+  const zoomResetTimer = useRef(null)
   const activeImageRatio = imageRatios[index] || 1
   const imageMaxHeight = lightboxBounds.height - (imgs.length > 1 ? 38 : 0)
   const imageWidth = Math.min(lightboxBounds.width, imageMaxHeight * activeImageRatio)
   const imageHeight = imageWidth / activeImageRatio
 
+  const resetZoom = useCallback(() => {
+    if (zoomResetTimer.current) {
+      window.clearTimeout(zoomResetTimer.current)
+      zoomResetTimer.current = null
+    }
+    pinchStartDistance.current = null
+    pinchStartCenter.current = null
+    zoomGestureMode.current = null
+    zoomBoundsRef.current = null
+    zoomOffsetRef.current = { x: 0, y: 0 }
+    panStart.current = null
+    setZoomScale(1)
+    setZoomOffset({ x: 0, y: 0 })
+    setZoomGestureActive(false)
+    setZoomBounds(null)
+  }, [])
+
+  const animateZoomReset = () => {
+    pinchStartDistance.current = null
+    pinchStartCenter.current = null
+    zoomGestureMode.current = null
+    panStart.current = null
+    zoomOffsetRef.current = { x: 0, y: 0 }
+    setZoomScale(1)
+    setZoomOffset({ x: 0, y: 0 })
+    setZoomGestureActive(false)
+    if (zoomResetTimer.current) window.clearTimeout(zoomResetTimer.current)
+    zoomResetTimer.current = window.setTimeout(() => {
+      zoomBoundsRef.current = null
+      setZoomBounds(null)
+      zoomResetTimer.current = null
+    }, 240)
+  }
+
   const goToIndex = useCallback((nextIndex) => {
     const clampedIndex = Math.max(0, Math.min(nextIndex, imgs.length - 1))
     if (clampedIndex === index) return
+    resetZoom()
     setIndex(clampedIndex)
-  }, [imgs.length, index])
+  }, [imgs.length, index, resetZoom])
 
   // zoom-in + fade-in on open
   useEffect(() => {
@@ -199,18 +247,132 @@ function Lightbox({ imgs, startIndex, onClose }) {
       })
   }, [imgs, index])
 
+  useEffect(() => () => {
+    if (zoomResetTimer.current) window.clearTimeout(zoomResetTimer.current)
+  }, [])
+
   const handleClose = useCallback(() => {
+    resetZoom()
     setVisible(false)
     setTimeout(() => onClose(), 250)
-  }, [onClose])
+  }, [onClose, resetZoom])
   const handleDialogKeyDown = useModalFocus(dialogRef, handleClose)
 
   const handleTouchStart = (e) => {
+    if (
+      e.touches.length === 2 &&
+      e.target instanceof Element &&
+      e.target.closest('[data-lightbox-active-photo="true"]')
+    ) {
+      if (zoomResetTimer.current) {
+        window.clearTimeout(zoomResetTimer.current)
+        zoomResetTimer.current = null
+      }
+      const [first, second] = e.touches
+      pinchStartDistance.current = Math.hypot(
+        second.clientX - first.clientX,
+        second.clientY - first.clientY,
+      )
+      pinchStartCenter.current = {
+        x: (first.clientX + second.clientX) / 2,
+        y: (first.clientY + second.clientY) / 2,
+      }
+      zoomGestureMode.current = 'pinch'
+      zoomOffsetRef.current = { x: 0, y: 0 }
+      setZoomOffset({ x: 0, y: 0 })
+      setZoomScale(1)
+      setZoomGestureActive(true)
+      const rect = activePhotoRef.current?.getBoundingClientRect()
+      if (rect) {
+        const bounds = {
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        }
+        zoomBoundsRef.current = bounds
+        setZoomBounds(bounds)
+      }
+      touchStartX.current = null
+      touchStartY.current = null
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    if (zoomGestureMode.current) {
+      e.stopPropagation()
+      return
+    }
+    if (e.touches.length !== 1) return
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }
 
+  const handleTouchMove = (e) => {
+    if (zoomGestureMode.current === 'pinch' && e.touches.length === 2 && pinchStartDistance.current) {
+      e.preventDefault()
+      e.stopPropagation()
+      const [first, second] = e.touches
+      const distance = Math.hypot(
+        second.clientX - first.clientX,
+        second.clientY - first.clientY,
+      )
+      const center = {
+        x: (first.clientX + second.clientX) / 2,
+        y: (first.clientY + second.clientY) / 2,
+      }
+      const scale = Math.min(3, Math.max(1, distance / pinchStartDistance.current))
+      const bounds = zoomBoundsRef.current
+      const startCenter = pinchStartCenter.current
+      setZoomScale(scale)
+      if (bounds && startCenter) {
+        const imageCenterX = bounds.left + bounds.width / 2
+        const imageCenterY = bounds.top + bounds.height / 2
+        const offset = {
+          x: center.x - (imageCenterX + scale * (startCenter.x - imageCenterX)),
+          y: center.y - (imageCenterY + scale * (startCenter.y - imageCenterY)),
+        }
+        zoomOffsetRef.current = offset
+        setZoomOffset(offset)
+      }
+      return
+    }
+
+    if (zoomGestureMode.current === 'pan' && e.touches.length === 1) {
+      e.preventDefault()
+      e.stopPropagation()
+      const touch = e.touches[0]
+      const start = panStart.current
+      if (start) {
+        const offset = {
+          x: start.offset.x + touch.clientX - start.x,
+          y: start.offset.y + touch.clientY - start.y,
+        }
+        zoomOffsetRef.current = offset
+        setZoomOffset(offset)
+      }
+    }
+  }
+
   const handleTouchEnd = (e) => {
+    if (zoomGestureMode.current) {
+      if (e.touches.length === 1 && zoomGestureMode.current === 'pinch') {
+        const touch = e.touches[0]
+        zoomGestureMode.current = 'pan'
+        panStart.current = {
+          x: touch.clientX,
+          y: touch.clientY,
+          offset: zoomOffsetRef.current,
+        }
+      } else if (e.touches.length === 0) {
+        animateZoomReset()
+      }
+      touchStartX.current = null
+      touchStartY.current = null
+      e.stopPropagation()
+      return
+    }
+    if (e.touches.length > 0) return
     if (touchStartX.current == null || touchStartY.current == null) return
 
     const dx = e.changedTouches[0].clientX - touchStartX.current
@@ -250,6 +412,33 @@ function Lightbox({ imgs, startIndex, onClose }) {
           animation: lightboxZoomIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards;
         }
       `}</style>
+      {zoomBounds && typeof document !== 'undefined' && createPortal(
+        <img
+          src={imgs[index]}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          style={{
+            position: 'fixed',
+            left: zoomBounds.left,
+            top: zoomBounds.top,
+            width: zoomBounds.width,
+            height: zoomBounds.height,
+            objectFit: 'contain',
+            borderRadius: 12,
+            boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+            transform: `translate3d(${zoomOffset.x}px, ${zoomOffset.y}px, 0) scale(${zoomScale})`,
+            transformOrigin: 'center center',
+            transition: zoomGestureActive ? 'none' : 'transform 240ms cubic-bezier(0.2,0.8,0.2,1)',
+            willChange: 'transform',
+            zIndex: 2001,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+        />,
+        document.body,
+      )}
 
       <div
         ref={dialogRef}
@@ -271,7 +460,9 @@ function Lightbox({ imgs, startIndex, onClose }) {
         }}
         onClick={handleClose}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         style={{
           position: 'fixed',
           inset: 0,
@@ -293,6 +484,7 @@ function Lightbox({ imgs, startIndex, onClose }) {
           }}
           aria-label="매장 사진 보기 닫기"
           className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          style={{ zIndex: 2002 }}
         >
           <X size={22} weight="bold" aria-hidden="true" />
         </button>
@@ -335,8 +527,10 @@ function Lightbox({ imgs, startIndex, onClose }) {
                 }}
               >
                 <img
+                  ref={imgIndex === index ? activePhotoRef : null}
                   src={src}
                   alt={'Photo ' + (imgIndex + 1)}
+                  data-lightbox-active-photo={imgIndex === index ? 'true' : undefined}
                   decoding="async"
                   fetchPriority={imgIndex === index ? 'high' : 'auto'}
                   loading={Math.abs(imgIndex - index) <= 1 ? 'eager' : 'lazy'}
@@ -352,6 +546,7 @@ function Lightbox({ imgs, startIndex, onClose }) {
                     objectFit: 'contain',
                     borderRadius: 12,
                     boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+                    opacity: zoomBounds && imgIndex === index && zoomGestureActive ? 0 : 1,
                     userSelect: 'none',
                     WebkitUserSelect: 'none',
                   }}
