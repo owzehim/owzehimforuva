@@ -64,6 +64,7 @@ export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'k
         sitekey: siteKey,
         theme,
         appearance,
+        size: 'normal',
         callback: (token) => onVerifyRef.current(token),
         'expired-callback': () => onVerifyRef.current(''),
         'error-callback': () => onVerifyRef.current(''),
@@ -90,8 +91,8 @@ export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'k
   if (!siteKey) return null
 
   return (
-    <div className="flex flex-col items-center gap-2 py-1">
-      <div ref={containerRef} />
+    <div className="flex min-h-[73px] flex-col items-center justify-center gap-2 py-1">
+      <div ref={containerRef} className="min-h-[65px] w-[300px] max-w-full shrink-0" />
       {loadFailed && (
         <p className="text-center text-xs text-red-500">
           {language === 'ko'

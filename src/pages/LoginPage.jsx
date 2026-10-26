@@ -118,7 +118,7 @@ export default function LoginPage() {
 
   return (
     <main
-      className="phone-app-shell login-page scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]"
+      className={`phone-app-shell login-page scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212] ${step === 'credentials' ? 'login-landscape-credentials' : ''}`}
       onDragStart={(event) => event.preventDefault()}
       style={{ WebkitTapHighlightColor: 'transparent' }}
     >
@@ -133,17 +133,17 @@ export default function LoginPage() {
       </button>
 
       <div
-        className="mx-auto flex min-h-[100dvh] w-full max-w-sm items-center px-2 pt-8 pb-16"
+        className="login-content-shell mx-auto flex min-h-[100dvh] w-full max-w-sm items-center px-2 pt-8 pb-16"
       >
         <div
-          className="w-full"
+          className="login-content-panel w-full"
           style={{
             transform: step === 'credentials' ? 'translateY(-28px)' : undefined,
           }}
         >
           {!isStandaloneStep && (
-            <>
-              <div className="mb-3 flex justify-center">
+            <div className="login-brand">
+              <div className="login-brand-logo mb-3 flex justify-center">
                 <img
                   src="/UvA-IN-logo-transparent.png"
                   alt="UvA-IN Logo"
@@ -152,17 +152,17 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="mb-8 text-center">
+              <div className="login-brand-copy mb-8 text-center">
                 <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">UvA-IN</h1>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   네덜란드 유학생을 위한 커뮤니티
                 </p>
               </div>
-            </>
+            </div>
           )}
 
           {step === 'credentials' && (
-            <form onSubmit={submitCredentials} className="space-y-3">
+            <form onSubmit={submitCredentials} className="login-credentials-form space-y-3">
               <LoginField label="이메일">
                 <input
                   type="email"
@@ -197,7 +197,7 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <div className="flex justify-end">
+              <div className="login-forgot-password flex w-full justify-end">
                 <button
                   type="button"
                   onClick={handleForgotPassword}
@@ -214,12 +214,12 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || (isCaptchaEnabled && !captchaToken)}
-                className="mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+                className="login-credentials-submit mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
               >
                 {loading ? '확인 중...' : '로그인'}
               </button>
 
-              <p className="pt-2 text-center text-xs text-gray-400 dark:text-gray-500">
+              <p className="login-signup-prompt pt-2 text-center text-xs text-gray-400 dark:text-gray-500">
                 계정이 없으신가요?{' '}
                 <button
                   type="button"

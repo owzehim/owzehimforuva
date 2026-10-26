@@ -99,6 +99,29 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     selectedRef.current = selected
   }, [selected])
 
+  const focusSelectedMarker = useCallback((spot, duration = 1000) => {
+    if (!map.current || !spot) return
+
+    const shouldLiftMarker =
+      spot.spot_card_height === 'full' ||
+      spot.spot_card_height === 'tall'
+    const isLandscapeSpotLayout =
+      window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches
+    const offset = isLandscapeSpotLayout
+      ? [map.current.getContainer().clientWidth / 4, 0]
+      : shouldLiftMarker
+        ? [0, -90]
+        : [0, 0]
+
+    map.current.stop()
+    map.current.flyTo({
+      center: [spot.longitude, spot.latitude],
+      zoom: 16,
+      offset,
+      duration,
+    })
+  }, [])
+
   useEffect(() => {
     restaurantsRef.current = restaurants
   }, [restaurants])
@@ -107,9 +130,10 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     if (!active || !map.current) return undefined
     const frame = window.requestAnimationFrame(() => {
       map.current?.resize()
+      focusSelectedMarker(selectedRef.current, 0)
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [active])
+  }, [active, focusSelectedMarker])
 
   const createMarkerElement = useCallback((r, isSelected = false) => {
     const dark = isDarkMode()
@@ -443,17 +467,43 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
   useEffect(() => {
     if (!map.current || !selected) return
-    const shouldLiftMarker =
-      selected.spot_card_height === 'full' ||
-      selected.spot_card_height === 'tall'
+    focusSelectedMarker(selected)
+  }, [selected, focusSelectedMarker])
 
-    map.current.flyTo({
-      center: [selected.longitude, selected.latitude],
-      zoom: 16,
-      offset: shouldLiftMarker ? [0, -90] : [0, 0],
-      duration: 1000,
-    })
-  }, [selected])
+  useEffect(() => {
+    if (!active || !selected) return undefined
+
+    const orientationQuery = window.matchMedia('(orientation: landscape) and (max-height: 600px)')
+    let previousLandscape = orientationQuery.matches
+    let resizeFrame = null
+    let focusFrame = null
+
+    const refocusAfterOrientationChange = () => {
+      const nextLandscape = orientationQuery.matches
+      if (nextLandscape === previousLandscape) return
+      previousLandscape = nextLandscape
+
+      if (resizeFrame != null) window.cancelAnimationFrame(resizeFrame)
+      if (focusFrame != null) window.cancelAnimationFrame(focusFrame)
+      resizeFrame = window.requestAnimationFrame(() => {
+        map.current?.resize()
+        focusFrame = window.requestAnimationFrame(() => {
+          focusSelectedMarker(selectedRef.current, 650)
+        })
+      })
+    }
+
+    window.addEventListener('resize', refocusAfterOrientationChange)
+    window.addEventListener('orientationchange', refocusAfterOrientationChange)
+    orientationQuery.addEventListener?.('change', refocusAfterOrientationChange)
+    return () => {
+      window.removeEventListener('resize', refocusAfterOrientationChange)
+      window.removeEventListener('orientationchange', refocusAfterOrientationChange)
+      orientationQuery.removeEventListener?.('change', refocusAfterOrientationChange)
+      if (resizeFrame != null) window.cancelAnimationFrame(resizeFrame)
+      if (focusFrame != null) window.cancelAnimationFrame(focusFrame)
+    }
+  }, [active, selected, focusSelectedMarker])
 
   const removeUserLocationMarker = useCallback(() => {
     if (userLocationMarkerRef.current) {
