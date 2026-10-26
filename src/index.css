@@ -229,9 +229,10 @@ html:not(.dark) .text-gray-400 {
     height: 95px !important;
   }
 
-  .spot-card-expanded-content {
+  .spot-card-compact-review {
     zoom: 0.86;
     width: calc(100% / 0.86);
+    height: 310px !important;
   }
 }
 
