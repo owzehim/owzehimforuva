@@ -802,10 +802,10 @@ export default function SettingsPage({ userId, isAdmin }) {
 }
 
 const settingsBackButtonStyle = {
-  position: 'absolute',
+  position: 'fixed',
   left: '14px',
   top: 'calc(env(safe-area-inset-top) + 6px)',
-  zIndex: 10,
+  zIndex: 50,
   background: 'none',
   border: 'none',
   fontSize: '24px',
