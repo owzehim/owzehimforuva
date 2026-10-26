@@ -3112,7 +3112,7 @@ function RestaurantsTab() {
                             className={`mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                               getRestaurantCommercialLabelType(r) ===
                               RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
-                                ? 'bg-[#70E000] text-white'
+                                ? 'bg-[#FFB81C] text-white'
                                 : 'bg-orange-50 text-orange-700'
                             }`}
                           >
