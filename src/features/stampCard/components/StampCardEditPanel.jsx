@@ -356,7 +356,7 @@ function RichTextField({ value, onChange, placeholder }) {
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white focus-within:border-orange-600 focus-within:shadow-[0_0_0_2px_rgba(249,115,22,0.15)]">
+    <div className="input-focus-frame border border-gray-200 rounded-lg overflow-hidden bg-white focus-within:border-orange-600 focus-within:shadow-[0_0_0_2px_rgba(249,115,22,0.15)]">
       <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50 px-2 py-1">
         <button
           type="button"
