@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 const ZOOM_THRESHOLD = 1.04
 
@@ -97,7 +98,7 @@ export default function ZoomViewportMinimap() {
   const screenLeft = viewport.offsetLeft + (viewport.safeLeft + 10) * scaleCompensation
   const screenTop = viewport.offsetTop + (viewport.safeTop + 10) * scaleCompensation
 
-  return (
+  return createPortal((
     <div
       className={`zoom-viewport-minimap${visible ? ' is-visible' : ''}`}
       aria-hidden="true"
@@ -117,5 +118,5 @@ export default function ZoomViewportMinimap() {
       </div>
       <span className="zoom-viewport-minimap-scale">{viewport.scale.toFixed(1)}×</span>
     </div>
-  )
+  ), document.body)
 }

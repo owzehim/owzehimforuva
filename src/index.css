@@ -156,7 +156,7 @@ html:not(.dark) .text-gray-400 {
 
 .zoom-viewport-minimap {
   position: fixed;
-  z-index: 10001;
+  z-index: 2147483000;
   box-sizing: content-box;
   padding: 6px;
   border-radius: 10px;
