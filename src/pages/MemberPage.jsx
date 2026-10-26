@@ -214,7 +214,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center bg-white dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`} style={{ touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}>
+      <div className={`min-h-screen flex items-center justify-center bg-white dark:bg-[#121212] ${lockInteractions ? 'dev-no-selection' : ''}`} style={{ touchAction: lockInteractions ? 'pan-x pan-y pinch-zoom' : undefined }}>
         <LoadingIndicator />
       </div>
     )
@@ -224,8 +224,8 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
 
   return (
     <div
-      className={`member-app-shell viewport-height-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`}
-      style={{ height: '100dvh', touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}
+      className={`member-app-shell viewport-height-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212] ${lockInteractions ? 'dev-no-selection' : ''}`}
+      style={{ height: '100dvh', touchAction: lockInteractions ? 'pan-x pan-y pinch-zoom' : undefined }}
     >
       {/* Review modal */}
       <ReviewModal
@@ -3137,11 +3137,21 @@ function EventsTab({ events }) {
   }
 
   const handleEventCardTouchStart = (e) => {
+    if (e.touches.length !== 1) {
+      eventCardStartY.current = null
+      eventCardGestureAxis.current = 'pinch'
+      return
+    }
     eventCardStartY.current = e.touches[0].clientY
     eventCardGestureAxis.current = null
   }
 
   const handleEventCardTouchMove = (e) => {
+    if (e.touches.length !== 1) {
+      eventCardStartY.current = null
+      eventCardGestureAxis.current = 'pinch'
+      return
+    }
     if (!eventCardOpen || eventCardStartY.current == null) return
 
     if (eventCardGestureAxis.current === 'x') {
@@ -3865,6 +3875,7 @@ const effectiveDateColor = isDragging
                 style={{
                   overflowY: eventCardOpen ? 'auto' : 'hidden',
                   paddingBottom: 'calc(env(safe-area-inset-bottom) + 116px)',
+                  touchAction: 'pan-y pinch-zoom',
                 }}
               >
                 <div
