@@ -1201,7 +1201,7 @@ export function SpotCard({
             />
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 
