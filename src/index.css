@@ -255,6 +255,13 @@ html:not(.dark) .text-gray-400 {
   gap: 12px;
 }
 
+.registration-korean-name-fields {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .registration-academic-details-fields {
   margin-top: 4px;
   gap: 8px;
@@ -293,10 +300,14 @@ html:not(.dark) .text-gray-400 {
 
   .app-landscape-top-tabs {
     padding-top: calc(env(safe-area-inset-top, 0px) + 6px) !important;
+    padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
     padding-bottom: 6px !important;
   }
 
   .app-landscape-bottom-tabs {
+    padding-left: env(safe-area-inset-left, 0px) !important;
+    padding-right: env(safe-area-inset-right, 0px) !important;
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px) !important;
   }
 
@@ -627,6 +638,18 @@ html:not(.dark) .text-gray-400 {
     white-space: nowrap !important;
     font-size: clamp(14px, 2.3vw, 18px) !important;
     line-height: 36px !important;
+  }
+
+  .registration-page-enter > div:first-of-type {
+    z-index: 120 !important;
+  }
+
+  .registration-about-step > div:first-of-type > button:first-of-type {
+    left: max(14px, calc(env(safe-area-inset-left, 0px) + 8px)) !important;
+  }
+
+  .registration-about-step > div:first-of-type > button:nth-of-type(2) {
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 8px)) !important;
   }
 
   .registration-about-step .registration-name-grid {
@@ -1000,15 +1023,15 @@ html:not(.dark) .text-gray-400 {
   }
 
   .registration-about-step .registration-korean-name-fields {
-    position: fixed !important;
-    left: var(--registration-landscape-column-left) !important;
+    position: static !important;
+    left: auto !important;
     right: auto !important;
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
-    z-index: 25 !important;
+    bottom: auto !important;
+    z-index: auto !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 6px !important;
-    width: var(--registration-landscape-column-width) !important;
+    width: 100% !important;
     margin: 0 !important;
   }
 

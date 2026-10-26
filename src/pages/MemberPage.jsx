@@ -174,7 +174,13 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
   // Prevent iOS edge-swipe back gesture
   useEffect(() => {
     const handler = (e) => {
-      if (e.touches.length === 1 && e.touches[0]?.clientX < 30) e.preventDefault()
+      const target = e.target instanceof Element ? e.target : null
+      const isInteractiveTarget = target?.closest(
+        'button, a, input, select, textarea, [role="button"], [data-no-native-back-gesture]',
+      )
+      if (e.touches.length === 1 && e.touches[0]?.clientX < 30 && !isInteractiveTarget) {
+        e.preventDefault()
+      }
     }
     document.addEventListener('touchstart', handler, { passive: false })
     return () => document.removeEventListener('touchstart', handler)

@@ -2018,7 +2018,8 @@ html.dark select option {
 
 const s = {
   page: {
-    height: '100svh',
+    height: '100dvh',
+    minHeight: '100dvh',
     position: 'relative',
     display: 'flex',
     flexDirection: 'column',
