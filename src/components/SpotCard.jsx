@@ -910,7 +910,7 @@ export function SpotCard({
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
-        <div className="spot-card-expanded-content flex-1 px-5" style={{ overflowY: 'hidden' }}>
+        <div className="flex-1 px-5" style={{ overflowY: 'hidden' }}>
           {/* ?? Place info ?? */}
           <div className="pt-1 pb-3">
             {/* Store name */}
@@ -983,7 +983,7 @@ export function SpotCard({
           {/* Review box: swipe left for member notes. */}
           {spotCardHeightMode === 'full' && !isTallCollapsed && (
             <section
-              className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out"
+              className="spot-card-compact-review mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out"
               aria-label="리뷰 박스"
               onTouchStart={handleReviewBoxTouchStart}
               onTouchMove={handleReviewBoxTouchMove}
