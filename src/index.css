@@ -231,8 +231,31 @@ html:not(.dark) .text-gray-400 {
 
   .spot-card-compact-review {
     zoom: 0.86;
-    width: calc(100% / 0.86);
+    width: calc((100% - 40px) / 0.86);
     height: 310px !important;
+    margin-top: 12px !important;
+  }
+
+  .spot-card-compact-stars {
+    gap: 6px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .spot-card-compact-stars svg {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  .spot-card-compact-tags > div:first-child {
+    padding-top: 6px !important;
+  }
+
+  .spot-card-compact-tag-heading {
+    margin-bottom: 4px !important;
+  }
+
+  .spot-card-compact-tag-rows {
+    row-gap: 4px !important;
   }
 }
 
