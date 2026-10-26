@@ -228,6 +228,11 @@ html:not(.dark) .text-gray-400 {
     width: 76px !important;
     height: 95px !important;
   }
+
+  .spot-card-expanded-content {
+    zoom: 0.86;
+    width: calc(100% / 0.86);
+  }
 }
 
 .event-description-rich,

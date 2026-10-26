@@ -912,7 +912,7 @@ export function SpotCard({
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
-        <div className="flex-1 px-5" style={{ overflowY: 'hidden' }}>
+        <div className="spot-card-expanded-content flex-1 px-5" style={{ overflowY: 'hidden' }}>
           {/* ?? Place info ?? */}
           <div className="pt-1 pb-3">
             {/* Store name */}
