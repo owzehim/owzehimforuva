@@ -1176,21 +1176,16 @@ function MembershipCard({
   const W =
     'min(var(--member-screen-width, min(calc(100vw - 32px), 398px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 260px) / 1.586))'
   const cardW = W
-  const cardH = `calc(${W} * 1.586)`
   const fs = {
-    brand: `calc(${W} * 0.038)`,
-    valid: `calc(${W} * 0.032)`,
-    name: `calc(${W} * 0.052)`,
-    wordmark: `calc(${W} * 0.18)`,
-  }
-  const cardLayout = {
-    membershipToValidGap: `calc(${W} * 0.022)`,
-    validToNameGap: `calc(${W} * 0.018)`,
+    brand: '3.8cqw',
+    valid: '3.2cqw',
+    name: '5.2cqw',
+    wordmark: '18cqw',
   }
   const cardTextTop = {
     membership: 0,
-    valid: `calc(${W} * 0.046 + ${cardLayout.membershipToValidGap})`,
-    name: `calc(${W} * 0.084 + ${cardLayout.membershipToValidGap} + ${cardLayout.validToNameGap})`,
+    valid: '6.8cqw',
+    name: '12.4cqw',
   }
 
   const avatarSeed = getMemberAvatarSeed(member)
@@ -1199,13 +1194,13 @@ function MembershipCard({
     .map((namePart) => namePart?.trim())
     .filter(Boolean)
     .join(' ')
-  const avatarSize = `calc(${W} * 0.21)`
+  const avatarSize = '21cqw'
   const hasProfileImage = !!member?.profile_image_url
   // Keep the membership-card guide proportional to QRScanner's real scan box.
-  const qrOutlineSize = `min(220px, calc(${W} * 0.55))`
-  const qrIconSize = `clamp(30px, calc(${W} * 0.1), 42px)`
-  const BRACKET = `calc(${qrOutlineSize} * 0.127)`
-  const BRACKET_STROKE = `max(2px, calc(${W} * 0.0075))`
+  const qrOutlineSize = 'min(220px, 55cqw)'
+  const qrIconSize = 'clamp(30px, 10cqw, 42px)'
+  const BRACKET = 'min(28px, 6.985cqw)'
+  const BRACKET_STROKE = 'max(2px, 0.75cqw)'
   const cardBg = darkMode ? '#1C1C1E' : '#F6F4F1'
   const cardBorder = darkMode ? '#2C2C2E' : '#d6d3c0'
   const cardShadow = darkMode
@@ -1235,7 +1230,7 @@ function MembershipCard({
         background: cardBg,
         border: `1px solid ${cardBorder}`,
         boxShadow: cardShadow,
-        padding: `calc(${W} * 0.07)`,
+        padding: '7cqw',
         boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
@@ -1291,7 +1286,7 @@ function MembershipCard({
             position: 'absolute',
             top: 0,
             right: 0,
-            width: `calc(100% - ${avatarSize} - ${W} * 0.04)`,
+            width: 'calc(100% - 25cqw)',
             height: avatarSize,
             textAlign: 'right',
             pointerEvents: 'none',
@@ -1425,7 +1420,7 @@ function MembershipCard({
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: `calc(${W} * 0.02)`,
+              gap: '2cqw',
             }}
           >
             <QrCode
@@ -1441,7 +1436,7 @@ function MembershipCard({
             <span
               style={{
                 fontFamily: 'var(--font-app)',
-                fontSize: `calc(${W} * 0.034)`,
+                fontSize: '3.4cqw',
                 fontWeight: 600,
                 color: mutedText,
                 letterSpacing: '0.05em',
@@ -1477,7 +1472,8 @@ function MembershipCard({
       <div
         style={{
           width: cardW,
-          height: cardH,
+          aspectRatio: '1 / 1.586',
+          containerType: 'inline-size',
           margin: '0 auto',
           flexShrink: 0,
           boxSizing: 'border-box',
@@ -1516,7 +1512,7 @@ function MembershipCard({
             <span
               style={{
                 marginTop: '10px',
-                fontSize: `calc(${W} * 0.028)`,
+                fontSize: '2.8cqw',
                 color: darkMode ? '#6F6F76' : '#9ca3af',
               }}
             >
@@ -1532,7 +1528,8 @@ function MembershipCard({
     <div
       style={{
         width: cardW,
-        height: cardH,
+        aspectRatio: '1 / 1.586',
+        containerType: 'inline-size',
         margin: '0 auto',
         perspective: '1200px',
         flexShrink: 0,
