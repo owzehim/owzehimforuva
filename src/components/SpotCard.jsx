@@ -95,15 +95,15 @@ function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
   const maxCount = hasMemberReviews ? sorted[0].count : 0
 
   return (
-    <div className="pb-0">
+    <div className="spot-card-compact-tags pb-0">
       <div className="pt-3">
-        <div className="mb-3">
+        <div className="spot-card-compact-tag-heading mb-3">
           <p className="text-xs font-semibold text-gray-500">
             멤버 평가
           </p>
         </div>
 
-        <div className="flex flex-col gap-2.5 pl-4">
+        <div className="spot-card-compact-tag-rows flex flex-col gap-2.5 pl-4">
           {displayTags.map((tag) => {
             const IconComponent = TAG_ICON_COMPONENTS[tag.icon]
             const pct =
@@ -817,7 +817,7 @@ export function SpotCard({
       </p>
       {spotCardHeightMode === 'full' && showUsullangStars && (
         <div
-          className="mb-6 flex items-center justify-center gap-3 text-orange-500"
+          className="spot-card-compact-stars mb-6 flex items-center justify-center gap-3 text-orange-500"
           aria-label={`우슐랭 별 ${usullangStarCount}개`}
         >
           {Array.from({ length: 3 }).map((_, index) => (
