@@ -255,7 +255,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
       {/* Header: only on EVENTS tab */}
       {activeTab === 'events' && (
   <div
-    className="relative bg-white flex items-center justify-between flex-shrink-0 dark:bg-[#121212]"
+    className="member-top-bar relative bg-white flex items-center justify-between flex-shrink-0 dark:bg-[#121212]"
     style={{
       paddingTop: 'calc(env(safe-area-inset-top) + 6px)',
       minHeight: 'calc(env(safe-area-inset-top) + 56px)',
@@ -268,7 +268,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
           onClick={() => {
             window.location.href = '/admin'
           }}
-          className="fixed flex items-center rounded-lg bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700"
+          className="app-landscape-top-action fixed flex items-center rounded-lg bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700"
           style={{
             right: '66px',
             top: 'calc(env(safe-area-inset-top) + 6px)',
@@ -281,7 +281,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
       )}
       <button
         onClick={() => navigate('/settings')}
-        className="fixed flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 dark:text-gray-400 dark:hover:bg-gray-800"
+        className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 dark:text-gray-400 dark:hover:bg-gray-800"
         aria-label="Settings"
         style={{
           right: '14px',
@@ -300,7 +300,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
       {activeTab === 'qr' && (
         <div
           className={
-            'fixed flex items-center gap-2 transition-opacity duration-200 ' +
+            'app-landscape-top-actions fixed flex items-center gap-2 transition-opacity duration-200 ' +
             (qrCardLifted ? 'opacity-0 pointer-events-none' : 'opacity-100')
           }
           style={{
@@ -377,7 +377,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
       {/* Bottom tab bar */}
 {!welcomeSlidesOpen && (
   <div
-    className="bg-white flex flex-shrink-0 dark:bg-[#121212]"
+    className="app-landscape-bottom-tabs bg-white flex flex-shrink-0 dark:bg-[#121212]"
   style={{
     paddingBottom: MEMBER_BOTTOM_TAB_PADDING,
     userSelect: 'none',
@@ -3581,7 +3581,7 @@ const effectiveDateColor = isDragging
             window.sessionStorage.setItem(MEMBER_EVENT_LIST_OPEN_KEY, '1')
             setEventListOpen(true)
           }}
-          className="fixed flex h-11 w-11 items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
+          className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
           aria-label="Open event list"
           style={{
             left: '14px',
@@ -3657,7 +3657,7 @@ const effectiveDateColor = isDragging
                 target="_blank"
                 rel="noopener noreferrer"
                 className={
-                  'fixed flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition-opacity duration-200 active:bg-orange-600 ' +
+                  'app-landscape-top-action fixed flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition-opacity duration-200 active:bg-orange-600 ' +
                   (eventCardOpen ? 'opacity-100' : 'pointer-events-none opacity-0')
                 }
                 aria-label="Open on Instagram"
@@ -4116,7 +4116,7 @@ const effectiveDateColor = isDragging
               e.stopPropagation()
               closeEventList()
             }}
-            className="fixed flex h-11 w-11 items-center justify-center"
+            className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center"
             aria-label="Close event list"
             style={{
               left: '14px',
@@ -4136,7 +4136,7 @@ const effectiveDateColor = isDragging
               e.stopPropagation()
               setEventListNewestFirst((v) => !v)
             }}
-            className="fixed flex h-11 w-11 items-center justify-center"
+            className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center"
             aria-label={eventListNewestFirst ? 'Sort events old to new' : 'Sort events new to old'}
             style={{
               right: '14px',
@@ -4361,7 +4361,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
     >
       {/* Category slider */}
 <div 
-  className="bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]" 
+  className="app-landscape-top-tabs bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
   style={{ 
     paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
     zIndex: 10,  // Keep category slider above the map

@@ -1,9 +1,9 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Image as ImageIcon, MapPin, Ticket, Star, StarFour, X } from '@phosphor-icons/react'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
-import { computeStarDisplay, getSortedTagsForDisplay, formatAverageRating } from '../domain/reviewDomain'
+import { computeStarDisplay, formatAverageRating } from '../domain/reviewDomain'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
 import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 import { sanitizeRichText } from '../lib/sanitizeHtml'
@@ -88,31 +88,33 @@ function StarDisplay({
 // ?? Tag bar chart ???????????????????????????????????????????????
 
 function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
-  const sorted = getSortedTagsForDisplay(tagCounts)
-  const hasMemberReviews = reviewCount > 0 && sorted.length > 0
-  const displayTags = hasMemberReviews
-    ? sorted
-    : REVIEW_TAGS.map((tag) => ({ ...tag, count: 0 }))
-  const maxCount = hasMemberReviews ? sorted[0].count : 0
+  const displayTags = REVIEW_TAGS
+    .map((tag) => ({
+      ...tag,
+      count: reviewCount > 0 ? Math.max(0, Number(tagCounts?.[tag.key]) || 0) : 0,
+    }))
+    .sort((a, b) => b.count - a.count)
+  const maxCount = displayTags[0]?.count ?? 0
+  const hasMemberReviews = reviewCount > 0 && maxCount > 0
 
   return (
-    <div className="pb-0">
-      <div className="pt-3">
-        <div className="mb-3">
+    <div className="spot-card-tag-chart pb-0">
+      <div className="spot-card-tag-chart-content pt-3">
+        <div className="spot-card-tag-chart-heading mb-3">
           <p className="text-xs font-semibold text-gray-500">
             멤버 평가
           </p>
         </div>
 
-        <div className="flex flex-col gap-2.5 pl-4">
+        <div className="spot-card-tag-chart-rows flex flex-col gap-2.5 pl-4">
           {displayTags.map((tag) => {
             const IconComponent = TAG_ICON_COMPONENTS[tag.icon]
             const pct =
               maxCount > 0 ? Math.round((tag.count / maxCount) * 100) : 0
 
             return (
-              <div key={tag.key} className="flex items-center gap-2">
-                <div className="flex items-center gap-1 w-28 flex-shrink-0">
+              <div key={tag.key} className="spot-card-tag-chart-row flex items-center gap-2">
+                <div className="spot-card-tag-chart-label flex items-center gap-1 w-28 flex-shrink-0">
                   {IconComponent && (
                     <IconComponent size={13} weight="fill" color="#f97316" />
                   )}
@@ -704,12 +706,14 @@ export function SpotCard({
   reviewAudience = 'public',
 }) {
   const [cardHeightValue, setCardHeightValue] = useState(0)
+  const [cardIsExpanded, setCardIsExpanded] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [closing, setClosing] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(null)
   const [isVisible, setIsVisible] = useState(false)
   const [darkMode, setDarkMode] = useState(() => isDarkMode())
   const [sheetMaxHeight, setSheetMaxHeight] = useState(0)
+  const [keepLandscapeExpandedLayout, setKeepLandscapeExpandedLayout] = useState(false)
   const selectedId = selected?.id
   const [reviewBoxPanelState, setReviewBoxPanelState] = useState(() => ({ selectedId, value: 'guide' }))
   const startYRef = useRef(0)
@@ -733,24 +737,38 @@ export function SpotCard({
     reviewAudience,
   )
 
-  const { WIN_H } = useMemo(
-    () => ({
-      WIN_H: typeof window !== 'undefined' ? window.innerHeight : 700,
-    }),
-    [],
-  )
+  const WIN_H = typeof window !== 'undefined' ? window.innerHeight : 700
 
   const isTallSpotCard = selected?.spot_card_height === 'tall'
+  const isLandscapeFullSpotCard =
+    selected?.spot_card_height === 'full' &&
+    typeof window !== 'undefined' &&
+    window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches
   const spotCardHeightMode =
     selected?.spot_card_height === 'full' || selected?.spot_card_height === 'tall'
       ? 'full'
       : 'compact'
   const COMPACT_HEIGHT = Math.min(WIN_H * 0.22, 150)
   const FULL_HEIGHT = Math.min(WIN_H * 0.44, 315)
-  const MIN_HEIGHT = spotCardHeightMode === 'full' ? FULL_HEIGHT : COMPACT_HEIGHT
   const MAX_HEIGHT = Math.max(320, sheetMaxHeight || WIN_H)
+  const LANDSCAPE_FULL_COLLAPSED_HEIGHT = Math.min(
+    Math.max(WIN_H * 0.68, 240),
+    MAX_HEIGHT * 0.84,
+    315,
+  )
+  const MIN_HEIGHT = spotCardHeightMode === 'full'
+    ? isLandscapeFullSpotCard
+      ? LANDSCAPE_FULL_COLLAPSED_HEIGHT
+      : FULL_HEIGHT
+    : COMPACT_HEIGHT
   const cardHeight = Math.min(cardHeightValue, MAX_HEIGHT)
-  const setCardHeight = (height) => setCardHeightValue(Math.min(height, MAX_HEIGHT))
+  const setCardHeight = (height) => {
+    const nextHeight = Math.min(height, MAX_HEIGHT)
+    setCardHeightValue(nextHeight)
+    setCardIsExpanded(
+      spotCardHeightMode === 'full' && nextHeight >= MAX_HEIGHT * 0.85,
+    )
+  }
   const SHEET_RADIUS = 20
 
   useEffect(() => {
@@ -794,7 +812,21 @@ export function SpotCard({
   useEffect(() => {
     if (selectedId) {
       const parentHeight = cardRef.current?.parentElement?.clientHeight
+      const measuredMaxHeight = Math.max(320, parentHeight || WIN_H)
       if (parentHeight) setSheetMaxHeight(parentHeight)
+
+      // Use the measured sheet limit for the first collapsed height. In landscape,
+      // the available sheet height can be much shorter than the viewport; using
+      // the viewport-derived value here can make the initial card look expanded.
+      const initialMinHeight = spotCardHeightMode === 'full'
+        ? isLandscapeFullSpotCard
+          ? Math.min(
+              Math.max(WIN_H * 0.68, 240),
+              measuredMaxHeight * 0.84,
+              315,
+            )
+          : FULL_HEIGHT
+        : COMPACT_HEIGHT
 
       const previousSpot = previousSpotRef.current
       const isSameCardType =
@@ -817,12 +849,13 @@ export function SpotCard({
       if (previousSpot?.id === selectedId) return
 
       setIsVisible(false)
-      setCardHeightValue(MIN_HEIGHT)
+      setCardHeightValue(initialMinHeight)
+      setCardIsExpanded(false)
       setClosing(false)
       // Trigger animation on next frame
       requestAnimationFrame(() => setIsVisible(true))
     }
-  }, [selectedId, MIN_HEIGHT, spotCardHeightMode])
+  }, [selectedId, MIN_HEIGHT, spotCardHeightMode, WIN_H, isLandscapeFullSpotCard, FULL_HEIGHT, COMPACT_HEIGHT])
 
   useEffect(() => {
     if (!selectedId) return undefined
@@ -830,12 +863,33 @@ export function SpotCard({
     const measureSheet = () => {
       const parentHeight = cardRef.current?.parentElement?.clientHeight
       if (parentHeight) setSheetMaxHeight(parentHeight)
+
+      const viewportHeight = window.innerHeight || 700
+      const nextMaxHeight = Math.max(320, parentHeight || viewportHeight)
+      const landscapeFullMode =
+        spotCardHeightMode === 'full' &&
+        window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches
+      const nextMinHeight = spotCardHeightMode === 'full'
+        ? landscapeFullMode
+          ? Math.min(
+              Math.max(viewportHeight * 0.68, 240),
+              nextMaxHeight * 0.84,
+              315,
+            )
+          : Math.min(viewportHeight * 0.44, 315)
+        : Math.min(viewportHeight * 0.22, 150)
+
+      setCardHeightValue(cardIsExpanded ? nextMaxHeight : nextMinHeight)
     }
 
     measureSheet()
     window.addEventListener('resize', measureSheet)
-    return () => window.removeEventListener('resize', measureSheet)
-  }, [selectedId])
+    window.addEventListener('orientationchange', measureSheet)
+    return () => {
+      window.removeEventListener('resize', measureSheet)
+      window.removeEventListener('orientationchange', measureSheet)
+    }
+  }, [selectedId, spotCardHeightMode, selected?.spot_card_height, cardIsExpanded])
 
   // Watch dark mode changes
   useEffect(() => {
@@ -868,14 +922,16 @@ export function SpotCard({
       ? cardHeight
       : cardRef.current?.offsetHeight || MIN_HEIGHT
     const scrollableContent = e.target.closest?.('.spot-card-expanded-content')
+    const landscapeReviewGuide = e.target.closest?.('.spot-card-landscape-review-guide')
+    const canScrollLandscapeGuide = Boolean(landscapeReviewGuide && isLandscapeExpandedSpotCard)
     const canScrollCardContent = Boolean(
       scrollableContent &&
       spotCardHeightMode === 'full' &&
       !isCollapsed &&
       window.matchMedia('(orientation: portrait) and (max-width: 380px) and (max-height: 660px)').matches,
-    )
+    ) || canScrollLandscapeGuide
     contentScrollTouchRef.current = canScrollCardContent
-      ? { element: scrollableContent, mode: 'content' }
+      ? { element: canScrollLandscapeGuide ? landscapeReviewGuide : scrollableContent, mode: 'content' }
       : null
     setIsDragging(!canScrollCardContent)
   }
@@ -949,15 +1005,51 @@ export function SpotCard({
     }
   }
 
-  const isMax = cardHeight >= MAX_HEIGHT * 0.85
-  const isCollapsed = cardHeight < MAX_HEIGHT * 0.85
+  const isMax = spotCardHeightMode === 'full'
+    ? cardIsExpanded
+    : cardHeight >= MAX_HEIGHT * 0.85
+  const isCollapsed = spotCardHeightMode === 'full'
+    ? !cardIsExpanded
+    : cardHeight < MAX_HEIGHT * 0.85
+  const isLandscapeExpandedSpotCard =
+    spotCardHeightMode === 'full' &&
+    !isCollapsed &&
+    typeof window !== 'undefined' &&
+    window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches
+  const isLandscapeFullMode =
+    spotCardHeightMode === 'full' &&
+    typeof window !== 'undefined' &&
+    window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches
+
+  useEffect(() => {
+    if (isLandscapeExpandedSpotCard) {
+      setKeepLandscapeExpandedLayout(true)
+      return undefined
+    }
+
+    if (!isLandscapeFullMode) {
+      setKeepLandscapeExpandedLayout(false)
+      return undefined
+    }
+
+    if (!keepLandscapeExpandedLayout) return undefined
+
+    const timeoutId = window.setTimeout(() => setKeepLandscapeExpandedLayout(false), 320)
+    return () => window.clearTimeout(timeoutId)
+  }, [isLandscapeExpandedSpotCard, isLandscapeFullMode, keepLandscapeExpandedLayout])
+
+  const shouldUseLandscapeExpandedLayout =
+    isLandscapeExpandedSpotCard || keepLandscapeExpandedLayout
+
   const isTallCollapsed = isTallSpotCard && isCollapsed
   const showFixedGoogleMapsButton =
-    spotCardHeightMode !== 'full' || isCollapsed
+    spotCardHeightMode !== 'full' || isCollapsed || isLandscapeFullMode
   const googleMapsReservedSpace = spotCardHeightMode === 'full'
-    ? isCollapsed
-      ? 86
-      : 56
+    ? shouldUseLandscapeExpandedLayout
+      ? 0
+      : isCollapsed
+        ? 86
+        : 56
     : 64
   const speechBubbleGapPx = isTallSpotCard && !hasImages
     ? isCollapsed
@@ -1049,61 +1141,65 @@ export function SpotCard({
     reviewBoxTouchStartRef.current = null
   }
 
-  const guideContent = selected.one_line_review && (!isTallCollapsed || !hasImages) && (
+  const guideContent = (selected.one_line_review || showUsullangStars) && (!isTallCollapsed || !hasImages) && (
     <div
-      className="mb-3"
+      className="spot-card-review-guide-content mb-3"
       style={{ marginTop: spotCardHeightMode === 'full' ? 8 : speechBubbleGapPx }}
     >
-      <p className="mb-2 text-left text-xs font-semibold text-gray-500">
-        우슐랭
-      </p>
-      {spotCardHeightMode === 'full' && showUsullangStars && (
-        <div
-          className="spot-card-compact-stars mb-6 flex items-center justify-center gap-3 text-orange-500"
-          aria-label={`우슐랭 별 ${usullangStarCount}개`}
-        >
-          {Array.from({ length: 3 }).map((_, index) => (
-            <StarFour
-              key={index}
-              size={66}
-              weight={index < usullangStarCount ? 'fill' : 'regular'}
-              color={
-                index < usullangStarCount
-                  ? '#f97316'
-                  : darkMode
-                    ? DARK_MUTED_ACCENT
-                    : '#d1d5db'
-              }
-            />
-          ))}
-        </div>
-      )}
-      <div className="relative w-full">
-        <div
-          aria-hidden="true"
-          className="block w-[97.5%] origin-left select-none"
-          style={{
-            aspectRatio: '3435 / 612',
-            backgroundColor: '#f97316',
-            mask: 'url(/spotcard-speech-bubble.png) center / contain no-repeat',
-            WebkitMask:
-              'url(/spotcard-speech-bubble.png) center / contain no-repeat',
-          }}
-        />
-        <div
-          className="absolute flex items-center justify-center px-6 sm:px-8 md:px-10"
-          style={{
-            left: '8%',
-            right: '8%',
-            top: '10%',
-            bottom: '15%',
-            overflow: 'hidden',
-          }}
-        >
-          <RichText
-            text={selected.one_line_review}
-            className="block max-w-full break-keep text-center text-[clamp(12px,3.2vw,16px)] font-semibold leading-tight text-white"
+      <div className="spot-card-landscape-usullang">
+        <p className="mb-2 text-left text-xs font-semibold text-gray-500">
+          우슐랭
+        </p>
+        {spotCardHeightMode === 'full' && showUsullangStars && (
+          <div
+            className="spot-card-compact-stars mb-6 flex items-center justify-center gap-3 text-orange-500"
+            aria-label={`우슐랭 별 ${usullangStarCount}개`}
+          >
+            {Array.from({ length: 3 }).map((_, index) => (
+              <StarFour
+                key={index}
+                size={66}
+                weight={index < usullangStarCount ? 'fill' : 'regular'}
+                color={
+                  index < usullangStarCount
+                    ? '#f97316'
+                    : darkMode
+                      ? DARK_MUTED_ACCENT
+                      : '#d1d5db'
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      {selected.one_line_review && (
+        <div className="spot-card-landscape-speech-bubble relative w-full">
+          <div
+            aria-hidden="true"
+            className="block w-[97.5%] origin-left select-none"
+            style={{
+              aspectRatio: '3435 / 612',
+              backgroundColor: '#f97316',
+              mask: 'url(/spotcard-speech-bubble.png) center / contain no-repeat',
+              WebkitMask:
+                'url(/spotcard-speech-bubble.png) center / contain no-repeat',
+            }}
           />
+          <div
+            className="spot-card-landscape-speech-overlay absolute flex items-center justify-center px-6 sm:px-8 md:px-10"
+            style={{
+              left: '8%',
+              right: '8%',
+              top: '10%',
+              bottom: '15%',
+              overflow: 'hidden',
+            }}
+          >
+            <RichText
+              text={selected.one_line_review}
+              className="spot-card-landscape-speech-text block max-w-full break-keep text-center text-[clamp(12px,3.2vw,16px)] font-semibold leading-tight text-white"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -1121,7 +1217,7 @@ export function SpotCard({
 
       <div
         ref={cardRef}
-        className="absolute bottom-0 left-0 right-0 bg-white"
+        className="spot-card-sheet absolute bottom-0 left-0 right-0 bg-white"
         style={{
           ...sheetStyle,
           zIndex: 1000,
@@ -1136,6 +1232,15 @@ export function SpotCard({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onWheel={(e) => {
+          const landscapeReviewGuide = e.target.closest?.('.spot-card-landscape-review-guide')
+          const canScrollLandscapeGuide = Boolean(
+            landscapeReviewGuide &&
+            isLandscapeExpandedSpotCard &&
+            ((e.deltaY > 0 && landscapeReviewGuide.scrollTop + landscapeReviewGuide.clientHeight < landscapeReviewGuide.scrollHeight - 1) ||
+              (e.deltaY < 0 && landscapeReviewGuide.scrollTop > 0)),
+          )
+          if (canScrollLandscapeGuide) return
+
           const scrollableContent = e.target.closest?.('.spot-card-expanded-content')
           const canScrollContent = Boolean(
             scrollableContent &&
@@ -1168,12 +1273,15 @@ export function SpotCard({
             'flex-1 px-5 ' +
             (spotCardHeightMode === 'full' && !isCollapsed
               ? 'spot-card-expanded-content'
+              : '') +
+            (isLandscapeFullMode
+              ? ' spot-card-landscape-expanded-content'
               : '')
           }
           style={{ overflowY: 'hidden' }}
         >
           {/* ?? Place info ?? */}
-          <div className="pt-1 pb-3">
+          <div className={`spot-card-place-info pt-1 pb-3 ${isLandscapeExpandedSpotCard ? 'spot-card-landscape-place-info-hidden' : ''}`}>
             {/* Store name */}
             <div className="flex items-center gap-2">
               <p className="spot-card-title font-semibold text-gray-900">
@@ -1221,43 +1329,44 @@ export function SpotCard({
             )}
           </div>
 
-          {/* Images */}
-          {spotCardHeightMode === 'full' && (hasImages ? (
-            <div className="spot-card-short-photo-strip mb-2">
-              <ImageThumbnails
-                imgs={imgs}
-                onTap={(i) => setLightboxIndex(i)}
-                darkMode={darkMode}
-              />
-            </div>
-          ) : (
-            <div
-              className="spot-card-short-photo-placeholder mb-3 flex flex-col items-center justify-center gap-2 rounded-xl bg-gray-100"
-              style={{ width: '100px', height: '125px' }}
-              aria-label="이미지 없음"
-            >
-              <ImageIcon size={30} weight="regular" className="text-gray-400" />
-              <span className="text-xs text-gray-400">No images</span>
-            </div>
-          ))}
+          <div className={shouldUseLandscapeExpandedLayout ? 'spot-card-landscape-expanded-grid' : ''}>
+            {/* Images */}
+            {spotCardHeightMode === 'full' && !shouldUseLandscapeExpandedLayout && (hasImages ? (
+              <div className="spot-card-short-photo-strip mb-2">
+                <ImageThumbnails
+                  imgs={imgs}
+                  onTap={(i) => setLightboxIndex(i)}
+                  darkMode={darkMode}
+                />
+              </div>
+            ) : (
+              <div
+                className="spot-card-short-photo-placeholder mb-3 flex flex-col items-center justify-center gap-2 rounded-xl bg-gray-100"
+                style={{ width: '100px', height: '125px' }}
+                aria-label="이미지 없음"
+              >
+                <ImageIcon size={30} weight="regular" className="text-gray-400" />
+                <span className="text-xs text-gray-400">No images</span>
+              </div>
+            ))}
 
-          {/* Review box: swipe left for member notes. */}
-          {spotCardHeightMode === 'full' && !isTallCollapsed && (
-            <section
-              className="mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out"
-              aria-label="리뷰 박스"
-              onTouchStart={handleReviewBoxTouchStart}
-              onTouchMove={handleReviewBoxTouchMove}
-              onTouchEnd={handleReviewBoxTouchEnd}
-              style={{
-                opacity: isCollapsed ? 0 : 1,
-                transform: isCollapsed ? 'translateY(8px)' : 'translateY(0)',
-                visibility: isCollapsed ? 'hidden' : 'visible',
-                pointerEvents: isCollapsed ? 'none' : 'auto',
-                transitionProperty: 'opacity, transform, visibility',
-                transitionDelay: isCollapsed ? '0s, 0s, 0.3s' : '0s',
-              }}
-            >
+            {/* Review box: swipe left for member notes. */}
+            {spotCardHeightMode === 'full' && !isTallCollapsed && (
+              <section
+                className={`mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out ${shouldUseLandscapeExpandedLayout ? 'spot-card-landscape-review-box' : ''}`}
+                aria-label="리뷰 박스"
+                onTouchStart={handleReviewBoxTouchStart}
+                onTouchMove={handleReviewBoxTouchMove}
+                onTouchEnd={handleReviewBoxTouchEnd}
+                style={{
+                  opacity: isCollapsed ? 0 : 1,
+                  transform: isCollapsed ? 'translateY(8px)' : 'translateY(0)',
+                  visibility: isCollapsed ? 'hidden' : 'visible',
+                  pointerEvents: isCollapsed ? 'none' : 'auto',
+                  transitionProperty: 'opacity, transform, visibility',
+                  transitionDelay: isCollapsed ? '0s, 0s, 0.3s' : '0s',
+                }}
+              >
               <div
                 className="flex min-h-0 w-[200%] flex-1 transition-transform duration-300 ease-out"
                 style={{
@@ -1266,9 +1375,9 @@ export function SpotCard({
                     : 'translateX(0)',
                 }}
               >
-                <div className="w-1/2 flex-shrink-0 px-4 pt-1">
+                <div className="spot-card-review-guide w-1/2 flex-shrink-0 px-4 pt-1">
                   {guideContent}
-                  <div>
+                  <div className="spot-card-landscape-member-evaluation">
                     <TagBarChart
                       tagCounts={ratingSummary?.tag_counts}
                       reviewCount={reviewCount}
@@ -1298,7 +1407,7 @@ export function SpotCard({
                   )}
                 </div>
               </div>
-              <div className="relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4" aria-hidden="true">
+              <div className="spot-card-review-pagination relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4" aria-hidden="true">
                 <span className={
                   'h-1.5 rounded-full transition-all ' +
                   (reviewBoxPanel === 'guide' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
@@ -1308,11 +1417,12 @@ export function SpotCard({
                   (reviewBoxPanel === 'notes' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
                 } />
               </div>
-            </section>
-          )}
+              </section>
+            )}
+          </div>
 
           {/* 한 줄 평가 */}
-          {spotCardHeightMode !== 'full' && selected.one_line_review && (!isTallCollapsed || !hasImages) && (
+          {spotCardHeightMode !== 'full' && (selected.one_line_review || showUsullangStars) && (!isTallCollapsed || !hasImages) && (
             <div className="mb-3" style={{ marginTop: speechBubbleGapPx }}>
               <p className="mb-2 text-left text-xs font-semibold text-gray-500">
                 우슐랭
@@ -1395,7 +1505,7 @@ export function SpotCard({
       {showGoogleMapsButton && (
         <div
           className={
-            'fixed left-0 right-0 pointer-events-none flex justify-center transition-opacity duration-200 ' +
+            'spot-card-google-maps-button fixed left-0 right-0 pointer-events-none flex justify-center transition-opacity duration-200 ' +
             (showFixedGoogleMapsButton ? 'opacity-100' : 'opacity-0')
           }
           style={{

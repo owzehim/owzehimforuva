@@ -506,6 +506,7 @@ const translations = {
 function TypeaheadSelect({ name, value, onChange, options, placeholder = '', allowCustom = false }) {
   const [searchText, setSearchText] = useState('');
   const [open, setOpen] = useState(false);
+  const [dropdownMaxHeight, setDropdownMaxHeight] = useState(114);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -523,6 +524,36 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
   const filtered = options.filter((opt) =>
     opt.toLowerCase().includes(searchText.toLowerCase())
   );
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const updateDropdownPlacement = () => {
+      const bounds = containerRef.current?.getBoundingClientRect();
+      if (!bounds) return;
+
+      const visualViewport = window.visualViewport;
+      const viewportTop = visualViewport?.offsetTop || 0;
+      const viewportBottom = viewportTop + (visualViewport?.height || window.innerHeight);
+      const availableBelow = Math.max(0, viewportBottom - bounds.bottom - 8);
+      const desiredHeight = Math.min(4, filtered.length) * 28 + 2;
+      const maxHeight = Math.max(1, Math.floor(Math.min(desiredHeight, availableBelow)));
+
+      setDropdownMaxHeight((current) => current === maxHeight ? current : maxHeight);
+    };
+
+    updateDropdownPlacement();
+    window.addEventListener('resize', updateDropdownPlacement);
+    window.addEventListener('scroll', updateDropdownPlacement, true);
+    window.visualViewport?.addEventListener('resize', updateDropdownPlacement);
+    window.visualViewport?.addEventListener('scroll', updateDropdownPlacement);
+    return () => {
+      window.removeEventListener('resize', updateDropdownPlacement);
+      window.removeEventListener('scroll', updateDropdownPlacement, true);
+      window.visualViewport?.removeEventListener('resize', updateDropdownPlacement);
+      window.visualViewport?.removeEventListener('scroll', updateDropdownPlacement);
+    };
+  }, [open, filtered.length]);
 
   const handleSelect = (val) => {
     setOpen(false);
@@ -546,7 +577,7 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
   };
 
   return (
-    <div ref={containerRef} style={s.typeaheadContainer}>
+      <div ref={containerRef} className={`registration-typeahead registration-typeahead-${name}`} style={s.typeaheadContainer}>
       <input
         ref={inputRef}
         id={name}
@@ -565,7 +596,10 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
         <CaretDown size={16} weight="bold" />
       </span>
       {open && filtered.length > 0 && (
-        <div style={s.typeaheadList}>
+        <div
+          className="registration-typeahead-list"
+          style={{ ...s.typeaheadList, maxHeight: `${dropdownMaxHeight}px` }}
+        >
           {filtered.map((opt) => (
             <div
               key={opt}
@@ -595,9 +629,45 @@ export default function RegistrationPage() {
       document.documentElement.lang = 'ko';
     };
   }, [language]);
-  const [stableChromeViewportHeight] = useState(() => (
+  const [viewportOrientation, setViewportOrientation] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia('(orientation: portrait)').matches
+      ? 'portrait'
+      : 'landscape'
+  ));
+  const [stableChromeViewportHeight, setStableChromeViewportHeight] = useState(() => (
     isMobileChromeBrowser ? window.innerHeight : null
   ));
+
+  useEffect(() => {
+    const updateOrientation = () => {
+      const nextOrientation = window.matchMedia('(orientation: portrait)').matches
+        ? 'portrait'
+        : 'landscape';
+
+      setViewportOrientation((currentOrientation) => {
+        if (currentOrientation === nextOrientation) return currentOrientation;
+
+        if (isMobileChromeBrowser) {
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              setStableChromeViewportHeight(window.innerHeight);
+            });
+          });
+        }
+
+        return nextOrientation;
+      });
+    };
+
+    window.addEventListener('resize', updateOrientation);
+    window.addEventListener('orientationchange', updateOrientation);
+    window.screen?.orientation?.addEventListener?.('change', updateOrientation);
+    return () => {
+      window.removeEventListener('resize', updateOrientation);
+      window.removeEventListener('orientationchange', updateOrientation);
+      window.screen?.orientation?.removeEventListener?.('change', updateOrientation);
+    };
+  }, []);
   const fileInputRef = useRef(null);
   const [profilePreviewUrl, setProfilePreviewUrl] = useState('');
   const [cropImageSrc, setCropImageSrc] = useState(null);
@@ -1071,7 +1141,7 @@ export default function RegistrationPage() {
 
   return (
     <div
-      className="phone-app-shell viewport-height-shell registration-page-enter"
+      className={`phone-app-shell viewport-height-shell registration-page-enter ${step === 'about' ? 'registration-about-step' : ''} ${step === 'academic' ? 'registration-academic-step' : ''} ${step === 'account' ? 'registration-account-step' : ''}`}
       onDragStart={(event) => event.preventDefault()}
       style={{
         ...s.page,
@@ -1114,7 +1184,7 @@ export default function RegistrationPage() {
       {step === 'about' && (
         <div key="about" className="registration-step" style={s.stepShell}>
           <NameStep
-            compactViewport={isCompactPortraitViewport()}
+            compactViewport={viewportOrientation === 'portrait' && isCompactPortraitViewport()}
             formData={formData}
             handleChange={handleChange}
             goNext={goNext}
@@ -1128,7 +1198,7 @@ export default function RegistrationPage() {
       {step === 'academic' && (
         <div key="academic" className="registration-step registration-step-academic" style={s.stepShell}>
           <AcademicStep
-            compactViewport={isCompactPortraitViewport()}
+            compactViewport={viewportOrientation === 'portrait' && isCompactPortraitViewport()}
             formData={formData}
             handleChange={handleChange}
             handleEducationLevelChange={handleEducationLevelChange}
@@ -1147,7 +1217,7 @@ export default function RegistrationPage() {
       {step === 'account' && (
         <div key="account" className="registration-step registration-step-account" style={s.stepShell}>
           <AccountStep
-            compactViewport={isCompactPortraitViewport()}
+            compactViewport={viewportOrientation === 'portrait' && isCompactPortraitViewport()}
             formData={formData}
             handleChange={handleChange}
             handleSubmit={handleAccountSubmit}
@@ -1247,102 +1317,107 @@ function ProfileHero({
 
 function NameStep({ compactViewport, formData, handleChange, goNext, language, t, isComplete }) {
   return (
-    <div style={s.form}>
+    <div className="registration-name-step-form" style={s.form}>
       <div style={{ ...s.formContent, ...s.promptFormContent }}>
-        <h1 style={s.registrationPrompt}>
+        <h1 className="registration-name-step-heading" style={s.registrationPrompt}>
           {language === 'ko'
             ? '회원가입에 필요한 정보들을 입력해주세요'
             : 'Please fill in your information to sign up'}
         </h1>
 
-        <div style={{ ...s.nameGrid, ...s.stageOneFieldStart, ...(compactViewport ? s.compactStageOneFieldStart : {}) }}>
-          <Field label={t.firstName} id="firstName">
-            <input
-              id="firstName"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              style={s.input}
-            />
-          </Field>
-          <Field label={t.lastName} id="lastName">
-            <input
-              id="lastName"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              style={s.input}
-            />
-          </Field>
-          {language === 'ko' && (
-            <>
-              <div style={s.nameGroupGap} />
-              <Field label={t.firstNameKorean} id="firstNameKorean">
-                <input
-                  id="firstNameKorean"
-                  name="firstNameKorean"
-                  value={formData.firstNameKorean || ''}
-                  onChange={handleChange}
-                  style={s.input}
-                />
-              </Field>
-              <Field label={t.lastNameKorean} id="lastNameKorean">
-                <input
-                  id="lastNameKorean"
-                  name="lastNameKorean"
-                  value={formData.lastNameKorean || ''}
-                  onChange={handleChange}
-                  style={s.input}
-                />
-              </Field>
-            </>
-          )}
-
-          <div style={s.nameGroupGap} />
-          <Row columns="1fr 1fr">
-            <Field label={t.yearOfBirth} id="yearOfBirth">
+        <div className="registration-name-grid" style={{ ...s.nameGrid, ...s.stageOneFieldStart, ...(compactViewport ? s.compactStageOneFieldStart : {}) }}>
+          <div className="registration-name-fields">
+            <Field label={t.firstName} id="firstName">
               <input
-                id="yearOfBirth"
-                type="number"
-                name="yearOfBirth"
-                value={formData.yearOfBirth}
+                id="firstName"
+                name="firstName"
+                value={formData.firstName}
                 onChange={handleChange}
                 style={s.input}
-                placeholder=""
-                min="1950"
-                max={new Date().getFullYear()}
               />
-              {isUnderSixteenByBirthYear(formData.yearOfBirth) && (
-                <p role="alert" style={{ ...s.helperText, color: 'var(--reg-danger-text)' }}>
-                  {t.underSixteenByBirthYear}
-                </p>
-              )}
             </Field>
-            <Field label={t.gender} id="gender">
-              <TypeaheadSelect
-                name="gender"
-                value={formData.gender}
+            <Field label={t.lastName} id="lastName">
+              <input
+                id="lastName"
+                name="lastName"
+                value={formData.lastName}
                 onChange={handleChange}
-                options={language === 'en' ? SORTED_GENDERS : SORTED_GENDERS_KO}
+                style={s.input}
+              />
+            </Field>
+            {language === 'ko' && (
+              <>
+                <div style={s.nameGroupGap} />
+                <div className="registration-korean-name-fields">
+                  <Field label={t.firstNameKorean} id="firstNameKorean">
+                    <input
+                      id="firstNameKorean"
+                      name="firstNameKorean"
+                      value={formData.firstNameKorean || ''}
+                      onChange={handleChange}
+                      style={s.input}
+                    />
+                  </Field>
+                  <Field label={t.lastNameKorean} id="lastNameKorean">
+                    <input
+                      id="lastNameKorean"
+                      name="lastNameKorean"
+                      value={formData.lastNameKorean || ''}
+                      onChange={handleChange}
+                      style={s.input}
+                    />
+                  </Field>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="registration-demographic-fields">
+            <Row columns="1fr 1fr">
+              <Field label={t.yearOfBirth} id="yearOfBirth">
+                <input
+                  id="yearOfBirth"
+                  type="number"
+                  name="yearOfBirth"
+                  value={formData.yearOfBirth}
+                  onChange={handleChange}
+                  style={s.input}
+                  placeholder=""
+                  min="1950"
+                  max={new Date().getFullYear()}
+                />
+                {isUnderSixteenByBirthYear(formData.yearOfBirth) && (
+                  <p role="alert" style={{ ...s.helperText, color: 'var(--reg-danger-text)' }}>
+                    {t.underSixteenByBirthYear}
+                  </p>
+                )}
+              </Field>
+              <Field label={t.gender} id="gender">
+                <TypeaheadSelect
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  options={language === 'en' ? SORTED_GENDERS : SORTED_GENDERS_KO}
+                  placeholder=""
+                />
+              </Field>
+            </Row>
+
+            <Field label={t.nationality} id="countryOfOrigin" className="registration-nationality-field">
+              <TypeaheadSelect
+                name="countryOfOrigin"
+                value={formData.countryOfOrigin}
+                onChange={handleChange}
+                options={SORTED_COUNTRIES}
                 placeholder=""
               />
             </Field>
-          </Row>
-
-          <Field label={t.nationality} id="countryOfOrigin">
-            <TypeaheadSelect
-              name="countryOfOrigin"
-              value={formData.countryOfOrigin}
-              onChange={handleChange}
-              options={SORTED_COUNTRIES}
-              placeholder=""
-            />
-          </Field>
+          </div>
         </div>
       </div>
 
-      <div style={getBottomActionStyle(compactViewport)}>
-        <button type="button" onClick={goNext} disabled={!isComplete} style={getNextButtonStyle(isComplete)}>
+      <div className="registration-next-action" style={getBottomActionStyle(compactViewport)}>
+        <button className="registration-next-button" type="button" onClick={goNext} disabled={!isComplete} style={getNextButtonStyle(isComplete)}>
           {t.next}
         </button>
       </div>
@@ -1413,96 +1488,104 @@ function AcademicStep({
 }) {
   const programmeOptions = ['foundation', 'bachelor', 'master', 'alumni'];
   return (
-    <div style={s.form}>
+    <div className="registration-academic-step-form" style={s.form}>
       <div style={{ ...s.formContent, ...s.academicContent, ...s.promptFormContent }}>
-        <h1 style={s.registrationPrompt}>
+        <h1 className="registration-academic-step-heading" style={s.registrationPrompt}>
           {language === 'ko'
             ? '대학 및 전공 정보를 입력해 주세요'
             : 'Please enter your academic information'}
         </h1>
 
-        <div style={{ ...s.fieldStack, ...s.stageTwoFieldStart, ...(compactViewport ? s.compactStageTwoFieldStart : {}) }}>
-          <Field label={t.university} id="university">
-            <TypeaheadSelect
-              name="university"
-              value={formData.university}
-              onChange={handleChange}
-              options={SORTED_UNIVERSITIES}
-              placeholder=""
-              allowCustom
-            />
-          </Field>
-
-          <Field label={t.studentNumber} id="studentNumber">
-            <input
-              id="studentNumber"
-              name="studentNumber"
-              value={formData.studentNumber}
-              onChange={handleChange}
-              style={s.input}
-            />
-          </Field>
-
-          <div style={s.nameGroupGap} />
-          <Field label={t.major} id="major">
-            <TypeaheadSelect
-              name="major"
-              value={formData.major}
-              onChange={handleChange}
-              options={SORTED_MAJORS}
-              placeholder=""
-              allowCustom
-            />
-          </Field>
-
-          <Field label={t.programme} variant="group" style={s.programmeField}>
-            <div style={s.programmeGrid}>
-              {programmeOptions.map((level) => (
-                <label
-                  key={level}
-                  style={{
-                    ...s.programmeOption,
-                    ...(formData.educationLevel === level ? s.programmeOptionActive : {}),
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="educationLevel"
-                    value={level}
-                    checked={formData.educationLevel === level}
-                    onChange={handleEducationLevelChange}
-                    style={s.programmeRadio}
-                  />
-                  {t[level]}
-                </label>
-              ))}
-            </div>
-          </Field>
-
-          {yearOptions.length > 0 && (
-            <Field label={t.academicYear} variant="group" style={s.yearField}>
-              <div style={s.yearGrid}>
-                {yearOptions.map((y) => (
-                  <button
-                    key={y}
-                    type="button"
-                    onClick={() => handleChange({ target: { name: 'yearNumber', value: String(y) } })}
-                    style={{
-                      ...s.yearOption,
-                      ...(String(formData.yearNumber) === String(y) ? s.yearOptionActive : {}),
-                    }}
-                  >
-                    {y}
-                  </button>
-                ))}
-              </div>
+        <div className="registration-academic-grid" style={{ ...s.fieldStack, ...s.stageTwoFieldStart, ...(compactViewport ? s.compactStageTwoFieldStart : {}) }}>
+          <div className="registration-academic-primary-fields">
+            <Field label={t.university} id="university">
+              <TypeaheadSelect
+                name="university"
+                value={formData.university}
+                onChange={handleChange}
+                options={SORTED_UNIVERSITIES}
+                placeholder=""
+                allowCustom
+              />
             </Field>
-          )}
+
+            <Field label={t.studentNumber} id="studentNumber">
+              <input
+                id="studentNumber"
+                name="studentNumber"
+                value={formData.studentNumber}
+                onChange={handleChange}
+                style={s.input}
+              />
+            </Field>
+
+            <div style={s.nameGroupGap} />
+
+            <Field label={t.major} id="major" className="registration-major-field">
+              <TypeaheadSelect
+                name="major"
+                value={formData.major}
+                onChange={handleChange}
+                options={SORTED_MAJORS}
+                placeholder=""
+                allowCustom
+              />
+            </Field>
+          </div>
+
+          <div className="registration-academic-details-fields">
+            <div className="registration-academic-choice-row">
+              <Field label={t.programme} variant="group" className="registration-programme-field" style={s.programmeField}>
+                <div className="registration-programme-grid" style={s.programmeGrid}>
+                  {programmeOptions.map((level) => (
+                    <label
+                      key={level}
+                      style={{
+                        ...s.programmeOption,
+                        ...(formData.educationLevel === level ? s.programmeOptionActive : {}),
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="educationLevel"
+                        value={level}
+                        checked={formData.educationLevel === level}
+                        onChange={handleEducationLevelChange}
+                        style={s.programmeRadio}
+                      />
+                      {t[level]}
+                    </label>
+                  ))}
+                </div>
+              </Field>
+
+              {yearOptions.length > 0 && (
+                <Field label={t.academicYear} variant="group" className="registration-year-field" style={s.yearField}>
+                  <div className="registration-year-grid" style={s.yearGrid}>
+                    {yearOptions.map((y) => (
+                      <button
+                        key={y}
+                        type="button"
+                        onClick={() => handleChange({ target: { name: 'yearNumber', value: String(y) } })}
+                        style={{
+                          ...s.yearOption,
+                          ...(String(formData.yearNumber) === String(y) ? s.yearOptionActive : {}),
+                        }}
+                      >
+                        {y}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div style={getBottomActionStyle(compactViewport)}>
+      <div className="registration-next-action" style={getBottomActionStyle(compactViewport)}>
         <button
+          className="registration-next-button"
           type="button"
           onClick={goNext}
           disabled={!isComplete}
@@ -1547,24 +1630,26 @@ function AccountStep({
     allLegalAccepted;
 
   return (
-    <form onSubmit={handleSubmit} style={s.form}>
-      <div style={{ ...s.formContent, ...s.promptFormContent }}>
-        <h1 style={s.registrationPrompt}>
+    <form className="registration-account-form" onSubmit={handleSubmit} style={s.form}>
+      <div className="registration-account-content" style={{ ...s.formContent, ...s.promptFormContent }}>
+        <h1 className="registration-account-heading" style={s.registrationPrompt}>
           {language === 'ko'
             ? '이메일과 비밀번호를 입력해 주세요'
             : 'Please enter your email and password'}
         </h1>
 
-        <div style={s.accountProfileSlot}>
-          <ProfileHero
-            profileHeroProps={profileHeroProps}
-            firstLine=""
-            secondLine=""
-            allowUpload
-          />
-        </div>
+        <div className="registration-account-grid">
+          <div className="registration-account-left">
+            <div className="registration-account-profile-slot" style={s.accountProfileSlot}>
+              <ProfileHero
+                profileHeroProps={profileHeroProps}
+                firstLine=""
+                secondLine=""
+                allowUpload
+              />
+            </div>
 
-        <div style={{ ...s.fieldStack, ...s.accountFieldStart, ...(compactViewport ? s.compactAccountFieldStart : {}) }}>
+            <div className="registration-account-fields" style={{ ...s.fieldStack, ...s.accountFieldStart, ...(compactViewport ? s.compactAccountFieldStart : {}) }}>
           <Field label={t.email} id="email">
             <input
               id="email"
@@ -1631,38 +1716,42 @@ function AccountStep({
             </Field>
           </Row>
 
-          <div style={s.nameGroupGap} />
-          <LegalAgreementList
-            agreements={legalAgreements}
-            onAgreementChange={onAgreementChange}
-            onOpenDocument={onOpenLegalDocument}
-            language={language}
-          />
-          <label style={{ ...s.legalRow, margin: '0 13px' }}>
-            <input
-              type="checkbox"
-              checked={ageConfirmed}
-              onChange={(event) => onAgeConfirmedChange(event.target.checked)}
-              style={s.legalCheckbox}
-            />
-            <span style={s.legalText}>
-              {language === 'ko'
-                ? '만 16세 이상임을 확인합니다'
-                : 'I confirm that I am at least 16 years old'}
-            </span>
-          </label>
-        </div>
+              {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <p style={{ ...s.helperText, color: 'var(--reg-danger-text)' }}>
+                  {t.passwordMismatch}
+                </p>
+              )}
+            </div>
+          </div>
 
-        {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
-          <p style={{ ...s.helperText, color: 'var(--reg-danger-text)' }}>
-            {t.passwordMismatch}
-          </p>
-        )}
+          <div className="registration-account-consents">
+            <LegalAgreementList
+              agreements={legalAgreements}
+              onAgreementChange={onAgreementChange}
+              onOpenDocument={onOpenLegalDocument}
+              language={language}
+            />
+            <label className="registration-account-age-confirmation" style={s.legalRow}>
+              <input
+                type="checkbox"
+                checked={ageConfirmed}
+                onChange={(event) => onAgeConfirmedChange(event.target.checked)}
+                style={s.legalCheckbox}
+              />
+              <span style={s.legalText}>
+                {language === 'ko'
+                  ? '만 16세 이상임을 확인합니다'
+                  : 'I confirm that I am at least 16 years old'}
+              </span>
+            </label>
+          </div>
+        </div>
 
       </div>
 
-      <div style={getBottomActionStyle(compactViewport)}>
+      <div className="registration-account-submit-action" style={getBottomActionStyle(compactViewport)}>
         <button
+          className="registration-account-submit-button"
           type="submit"
           disabled={loading || !isComplete}
           style={{
@@ -1780,7 +1869,7 @@ function Row({ children, columns }) {
   return <div style={{ ...rowStyle, ...(columns ? { gridTemplateColumns: columns } : {}) }}>{children}</div>;
 }
 
-function Field({ label, children, variant = 'input', style, id }) {
+function Field({ label, children, variant = 'input', style, id, className = '' }) {
   const fieldRef = useRef(null);
   const labelId = `field-label-${label.replace(/\s+/g, '-')}`;
   const handleFieldClick = (event) => {
@@ -1793,7 +1882,7 @@ function Field({ label, children, variant = 'input', style, id }) {
   return (
     <div
       ref={fieldRef}
-      className={variant === 'input' ? 'registration-field' : undefined}
+      className={[variant === 'input' ? 'registration-field' : '', className].filter(Boolean).join(' ') || undefined}
       onClick={handleFieldClick}
       style={{
         ...(variant === 'group' ? groupFieldStyle : fieldStyle),

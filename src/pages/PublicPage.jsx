@@ -156,7 +156,7 @@ export default function PublicPage() {
       </div>
 
       <div
-        className="bg-white flex flex-shrink-0 select-none dark:bg-[#121212]"
+        className="app-landscape-bottom-tabs bg-white flex flex-shrink-0 select-none dark:bg-[#121212]"
         style={{
           paddingBottom: PUBLIC_BOTTOM_TAB_PADDING,
           userSelect: 'none',
@@ -244,7 +244,7 @@ function PublicMapTab({ restaurants, active }) {
   return (
     <div className="h-full flex flex-col no-highlight-zone">
       <div
-        className="bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
+        className="app-landscape-top-tabs bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
         style={{
           paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
           zIndex: 10,
@@ -560,7 +560,7 @@ function MembershipCarousel() {
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
         style={{
-          height: '58%',
+          height: '80%',
           background:
             'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0.84) 58%, #ffffff 100%)',
         }}
@@ -568,30 +568,32 @@ function MembershipCarousel() {
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 z-10 hidden dark:block"
         style={{
-          height: '58%',
+          height: '80%',
           background:
             'linear-gradient(to bottom, rgba(18,18,18,0), rgba(18,18,18,0.84) 58%, #121212 100%)',
         }}
       />
       <div
-        className="pointer-events-none absolute left-0 right-0 px-6 text-left"
+        className="membership-slide-copy pointer-events-none absolute left-0 right-0 px-6 text-left"
         style={{
           bottom: `calc(${BOTTOM_TAB_OFFSET} + clamp(46px, 14.4vw, 62px))`,
           zIndex: 20,
         }}
       >
-        <h2 className="max-w-sm text-[clamp(27px,7.2vw,31px)] font-bold leading-tight text-gray-950 dark:text-white">
-          {slides[realActiveSlide].title}
-        </h2>
-        {slides[realActiveSlide].description && (
-          <p className="mt-2 max-w-sm text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-300">
-            {slides[realActiveSlide].description}
-          </p>
-        )}
+        <div className="membership-slide-copy-inner">
+          <h2 className="max-w-sm text-[clamp(18px,6vw,26px)] font-bold leading-tight text-gray-950 dark:text-white">
+            {slides[realActiveSlide].title}
+          </h2>
+          {slides[realActiveSlide].description && (
+            <p className="membership-slide-description mt-2 max-w-sm text-sm font-medium leading-relaxed text-gray-600 dark:text-gray-300">
+              {slides[realActiveSlide].description}
+            </p>
+          )}
+        </div>
       </div>
 
       <div
-        className="pointer-events-none absolute left-0 right-0 flex justify-center gap-1.5"
+        className="membership-slide-dots pointer-events-none absolute left-0 right-0 flex justify-center gap-1.5"
         style={{
           bottom: `calc(${BOTTOM_TAB_OFFSET} + clamp(18px, 5.6vw, 24px))`,
           zIndex: 25,
@@ -617,7 +619,7 @@ function MembershipCarousel() {
       </div>
 
       <div
-        className="absolute left-0 right-0 px-5"
+        className="membership-slide-login absolute left-0 right-0 px-5"
         style={{
           bottom: `calc(${BOTTOM_TAB_OFFSET} - 42px)`,
           zIndex: 30,

@@ -153,6 +153,82 @@ html:not(.dark) .text-gray-400 {
   display: none;
 }
 
+.zoom-viewport-overlay {
+  position: fixed;
+  z-index: 2147483000;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.zoom-viewport-overlay.is-visible {
+  opacity: 1;
+}
+
+.zoom-viewport-minimap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  backface-visibility: hidden;
+  will-change: transform;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(17, 17, 17, 0.9);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
+}
+
+.zoom-viewport-minimap-screen {
+  position: relative;
+  width: 100%;
+  height: calc(100% - 14px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.zoom-viewport-minimap-window {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid #ffb81c;
+  border-radius: 2px;
+  background: rgba(255, 184, 28, 0.08);
+}
+
+.zoom-viewport-minimap-scale {
+  display: block;
+  height: 12px;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+}
+
+.dark .zoom-viewport-minimap {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.dark .zoom-viewport-minimap-screen {
+  border-color: rgba(17, 17, 17, 0.8);
+  background: rgba(17, 17, 17, 0.12);
+}
+
+.dark .zoom-viewport-minimap-scale {
+  color: #111;
+}
+
+@media (orientation: landscape) {
+  .zoom-viewport-minimap-screen {
+    box-sizing: border-box;
+  }
+}
+
 .scrollbar-hidden {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -160,6 +236,831 @@ html:not(.dark) .text-gray-400 {
 
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
+}
+
+.registration-name-fields,
+.registration-demographic-fields,
+.registration-academic-primary-fields,
+.registration-academic-details-fields,
+.registration-academic-choice-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.registration-demographic-fields {
+  margin-top: 4px;
+  gap: 12px;
+}
+
+.registration-academic-details-fields {
+  margin-top: 4px;
+  gap: 8px;
+}
+
+.registration-typeahead-list > div {
+  box-sizing: border-box;
+  min-height: 28px;
+  height: 28px;
+  padding: 6px 10px !important;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  :root {
+    --landscape-content-gutter: clamp(40px, 6vw, 56px);
+    --landscape-login-center-inset: clamp(25px, calc(110px - 11vw), 55px);
+    --landscape-login-panel-width: min(
+      24rem,
+      calc(50vw - var(--landscape-content-gutter) - var(--landscape-content-gutter))
+    );
+  }
+
+  .member-top-bar {
+    min-height: calc(env(safe-area-inset-top, 0px) + 48px) !important;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 2px) !important;
+  }
+
+  .app-landscape-top-action,
+  .app-landscape-top-actions {
+    top: calc(env(safe-area-inset-top, 0px) + 2px) !important;
+  }
+
+  .app-landscape-top-tabs {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 6px) !important;
+    padding-bottom: 6px !important;
+  }
+
+  .app-landscape-bottom-tabs {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px) !important;
+  }
+
+  .app-landscape-bottom-tabs > button {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+
+  .spot-card-sheet {
+    left: env(safe-area-inset-left, 0px) !important;
+    right: auto !important;
+    width: calc(50% - env(safe-area-inset-left, 0px)) !important;
+  }
+
+  .spot-card-landscape-expanded-content {
+    display: flex !important;
+    min-height: 0 !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .spot-card-landscape-expanded-content .spot-card-place-info {
+    max-height: 600px;
+    flex-shrink: 0;
+    opacity: 1;
+    overflow: hidden;
+    transition:
+      max-height 320ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 260ms ease,
+      padding 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .spot-card-landscape-expanded-content .spot-card-landscape-place-info-hidden {
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .spot-card-landscape-expanded-grid {
+    display: grid;
+    min-height: 0;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .spot-card-landscape-review-box {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 100% !important;
+    margin: 0 !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-review-guide {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-usullang .spot-card-compact-stars {
+    gap: clamp(4px, 1.5dvh, 7px) !important;
+    margin-bottom: clamp(6px, 2dvh, 10px) !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-usullang .spot-card-compact-stars svg {
+    width: clamp(36px, 14dvh, 68px) !important;
+    height: clamp(36px, 14dvh, 68px) !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-speech-bubble {
+    width: min(92%, clamp(200px, 80dvh, 360px));
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-speech-overlay {
+    padding-left: clamp(14px, 3vw, 26px) !important;
+    padding-right: clamp(14px, 3vw, 26px) !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-speech-text {
+    font-size: clamp(9px, 3.5dvh, 14px) !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-review-guide-content {
+    margin-bottom: 0 !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-content {
+    padding-top: clamp(6px, 2dvh, 10px) !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-heading {
+    margin-bottom: 6px !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-rows {
+    gap: clamp(4px, 1.5dvh, 7px) !important;
+    padding-left: 12px !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-row {
+    gap: 6px !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-row > div:nth-child(2) {
+    height: clamp(4px, 1.5dvh, 7px) !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-landscape-member-evaluation {
+    margin-top: auto;
+  }
+
+  .spot-card-google-maps-button {
+    left: 50% !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    justify-content: center !important;
+  }
+
+  .spot-card-google-maps-button a {
+    width: 180px;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .membership-slide-copy {
+    left: 0 !important;
+    right: 50% !important;
+    bottom: 48px !important;
+    display: flex;
+    justify-content: center;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .membership-slide-copy-inner {
+    width: calc(100% - var(--landscape-content-gutter) - var(--landscape-content-gutter));
+    max-width: 360px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+  }
+
+  .membership-slide-copy-inner > h2 {
+    position: relative;
+    top: 4px;
+  }
+
+  .membership-slide-description {
+    position: relative;
+    top: 4px;
+  }
+
+  .membership-slide-dots {
+    left: max(var(--landscape-content-gutter), calc(25vw - 180px)) !important;
+    right: auto !important;
+    bottom: 18px !important;
+    justify-content: flex-start !important;
+    width: max-content !important;
+  }
+
+  .membership-slide-login {
+    position: fixed !important;
+    left: 50% !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    display: flex !important;
+    width: auto !important;
+    justify-content: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .membership-slide-login > button {
+    width: 180px !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+  }
+
+  .login-page.login-landscape-credentials {
+    padding-left: var(--landscape-content-gutter) !important;
+    padding-right: var(--landscape-content-gutter) !important;
+  }
+
+  .login-landscape-credentials .login-content-shell {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 100dvh !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 12px 0 20px !important;
+    justify-content: flex-start !important;
+  }
+
+  .login-landscape-credentials .login-content-panel {
+    width: var(--landscape-login-panel-width) !important;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    transform: none !important;
+  }
+
+  .login-landscape-credentials .login-brand {
+    position: fixed !important;
+    left: 50% !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 36px) !important;
+    z-index: 20 !important;
+    display: flex !important;
+    width: auto !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    transform: translateY(12px) !important;
+  }
+
+  .login-landscape-credentials .login-brand-logo {
+    width: 100% !important;
+    justify-content: center !important;
+    margin-bottom: 4px !important;
+  }
+
+  .login-landscape-credentials .login-brand-logo img {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  .login-landscape-credentials .login-brand-copy {
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
+  }
+
+  .login-landscape-credentials .login-brand-copy p {
+    white-space: nowrap !important;
+  }
+
+  .login-landscape-credentials .login-forgot-password {
+    justify-content: flex-end !important;
+  }
+
+  .login-landscape-credentials .login-credentials-submit {
+    position: fixed !important;
+    left: 50% !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    z-index: 30 !important;
+    display: block !important;
+    width: 180px !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+  }
+
+  .login-landscape-credentials .login-signup-prompt {
+    position: fixed !important;
+    left: var(--landscape-content-gutter) !important;
+    right: calc(50% + var(--landscape-content-gutter)) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    z-index: 30 !important;
+    display: flex !important;
+    height: 36px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .registration-about-step .registration-step,
+  .registration-academic-step .registration-step,
+  .registration-account-step .registration-step {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .registration-about-step,
+  .registration-academic-step,
+  .registration-account-step {
+    --registration-landscape-column-width: min(
+      360px,
+      calc(50vw - var(--landscape-content-gutter) - var(--landscape-content-gutter))
+    );
+    --registration-landscape-column-left: max(
+      var(--landscape-content-gutter),
+      calc(25vw - 180px)
+    );
+  }
+
+  .registration-about-step .registration-name-step-form,
+  .registration-academic-step .registration-academic-step-form,
+  .registration-account-step .registration-account-form {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .registration-about-step .registration-name-step-heading,
+  .registration-academic-step .registration-academic-step-heading {
+    position: fixed !important;
+    z-index: 110 !important;
+    top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+    left: 50% !important;
+    width: calc(100vw - 160px) !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    overflow: hidden !important;
+    text-align: center !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: clamp(14px, 2.3vw, 18px) !important;
+    line-height: 36px !important;
+  }
+
+  .registration-about-step .registration-name-grid {
+    top: 48px !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    column-gap: clamp(16px, 4vw, 48px) !important;
+    row-gap: 0 !important;
+  }
+
+  .registration-about-step .registration-name-fields,
+  .registration-about-step .registration-demographic-fields {
+    width: min(100%, 360px) !important;
+    margin: 0 auto !important;
+    gap: 6px !important;
+  }
+
+  .registration-about-step .registration-name-fields {
+    width: var(--registration-landscape-column-width) !important;
+    margin-left: var(--registration-landscape-column-left) !important;
+    margin-right: 0 !important;
+  }
+
+  .registration-about-step .registration-demographic-fields {
+    width: var(--registration-landscape-column-width) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .registration-about-step .registration-name-fields .registration-field,
+  .registration-about-step .registration-demographic-fields .registration-field {
+    height: 42px !important;
+    min-height: 42px !important;
+    gap: 2px !important;
+    padding: 4px 10px !important;
+  }
+
+  .registration-about-step .registration-name-fields .registration-field label,
+  .registration-about-step .registration-demographic-fields .registration-field label {
+    font-size: 12px !important;
+    line-height: 12px !important;
+  }
+
+  .registration-about-step .registration-name-fields .registration-field input,
+  .registration-about-step .registration-demographic-fields .registration-field input,
+  .registration-about-step .registration-demographic-fields .registration-field select {
+    min-height: 18px !important;
+    font-size: 14px !important;
+    line-height: 18px !important;
+  }
+
+  .registration-about-step .registration-name-grid > .registration-demographic-fields {
+    margin-top: 0 !important;
+  }
+
+  .registration-about-step .registration-demographic-fields > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .registration-academic-step .registration-academic-grid {
+    top: 56px !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    column-gap: clamp(16px, 4vw, 48px) !important;
+    row-gap: 0 !important;
+  }
+
+  .registration-account-step .registration-account-heading {
+    position: fixed !important;
+    z-index: 110 !important;
+    top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+    left: 50% !important;
+    width: calc(100vw - 160px) !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    text-align: center !important;
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+  }
+
+  .registration-account-step .registration-account-grid {
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top, 0px) + 44px) !important;
+    right: 0 !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 100px) !important;
+    left: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    column-gap: clamp(16px, 4vw, 48px) !important;
+    align-items: start !important;
+    overflow-y: auto !important;
+    padding-bottom: 4px !important;
+    box-sizing: border-box !important;
+  }
+
+  .registration-account-step .registration-account-left,
+  .registration-account-step .registration-account-consents {
+    width: var(--registration-landscape-column-width) !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+  }
+
+  .registration-account-step .registration-account-left {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .registration-account-step .registration-account-profile-slot {
+    position: static !important;
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 62px !important;
+    min-height: 62px !important;
+  }
+
+  .registration-account-step .registration-account-profile-slot > div {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 62px !important;
+    min-height: 62px !important;
+  }
+
+  .registration-account-step .registration-account-profile-slot button {
+    width: 62px !important;
+    height: 62px !important;
+  }
+
+  .registration-account-step .registration-account-profile-slot button > div:first-child {
+    width: 58px !important;
+    height: 58px !important;
+  }
+
+  .registration-account-step .registration-account-profile-slot button > span {
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .registration-account-step .registration-account-fields {
+    position: static !important;
+    width: 100% !important;
+    gap: 6px !important;
+    margin: 0 !important;
+  }
+
+  .registration-account-step .registration-account-fields .registration-field {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    gap: 2px !important;
+    padding: 4px 10px !important;
+    box-sizing: border-box !important;
+  }
+
+  .registration-account-step .registration-account-fields .registration-field label {
+    font-size: 12px !important;
+    line-height: 12px !important;
+  }
+
+  .registration-account-step .registration-account-fields input {
+    min-height: 18px !important;
+    font-size: 14px !important;
+    line-height: 18px !important;
+  }
+
+  .registration-account-step .registration-account-fields > div[style*="grid"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .registration-account-step .registration-account-consents {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .registration-account-step .registration-account-consents > div {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 5px !important;
+    padding: 7px 9px !important;
+  }
+
+  .registration-account-step .registration-account-consents .registration-account-age-confirmation {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    min-height: 38px !important;
+    margin: 0 !important;
+    padding: 6px 9px !important;
+    border: 1px solid var(--reg-border) !important;
+    border-radius: 8px !important;
+    background: var(--reg-field-bg) !important;
+    grid-template-columns: 18px 1fr !important;
+    font-size: 11px !important;
+  }
+
+  .registration-account-step .registration-account-submit-action {
+    position: fixed !important;
+    left: 50% !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    z-index: 30 !important;
+    display: flex !important;
+    width: auto !important;
+    max-width: none !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .registration-account-step .registration-account-submit-button {
+    width: 180px !important;
+    max-width: none !important;
+    height: 36px !important;
+    flex: none !important;
+    margin: 0 !important;
+    padding: 10px 0 !important;
+    border-radius: 9999px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+  }
+
+  .registration-academic-step .registration-academic-primary-fields,
+  .registration-academic-step .registration-academic-details-fields {
+    width: var(--registration-landscape-column-width) !important;
+    margin-top: 0 !important;
+    gap: 6px !important;
+  }
+
+  .registration-academic-step .registration-academic-primary-fields {
+    margin-left: var(--registration-landscape-column-left) !important;
+    margin-right: 0 !important;
+  }
+
+  .registration-academic-step .registration-academic-details-fields {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .registration-academic-step .registration-academic-primary-fields .registration-field,
+  .registration-academic-step .registration-academic-details-fields .registration-field {
+    height: 42px !important;
+    min-height: 42px !important;
+    gap: 2px !important;
+    padding: 4px 10px !important;
+  }
+
+  .registration-academic-step .registration-academic-primary-fields .registration-field label,
+  .registration-academic-step .registration-academic-details-fields .registration-field label {
+    font-size: 12px !important;
+    line-height: 12px !important;
+  }
+
+  .registration-academic-step .registration-academic-primary-fields .registration-field input,
+  .registration-academic-step .registration-academic-details-fields .registration-field input {
+    min-height: 18px !important;
+    font-size: 14px !important;
+    line-height: 18px !important;
+  }
+
+  .registration-academic-step .registration-academic-choice-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  .registration-academic-step .registration-programme-field,
+  .registration-academic-step .registration-year-field {
+    width: 100% !important;
+    gap: 2px !important;
+    padding: 5px 8px !important;
+  }
+
+  .registration-academic-step .registration-programme-field {
+    height: 90px !important;
+    min-height: 90px !important;
+    box-sizing: border-box !important;
+    justify-content: flex-start !important;
+    transform: translateX(clamp(-10px, -1vw, -6px)) !important;
+  }
+
+  .registration-academic-step .registration-programme-field > div:first-child,
+  .registration-academic-step .registration-year-field > div:first-child {
+    font-size: 12px !important;
+    line-height: 12px !important;
+  }
+
+  .registration-academic-step .registration-programme-field .registration-programme-grid,
+  .registration-academic-step .registration-year-field .registration-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    margin-top: 0 !important;
+  }
+
+  .registration-academic-step .registration-programme-field .registration-programme-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    grid-auto-rows: minmax(0, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  .registration-academic-step .registration-year-field .registration-year-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin: 0 !important;
+  }
+
+  .registration-academic-step .registration-year-field {
+    position: fixed !important;
+    top: auto !important;
+    left: calc(50vw + var(--registration-landscape-column-left)) !important;
+    right: auto !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 48px) !important;
+    width: var(--registration-landscape-column-width) !important;
+    margin: 0 !important;
+    z-index: 25 !important;
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+    gap: 3px !important;
+  }
+
+  .registration-academic-step .registration-major-field {
+    position: fixed !important;
+    top: auto !important;
+    left: var(--registration-landscape-column-left) !important;
+    right: auto !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 48px) !important;
+    width: var(--registration-landscape-column-width) !important;
+    margin: 0 !important;
+    z-index: 25 !important;
+  }
+
+  .registration-academic-step .registration-major-field:focus-within {
+    position: fixed !important;
+    z-index: 60 !important;
+  }
+
+  .registration-academic-step .registration-year-field > div:first-child {
+    align-self: flex-start !important;
+    line-height: 12px !important;
+  }
+
+  .registration-academic-step .registration-programme-field label {
+    height: 100% !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+
+  .registration-academic-step .registration-year-field button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 24px !important;
+    padding: 0 2px !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+  }
+
+  .registration-about-step .registration-korean-name-fields {
+    position: fixed !important;
+    left: var(--registration-landscape-column-left) !important;
+    right: auto !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    z-index: 25 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    width: var(--registration-landscape-column-width) !important;
+    margin: 0 !important;
+  }
+
+  .registration-about-step .registration-nationality-field:focus-within {
+    position: relative !important;
+    z-index: 60 !important;
+  }
+
+  .registration-about-step .registration-typeahead-list {
+    z-index: 61 !important;
+    pointer-events: auto !important;
+  }
+
+  .registration-academic-step .registration-academic-grid .registration-field:focus-within {
+    position: relative !important;
+    z-index: 60 !important;
+  }
+
+  .registration-academic-step .registration-typeahead-list {
+    z-index: 61 !important;
+    pointer-events: auto !important;
+  }
+
+  .registration-about-step .registration-next-action,
+  .registration-academic-step .registration-next-action {
+    position: fixed !important;
+    left: 50% !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    z-index: 30 !important;
+    display: flex !important;
+    width: auto !important;
+    max-width: none !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .registration-about-step .registration-next-button,
+  .registration-academic-step .registration-next-button {
+    width: 180px !important;
+    max-width: none !important;
+    height: 36px !important;
+    flex: none !important;
+    margin: 0 !important;
+    padding: 10px 0 !important;
+    border-radius: 9999px !important;
+    background: #f97316 !important;
+    color: #fff !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+  }
 }
 
 .event-participation-float {
