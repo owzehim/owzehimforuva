@@ -1962,8 +1962,6 @@ function NavBtn({ onClick, children, style = {} }) {
 function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const [index, setIndex] = useState(startIndex)
   const [visible, setVisible] = useState(false)
-  const [zoomScale, setZoomScale] = useState(1)
-  const [isPinching, setIsPinching] = useState(false)
   const [imageRatios, setImageRatios] = useState({})
   const [lightboxBounds, setLightboxBounds] = useState(() => ({
     width: typeof window === 'undefined' ? 360 : window.innerWidth * 0.9,
@@ -1971,7 +1969,6 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   }))
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
-  const pinchGestureRef = useRef(null)
   const dialogRef = useRef(null)
 
   const activeImageRatio = imageRatios[index] || 1
@@ -1988,9 +1985,6 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const goToIndex = (nextIndex) => {
     const clampedIndex = Math.max(0, Math.min(nextIndex, imgs.length - 1))
     if (clampedIndex === index) return
-    pinchGestureRef.current = null
-    setZoomScale(1)
-    setIsPinching(false)
     setIndex(clampedIndex)
     onIndexChange?.(clampedIndex)
   }
@@ -2034,66 +2028,11 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const handleDialogKeyDown = useModalFocus(dialogRef, handleClose)
 
   const handleTouchStart = (e) => {
-    if (e.touches.length > 1) {
-      const activePhoto = e.target instanceof Element
-        ? e.target.closest('[data-lightbox-active-photo="true"]')
-        : null
-      if (e.touches.length === 2 && activePhoto) {
-        const [first, second] = e.touches
-        pinchGestureRef.current = {
-          startDistance: Math.hypot(
-            second.clientX - first.clientX,
-            second.clientY - first.clientY,
-          ),
-        }
-        touchStartX.current = null
-        touchStartY.current = null
-        setZoomScale(1)
-        setIsPinching(true)
-      } else {
-        pinchGestureRef.current = null
-        touchStartX.current = null
-        touchStartY.current = null
-      }
-      return
-    }
-
-    if (pinchGestureRef.current || e.touches.length !== 1) return
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }
 
-  const handleTouchMove = (e) => {
-    const pinchGesture = pinchGestureRef.current
-    if (!pinchGesture || e.touches.length !== 2 || pinchGesture.startDistance <= 0) return
-
-    e.preventDefault()
-    const [first, second] = e.touches
-    const distance = Math.hypot(
-      second.clientX - first.clientX,
-      second.clientY - first.clientY,
-    )
-    const nextScale = Math.min(3, Math.max(1, distance / pinchGesture.startDistance))
-    setZoomScale(nextScale)
-  }
-
   const handleTouchEnd = (e) => {
-    if (pinchGestureRef.current) {
-      if (e.touches.length < 2) {
-        pinchGestureRef.current = null
-        setZoomScale(1)
-        setIsPinching(false)
-      }
-      touchStartX.current = null
-      touchStartY.current = null
-      return
-    }
-
-    if (e.touches.length > 0) {
-      touchStartX.current = null
-      touchStartY.current = null
-      return
-    }
     if (touchStartX.current == null || touchStartY.current == null) return
 
     const dx = e.changedTouches[0].clientX - touchStartX.current
@@ -2154,9 +2093,7 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
         className="no-highlight-zone"
         onClick={handleClose}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
         style={{
           position: 'fixed',
           inset: 0,
@@ -2231,7 +2168,6 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
                     fetchPriority={imgIndex === index ? 'high' : 'auto'}
                     loading={Math.abs(imgIndex - index) <= 1 ? 'eager' : 'lazy'}
                     alt={`사진 ${imgIndex + 1}`}
-                    data-lightbox-active-photo={imgIndex === index ? 'true' : undefined}
                     onLoad={(event) => {
                       const ratio = event.currentTarget.naturalWidth / event.currentTarget.naturalHeight
                       if (!Number.isFinite(ratio) || ratio <= 0) return
@@ -2247,9 +2183,6 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
                       objectFit: 'contain',
                       borderRadius: 12,
                       boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
-                      transform: `scale(${imgIndex === index ? zoomScale : 1})`,
-                      transformOrigin: 'center center',
-                      transition: isPinching ? 'none' : 'transform 160ms ease-out',
                       userSelect: 'none',
                       WebkitUserSelect: 'none',
                     }}
@@ -2407,6 +2340,8 @@ function EventsTab({ events }) {
   const [eventListClosing, setEventListClosing] = useState(false)
   const [eventListNewestFirst, setEventListNewestFirst] = useState(true)
   const [eventCardOpen, setEventCardOpen] = useState(false)
+  const [eventPhotoZoomScale, setEventPhotoZoomScale] = useState(1)
+  const [eventPhotoIsPinching, setEventPhotoIsPinching] = useState(false)
   const [eventCardClosing, setEventCardClosing] = useState(false)
   const [eventSwipeDirection, setEventSwipeDirection] = useState(0)
   const [loadedEventPreviewImages, setLoadedEventPreviewImages] = useState({})
@@ -2414,10 +2349,6 @@ function EventsTab({ events }) {
   const [darkMode, setDarkMode] = useState(() =>
     typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
   )
-
-  // SpotCard-style Lightbox index
-  const [lightboxIndex, setLightboxIndex] = useState(null)
-  const [lightboxImages, setLightboxImages] = useState([])
 
   const [imageAspectRatios, setImageAspectRatios] = useState({})
   const [calMonth, setCalMonth] = useState(() => {
@@ -2435,6 +2366,7 @@ function EventsTab({ events }) {
   const eventPreviewRef = useRef(null)
   const eventPreviewTouchStartX = useRef(null)
   const eventPreviewTouchStartY = useRef(null)
+  const eventPinchStartDistance = useRef(null)
   const eventPreviewGestureAxis = useRef(null)
   const eventCardGestureAxis = useRef(null)
   const eventImageBoxRatioRef = useRef(1)
@@ -2476,11 +2408,15 @@ function EventsTab({ events }) {
     setCalMonth(new Date(d.getFullYear(), d.getMonth(), 1))
   }, [selectedEvent])
 
-  const setSlide = (id, idx) =>
+  const setSlide = (id, idx) => {
+    setEventPhotoZoomScale(1)
+    setEventPhotoIsPinching(false)
+    eventPinchStartDistance.current = null
     setSlideIndexes((p) => ({
       ...p,
       [id]: idx,
     }))
+  }
 
   const markEventPreviewImageLoaded = (url) => {
     setLoadedEventPreviewImages((prev) => ({
@@ -2546,6 +2482,10 @@ function EventsTab({ events }) {
 
   const closeEventCard = (eventId = selectedEventRef.current?.id) => {
     const shouldFadeToFirst = eventId && (slideIndexes[eventId] || 0) !== 0
+
+    eventPinchStartDistance.current = null
+    setEventPhotoZoomScale(1)
+    setEventPhotoIsPinching(false)
 
     if (eventId && imageAspectRatiosRef.current[eventId]?.[0]) {
       eventImageBoxRatioRef.current = imageAspectRatiosRef.current[eventId][0]
@@ -2718,19 +2658,28 @@ function EventsTab({ events }) {
     finalizeDrag()
   }
 
-  // Helper to open lightbox at specific index
-  const openLightboxAt = (imgs, index) => {
-    setLightboxImages(imgs)
-    setLightboxIndex(index)
-  }
-
   useEffect(() => {
     const previewElement = eventPreviewRef.current
     if (!previewElement) return undefined
 
     const preventVerticalScrollDuringHorizontalSwipe = (event) => {
+      if (!eventCardOpen) return
+
+      if (event.touches.length === 2 && eventPinchStartDistance.current) {
+        event.preventDefault()
+        event.stopPropagation()
+        const [first, second] = event.touches
+        const distance = Math.hypot(
+          second.clientX - first.clientX,
+          second.clientY - first.clientY,
+        )
+        setEventPhotoZoomScale(
+          Math.min(3, Math.max(1, distance / eventPinchStartDistance.current)),
+        )
+        return
+      }
+
       if (
-        !eventCardOpen ||
         event.touches.length !== 1 ||
         eventPreviewTouchStartX.current == null ||
         eventPreviewTouchStartY.current == null
@@ -2765,6 +2714,22 @@ function EventsTab({ events }) {
 
   const handleEventPreviewTouchStart = (e) => {
     if (!eventCardOpen) return
+    if (e.touches.length === 2) {
+      const [first, second] = e.touches
+      eventPinchStartDistance.current = Math.hypot(
+        second.clientX - first.clientX,
+        second.clientY - first.clientY,
+      )
+      eventPreviewTouchStartX.current = null
+      eventPreviewTouchStartY.current = null
+      eventPreviewGestureAxis.current = 'pinch'
+      eventCardGestureAxis.current = 'pinch'
+      setEventPhotoZoomScale(1)
+      setEventPhotoIsPinching(true)
+      e.stopPropagation()
+      return
+    }
+    if (e.touches.length !== 1) return
     eventPreviewTouchStartX.current = e.touches[0].clientX
     eventPreviewTouchStartY.current = e.touches[0].clientY
     eventPreviewGestureAxis.current = null
@@ -2773,6 +2738,19 @@ function EventsTab({ events }) {
 
   const handleEventPreviewTouchEnd = (e) => {
     if (!eventCardOpen) return
+    if (eventPinchStartDistance.current) {
+      if (e.touches.length < 2) {
+        eventPinchStartDistance.current = null
+        eventPreviewTouchStartX.current = null
+        eventPreviewTouchStartY.current = null
+        eventPreviewGestureAxis.current = null
+        eventCardGestureAxis.current = null
+        setEventPhotoZoomScale(1)
+        setEventPhotoIsPinching(false)
+      }
+      e.stopPropagation()
+      return
+    }
     if (eventPreviewTouchStartX.current == null || eventPreviewTouchStartY.current == null) return
     if (!displayEvent) return
 
@@ -3005,7 +2983,6 @@ function EventsTab({ events }) {
     setPreviewEvent(ev)
     closeEventCard(ev.id)
     setExpandedId(null)
-    setLightboxIndex(null)
     setIsDragging(false)
     setIsTouching(false)
     setEventListClosing(true)
@@ -3257,8 +3234,7 @@ function EventsTab({ events }) {
                               height: '100%',
                               objectFit: 'contain',
                             }}
-                            draggable={false}
-                            onClick={() => openLightboxAt(imgs, i)}
+                                draggable={false}
                           />
                         </div>
                       ))}
@@ -3445,13 +3421,6 @@ const effectiveDateColor = isDragging
           50% { opacity: 0.88; }
         }
       `}</style>
-      {lightboxIndex !== null && (
-        <EventLightbox
-          imgs={lightboxImages}
-          startIndex={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-        />
-      )}
       <div
         className="relative h-full overflow-hidden bg-white text-gray-950 no-highlight-zone dark:bg-[#121212] dark:text-white"
         onTouchStart={handleFrameworkTouchStart}
@@ -3774,6 +3743,7 @@ const effectiveDateColor = isDragging
                         ref={eventPreviewRef}
                         onTouchStart={handleEventPreviewTouchStart}
                         onTouchEnd={handleEventPreviewTouchEnd}
+                        onTouchCancel={handleEventPreviewTouchEnd}
                         style={{
                           position: 'relative',
                           height: '100%',
@@ -3860,9 +3830,15 @@ const effectiveDateColor = isDragging
                                   objectFit: 'cover',
                                   display: 'block',
                                   opacity: loadedEventPreviewImages[url] ? 1 : 0,
-                                  transition: 'opacity 0.28s ease',
+                                  transform: index === displayImageSlide
+                                    ? `scale(${eventPhotoZoomScale})`
+                                    : 'scale(1)',
+                                  transformOrigin: 'center center',
+                                  transition: eventPhotoIsPinching
+                                    ? 'opacity 0.28s ease'
+                                    : 'opacity 0.28s ease, transform 160ms ease-out',
                                 }}
-                                draggable={false}
+                            draggable={false}
                               />
                             </div>
                           ))}
