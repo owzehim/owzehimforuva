@@ -154,23 +154,29 @@ html:not(.dark) .text-gray-400 {
   display: none;
 }
 
-.zoom-viewport-minimap {
+.zoom-viewport-overlay {
   position: fixed;
   z-index: 2147483000;
-  box-sizing: content-box;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: top left;
+  transition: opacity 180ms ease;
+  will-change: transform;
+}
+
+.zoom-viewport-overlay.is-visible {
+  opacity: 1;
+}
+
+.zoom-viewport-minimap {
+  position: absolute;
   padding: 6px;
   border-radius: 10px;
   background: rgba(17, 17, 17, 0.9);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(var(--inverse-zoom));
-  transform-origin: top left;
-  transition: opacity 180ms ease;
-}
-
-.zoom-viewport-minimap.is-visible {
-  opacity: 1;
 }
 
 .zoom-viewport-minimap-screen {

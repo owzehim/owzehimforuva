@@ -95,28 +95,32 @@ export default function ZoomViewportMinimap() {
   const visibleHeight = Math.max(4, Math.min(100, viewport.visibleHeight / viewport.layoutHeight * 100))
   const left = Math.max(0, Math.min(100 - visibleWidth, viewport.offsetLeft / viewport.layoutWidth * 100))
   const top = Math.max(0, Math.min(100 - visibleHeight, viewport.offsetTop / viewport.layoutHeight * 100))
-  const screenLeft = viewport.offsetLeft + (viewport.safeLeft + 10) * scaleCompensation
-  const screenTop = viewport.offsetTop + (viewport.safeTop + 10) * scaleCompensation
 
   return createPortal((
     <div
-      className={`zoom-viewport-minimap${visible ? ' is-visible' : ''}`}
+      className={`zoom-viewport-overlay${visible ? ' is-visible' : ''}`}
       aria-hidden="true"
       style={{
-        left: screenLeft,
-        top: screenTop,
-        width: mapWidth,
-        height: mapHeight,
-        '--inverse-zoom': scaleCompensation,
+        transform: `translate(${viewport.offsetLeft}px, ${viewport.offsetTop}px) scale(${scaleCompensation})`,
       }}
     >
-      <div className="zoom-viewport-minimap-screen">
-        <div
-          className="zoom-viewport-minimap-window"
-          style={{ left: `${left}%`, top: `${top}%`, width: `${visibleWidth}%`, height: `${visibleHeight}%` }}
-        />
+      <div
+        className="zoom-viewport-minimap"
+        style={{
+          left: viewport.safeLeft + 10,
+          top: viewport.safeTop + 10,
+          width: mapWidth,
+          height: mapHeight,
+        }}
+      >
+        <div className="zoom-viewport-minimap-screen">
+          <div
+            className="zoom-viewport-minimap-window"
+            style={{ left: `${left}%`, top: `${top}%`, width: `${visibleWidth}%`, height: `${visibleHeight}%` }}
+          />
+        </div>
+        <span className="zoom-viewport-minimap-scale">{viewport.scale.toFixed(1)}×</span>
       </div>
-      <span className="zoom-viewport-minimap-scale">{viewport.scale.toFixed(1)}×</span>
     </div>
   ), document.body)
 }
