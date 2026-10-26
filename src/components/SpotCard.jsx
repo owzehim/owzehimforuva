@@ -901,11 +901,20 @@ export function SpotCard({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onWheel={(e) => {
+          if (Math.abs(e.deltaY) < 12) return
+
           if (spotCardHeightMode !== 'full') {
-            if (e.deltaY < 0) triggerClose()
+            if (e.deltaY < 0) {
+              e.preventDefault()
+              triggerClose()
+            }
           } else {
-            if (e.deltaY > 0) snapTo(MAX_HEIGHT)
+            if (e.deltaY > 0) {
+              e.preventDefault()
+              snapTo(MAX_HEIGHT)
+            }
             else if (e.deltaY < 0) {
+              e.preventDefault()
               if (cardHeight >= MAX_HEIGHT * 0.85) snapTo(MIN_HEIGHT)
               else triggerClose()
             }

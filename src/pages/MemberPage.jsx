@@ -2983,6 +2983,22 @@ function EventsTab({ events }) {
     }
   }
 
+  const handleEventCardWheel = (e) => {
+    if (!displayEvent || Math.abs(e.deltaY) < 12) return
+
+    if (!eventCardOpen && e.deltaY > 0) {
+      e.preventDefault()
+      setEventCardOpen(true)
+      return
+    }
+
+    const scrollTop = eventCardScrollRef.current?.scrollTop || 0
+    if (e.deltaY < 0 && (!eventCardOpen || scrollTop <= 0)) {
+      e.preventDefault()
+      closeEventCard()
+    }
+  }
+
   const getListDateParts = (ev) => {
     const date = getPrimaryEventDateTime(ev)
     if (!date) {
@@ -3580,6 +3596,7 @@ const effectiveDateColor = isDragging
               onTouchStart={handleEventCardTouchStart}
               onTouchMove={handleEventCardTouchMove}
               onTouchEnd={handleEventCardTouchEnd}
+              onWheel={handleEventCardWheel}
               style={{
                 bottom: 0,
                 height: '100%',
