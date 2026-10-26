@@ -515,8 +515,6 @@ export function SpotCard({
   const startHeightRef = useRef(0)
   const lastYRef = useRef(0)
   const cardRef = useRef(null)
-  const contentScrollRef = useRef(null)
-  const touchStartContentScrollTopRef = useRef(null)
   const previousSpotRef = useRef(null)
   const reviewBoxTouchStartRef = useRef(null)
 
@@ -667,50 +665,24 @@ export function SpotCard({
     startHeightRef.current = spotCardHeightMode === 'full'
       ? cardHeight
       : cardRef.current?.offsetHeight || MIN_HEIGHT
-    const contentScroll = contentScrollRef.current
-    const startedInsideContent = contentScroll?.contains(e.target)
-    touchStartContentScrollTopRef.current = startedInsideContent
-      ? contentScroll.scrollTop
-      : null
-    setIsDragging(!(isMax && startedInsideContent))
+    setIsDragging(true)
   }
 
   const handleTouchMove = (e) => {
+    if (!isDragging) return
+
     lastYRef.current = e.touches[0].clientY
     const delta = startYRef.current - e.touches[0].clientY
-
-    const contentScroll = contentScrollRef.current
-    if (isMax && contentScroll?.contains(e.target)) {
-      const canScrollInGestureDirection = delta > 0
-        ? contentScroll.scrollTop + contentScroll.clientHeight < contentScroll.scrollHeight - 1
-        : contentScroll.scrollTop > 0
-
-      if (canScrollInGestureDirection) {
-        setIsDragging(false)
-        return
-      }
-    }
 
     // Prevent scroll when clearly vertical swipe (like membership card)
     if (Math.abs(delta) > 10) {
       e.preventDefault()
     }
-    setIsDragging(true)
     // Snapping happens in handleTouchEnd.
   }
 
   const handleTouchEnd = () => {
     setIsDragging(false)
-
-    const contentScrollTopAtStart = touchStartContentScrollTopRef.current
-    touchStartContentScrollTopRef.current = null
-    if (
-      contentScrollTopAtStart != null &&
-      contentScrollRef.current &&
-      Math.abs(contentScrollRef.current.scrollTop - contentScrollTopAtStart) > 1
-    ) {
-      return
-    }
 
     const delta = startYRef.current - lastYRef.current
     const startH = startHeightRef.current
@@ -924,28 +896,11 @@ export function SpotCard({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onWheel={(e) => {
-          if (Math.abs(e.deltaY) < 12) return
-
-          const contentScroll = contentScrollRef.current
-          const canContentScrollInWheelDirection = contentScroll?.contains(e.target) && (
-            e.deltaY > 0
-              ? contentScroll.scrollTop + contentScroll.clientHeight < contentScroll.scrollHeight - 1
-              : contentScroll.scrollTop > 0
-          )
-          if (isMax && canContentScrollInWheelDirection) return
-
           if (spotCardHeightMode !== 'full') {
-            if (e.deltaY < 0) {
-              e.preventDefault()
-              triggerClose()
-            }
+            if (e.deltaY < 0) triggerClose()
           } else {
-            if (e.deltaY > 0) {
-              e.preventDefault()
-              snapTo(MAX_HEIGHT)
-            }
+            if (e.deltaY > 0) snapTo(MAX_HEIGHT)
             else if (e.deltaY < 0) {
-              e.preventDefault()
               if (cardHeight >= MAX_HEIGHT * 0.85) snapTo(MIN_HEIGHT)
               else triggerClose()
             }
@@ -957,15 +912,7 @@ export function SpotCard({
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
-        <div
-          ref={contentScrollRef}
-          className="spot-card-content-scroll flex-1 px-5"
-          style={{
-            overflowY: isMax ? 'auto' : 'hidden',
-            overscrollBehavior: 'contain',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
+        <div className="flex-1 px-5" style={{ overflowY: 'hidden' }}>
           {/* ?? Place info ?? */}
           <div className="pt-1 pb-3">
             {/* Store name */}
