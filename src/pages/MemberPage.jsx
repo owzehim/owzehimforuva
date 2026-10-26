@@ -423,7 +423,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
   const [benefitsAcknowledged, setBenefitsAcknowledged] = useState(false)
   const [benefitsAcknowledgementVisible, setBenefitsAcknowledgementVisible] = useState(false)
   const tourLayout = {
-    contentTopOffset: 'clamp(-20px, calc(12px + (760px - 100dvh) * 0.35), 56px)',
+    contentTopOffset: 'clamp(0px, calc((100dvh - 667px) * 0.1), 24px)',
     animationTextGap: 'clamp(14px, 2.4dvh, 20px)',
     controlsBottomOffset: 'clamp(22px, calc((100dvh - 640px) * 0.42), 82px)',
   }
@@ -520,9 +520,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
         )}
       </div>
 
-      <div
-        className="flex flex-1 flex-col justify-center px-8"
-      >
+      <div className="welcome-tour-content-region flex min-h-0 flex-1 flex-col justify-center overflow-y-auto px-8">
         <div
           key={index}
           className="mx-auto flex w-full max-w-sm flex-col items-start"
@@ -532,7 +530,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
           }}
         >
           {slide.demo === 'membership-card' ? (
-            <MembershipCardTourDemo bottomGap={tourLayout.animationTextGap} />
+            <MembershipCardTourDemo member={member} bottomGap={tourLayout.animationTextGap} />
           ) : slide.demo === 'events' ? (
             <EventsTourDemo bottomGap={tourLayout.animationTextGap} />
           ) : slide.demo === 'spot' ? (
@@ -541,10 +539,18 @@ function WelcomeSlides({ member, onFinish, onBack }) {
             <BenefitsTourDemo bottomGap={tourLayout.animationTextGap} />
           ) : (
             <div
-              className="flex h-24 w-24 items-center justify-center rounded-full bg-orange-50 text-orange-500 dark:bg-orange-500/10"
+              className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-orange-500 dark:bg-orange-500/10"
               style={{ marginBottom: tourLayout.animationTextGap }}
             >
-              <Icon size={48} weight="fill" />
+              {member?.profile_image_url ? (
+                <img
+                  src={member.profile_image_url}
+                  alt=""
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <Icon size={48} weight="fill" />
+              )}
             </div>
           )}
           <p className="mb-3 text-xs font-black tracking-[0.22em] text-orange-500">
@@ -616,6 +622,11 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       </div>
 
       <style>{`
+        @media (max-height: 700px) {
+          .welcome-tour-content-region { justify-content: flex-start; }
+        }
+        .welcome-tour-content-region { scrollbar-width: none; }
+        .welcome-tour-content-region::-webkit-scrollbar { display: none; }
         @keyframes welcomeSlideIn {
           from { opacity: 0; }
           to { opacity: 1; }
@@ -733,7 +744,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
   )
 }
 
-function MembershipCardTourDemo({ bottomGap = '32px' }) {
+function MembershipCardTourDemo({ member, bottomGap = '32px' }) {
   const miniCardTop = '58px'
   const scannerFrameTop = '88px'
   const scannerFrameSize = '116px'
@@ -765,8 +776,16 @@ function MembershipCardTourDemo({ bottomGap = '32px' }) {
             style={{ backfaceVisibility: 'hidden' }}
           >
             <div className="flex items-start justify-between">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#fff3a0] dark:bg-orange-500/20">
-                <UserCircle size={38} weight="fill" className="text-[#8a8461] dark:text-gray-400" />
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#fff3a0] dark:bg-orange-500/20">
+                {member?.profile_image_url ? (
+                  <img
+                    src={member.profile_image_url}
+                    alt=""
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <UserCircle size={38} weight="fill" className="text-[#8a8461] dark:text-gray-400" />
+                )}
               </div>
               <div className="mt-2.5 flex flex-col items-end gap-1.5">
                 <span className="h-1 w-24 rounded-full bg-[#2c2a27] dark:bg-white" />
