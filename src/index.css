@@ -206,6 +206,7 @@ html:not(.dark) .text-gray-400 {
     margin-top: 0.5rem !important;
     font-size: clamp(27px, 8.4vw, 32px) !important;
     line-height: 1.08 !important;
+    min-height: 2.16em !important;
   }
 
   .event-compact-metadata {
@@ -275,12 +276,29 @@ textarea.good-to-know-note-textarea:focus {
 @media (min-width: 768px) and (min-height: 640px) and (display-mode: browser) {
   .phone-app-shell,
   .member-app-shell {
-    --member-screen-width: min(calc(100% - 32px), 398px);
-    --app-screen-width: min(calc(100% - 32px), 398px);
+    --member-screen-width: min(calc(100vw - 32px), 398px);
+    --app-screen-width: min(calc(100vw - 32px), 398px);
     width: min(100vw, 430px);
     margin: 0 auto;
     box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.08);
   }
+}
+
+.event-compact-title {
+  display: -webkit-box;
+  min-height: 2.4em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.spot-card-title {
+  display: -webkit-box;
+  height: 56px;
+  overflow: hidden;
+  line-height: 28px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 /* A phone browser can expose a desktop-sized CSS viewport while keeping its

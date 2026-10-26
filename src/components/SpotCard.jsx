@@ -922,7 +922,7 @@ export function SpotCard({
           <div className="pt-1 pb-3">
             {/* Store name */}
             <div className="flex items-center gap-2">
-              <p className="font-semibold text-gray-900 text-lg">
+              <p className="spot-card-title font-semibold text-gray-900 text-lg">
                 {selected.name}
               </p>
             </div>
