@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 const ZOOM_THRESHOLD = 1.04
+const ZOOM_SETTLE_DELAY = 220
+const MINIMAP_DISPLAY_DURATION = 3000
 
 function isDevPreview() {
   if (import.meta.env?.DEV) return true
@@ -39,47 +41,73 @@ function readViewport() {
 export default function ZoomViewportMinimap() {
   const enabled = isDevPreview()
   const [viewport, setViewport] = useState(null)
-  const [touching, setTouching] = useState(false)
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
     if (!enabled || !window.visualViewport) return undefined
 
     let frame = 0
-    const update = () => {
+    let settleTimer = 0
+    let hideTimer = 0
+    let disposed = false
+    const update = (onUpdated) => {
       cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => setViewport(readViewport()))
+      frame = requestAnimationFrame(() => {
+        const nextViewport = readViewport()
+        if (disposed) return
+        setViewport(nextViewport)
+        onUpdated?.(nextViewport)
+      })
+    }
+    const clearHideTimer = () => {
+      window.clearTimeout(hideTimer)
+    }
+    const showForThreeSeconds = () => {
+      clearHideTimer()
+      setVisible(true)
+      hideTimer = window.setTimeout(() => setVisible(false), MINIMAP_DISPLAY_DURATION)
     }
     const handleTouchStart = () => {
-      setTouching(true)
-      update()
+      update((nextViewport) => {
+        if (nextViewport?.scale > ZOOM_THRESHOLD) showForThreeSeconds()
+      })
     }
-    const handleTouchMove = () => update()
-    const handleTouchEnd = (event) => {
-      if (event.touches.length === 0) setTouching(false)
+    const handleViewportChange = () => {
+      // Hide while native pinch/pan is moving, then show a snapshot of the settled viewport.
+      setVisible(false)
+      clearHideTimer()
+      window.clearTimeout(settleTimer)
       update()
+      settleTimer = window.setTimeout(() => {
+        update((nextViewport) => {
+          if (nextViewport?.scale > ZOOM_THRESHOLD) showForThreeSeconds()
+          else setVisible(false)
+        })
+      }, ZOOM_SETTLE_DELAY)
     }
-    const handleBlur = () => setTouching(false)
+    const handleBlur = () => {
+      setVisible(false)
+      clearHideTimer()
+      window.clearTimeout(settleTimer)
+    }
     const visualViewport = window.visualViewport
 
     update()
-    visualViewport.addEventListener('resize', update)
-    visualViewport.addEventListener('scroll', update)
-    window.addEventListener('resize', update)
+    visualViewport.addEventListener('resize', handleViewportChange)
+    visualViewport.addEventListener('scroll', handleViewportChange)
+    window.addEventListener('resize', handleViewportChange)
     document.addEventListener('touchstart', handleTouchStart, { capture: true, passive: true })
-    document.addEventListener('touchmove', handleTouchMove, { capture: true, passive: true })
-    document.addEventListener('touchend', handleTouchEnd, { capture: true, passive: true })
-    document.addEventListener('touchcancel', handleTouchEnd, { capture: true, passive: true })
     window.addEventListener('blur', handleBlur)
 
     return () => {
+      disposed = true
       cancelAnimationFrame(frame)
-      visualViewport.removeEventListener('resize', update)
-      visualViewport.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
+      window.clearTimeout(settleTimer)
+      window.clearTimeout(hideTimer)
+      visualViewport.removeEventListener('resize', handleViewportChange)
+      visualViewport.removeEventListener('scroll', handleViewportChange)
+      window.removeEventListener('resize', handleViewportChange)
       document.removeEventListener('touchstart', handleTouchStart, true)
-      document.removeEventListener('touchmove', handleTouchMove, true)
-      document.removeEventListener('touchend', handleTouchEnd, true)
-      document.removeEventListener('touchcancel', handleTouchEnd, true)
       window.removeEventListener('blur', handleBlur)
     }
   }, [enabled])
@@ -87,7 +115,6 @@ export default function ZoomViewportMinimap() {
   if (!enabled || !viewport) return null
 
   const isZoomed = viewport.scale > ZOOM_THRESHOLD
-  const visible = isZoomed && touching
   const mapWidth = 58
   const mapHeight = Math.max(96, Math.min(150, mapWidth * viewport.layoutHeight / viewport.layoutWidth))
   const scaleCompensation = 1 / viewport.scale
