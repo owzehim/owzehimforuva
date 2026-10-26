@@ -203,12 +203,26 @@ select {
   font-size: max(16px, 1rem);
 }
 
-#root input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):focus,
-#root textarea:focus,
-#root select:focus,
-#root .registration-field:focus-within,
-textarea.good-to-know-note-textarea:focus {
+#root input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(.border-none):focus,
+#root textarea:not(.border-none):focus,
+#root select:not(.border-none):focus {
   border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px #2563eb !important;
+  outline: none !important;
+}
+
+#root .registration-field:focus-within,
+#root .input-focus-frame:focus-within,
+#root label:has(> input:focus, > textarea:focus, > select:focus)[class*='border'],
+#root div:has(> input:focus, > textarea:focus, > select:focus)[class*='border'] {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px #2563eb !important;
+}
+
+#root :is(.registration-field, .input-focus-frame) :is(input, textarea, select):focus,
+#root :is(label, div)[class*='border']:has(> input:focus, > textarea:focus, > select:focus) > :is(input, textarea, select):focus {
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 @media (min-width: 768px) and (min-height: 640px) and (display-mode: browser) {
