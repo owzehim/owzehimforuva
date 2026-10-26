@@ -5,6 +5,9 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl)
 
+const PAID_AD_MARKER_COLOR = '#70E000'
+const PAID_AD_MARKER_SHADOW = 'rgba(112,224,0,0.5)'
+
 import { getMapIconSvg } from '../lib/mapCategories'
 import {
   getRestaurantCommercialLabel,
@@ -47,7 +50,11 @@ if (typeof window !== 'undefined' && !document.getElementById('map-view-performa
       color: #f3f4f6 !important;
     }
     
-    .custom-marker[data-selected="true"] .marker-circle {
+    .custom-marker[data-selected="true"][data-paid-ad="true"] .marker-circle {
+      border: 3px solid ${PAID_AD_MARKER_COLOR} !important;
+      box-shadow: 0 3px 12px ${PAID_AD_MARKER_SHADOW} !important;
+    }
+    .custom-marker[data-selected="true"][data-paid-ad="false"] .marker-circle {
       border: 3px solid #f97316 !important;
       box-shadow: 0 3px 12px rgba(249,115,22,0.5) !important;
     }
@@ -111,31 +118,34 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     const isHighlighted = isPaidAd || isSponsored
     const commercialLabelType = getRestaurantCommercialLabelType(r)
     const commercialLabel = getRestaurantCommercialLabel(commercialLabelType)
-    const markerColor = isPaidAd ? '#16A34A' : '#f97316'
+    const markerColor = isPaidAd ? PAID_AD_MARKER_COLOR : '#f97316'
     const size = isHighlighted ? 42 : 34
     const bg = isHighlighted ? markerColor : dark ? '#121212' : 'white'
-    const border = isHighlighted
-      ? `3px solid ${dark ? '#121212' : 'white'}`
-      : isSelected
-        ? '3px solid #f97316'
+    const selectedColor = isPaidAd ? PAID_AD_MARKER_COLOR : '#f97316'
+    const selectedShadow = isPaidAd ? PAID_AD_MARKER_SHADOW : 'rgba(249,115,22,0.5)'
+    const border = isSelected
+      ? `3px solid ${selectedColor}`
+      : isHighlighted
+        ? `3px solid ${dark ? '#121212' : 'white'}`
         : `2px solid ${dark ? '#f97316' : '#e5e7eb'}`
     const shadow = isSelected
-      ? '0 3px 12px rgba(249,115,22,0.5)'
+      ? `0 3px 12px ${selectedShadow}`
       : isPaidAd
-        ? '0 3px 12px rgba(22,163,74,0.45)'
+        ? '0 3px 12px rgba(112,224,0,0.45)'
         : isSponsored
           ? '0 3px 12px rgba(249,115,22,0.4)'
           : dark
             ? '0 2px 10px rgba(0,0,0,0.55)'
             : '0 2px 6px rgba(0,0,0,0.15)'
     const displayName = r.map_label || r.name || ''
-    const iconColor = isHighlighted ? (dark ? '#121212' : 'white') : '#f97316'
+    const iconColor = isPaidAd ? '#111827' : isHighlighted ? (dark ? '#121212' : 'white') : '#f97316'
     const iconSvg = getMapIconSvg(r.category, iconColor)
 
     const el = document.createElement('div')
     el.className = 'custom-marker'
     el.setAttribute('data-id', r.id)
     el.setAttribute('data-selected', isSelected ? 'true' : 'false')
+    el.setAttribute('data-paid-ad', isPaidAd ? 'true' : 'false')
     el.setAttribute('role', 'button')
     el.setAttribute('tabindex', '0')
     el.setAttribute(
@@ -203,8 +213,8 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       disclosure.textContent = commercialLabel
       disclosure.style.cssText = `
         display: ${isSelected ? 'block' : 'none'};
-        background: #f97316;
-        color: #ffffff;
+        background: ${isPaidAd ? PAID_AD_MARKER_COLOR : '#f97316'};
+        color: ${isPaidAd ? '#111827' : '#ffffff'};
         font-size: 8px;
         font-weight: 700;
         line-height: 11px;
@@ -394,14 +404,16 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       if (!circle) return
 
       if (isSelected) {
-        circle.style.border = '3px solid #f97316'
-        circle.style.boxShadow = '0 3px 12px rgba(249,115,22,0.5)'
+        const highlightColor = isPaidAd ? PAID_AD_MARKER_COLOR : '#f97316'
+        const highlightShadow = isPaidAd ? PAID_AD_MARKER_SHADOW : 'rgba(249,115,22,0.5)'
+        circle.style.border = `3px solid ${highlightColor}`
+        circle.style.boxShadow = `0 3px 12px ${highlightShadow}`
         return
       }
 
       if (isPaidAd) {
         circle.style.border = `3px solid ${dark ? '#121212' : 'white'}`
-        circle.style.boxShadow = '0 3px 12px rgba(22,163,74,0.45)'
+        circle.style.boxShadow = '0 3px 12px rgba(112,224,0,0.45)'
       } else if (isSponsored) {
         circle.style.border = `3px solid ${dark ? '#121212' : 'white'}`
         circle.style.boxShadow = '0 3px 12px rgba(249,115,22,0.4)'
