@@ -546,7 +546,8 @@ export function SpotCard({
       ? 'full'
       : 'compact'
   const COMPACT_HEIGHT = Math.min(WIN_H * 0.22, 150)
-  const FULL_HEIGHT = Math.min(WIN_H * 0.44, 315)
+  // Leave room for the photo strip above the fixed Google Maps action when collapsed.
+  const FULL_HEIGHT = Math.min(WIN_H * 0.48, 340)
   const MIN_HEIGHT = spotCardHeightMode === 'full' ? FULL_HEIGHT : COMPACT_HEIGHT
   const MAX_HEIGHT = Math.max(320, sheetMaxHeight || WIN_H)
   const cardHeight = Math.min(cardHeightValue, MAX_HEIGHT)
