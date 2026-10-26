@@ -971,7 +971,7 @@ export function SpotCard({
             </div>
           ) : (
             <div
-              className="mb-3 flex flex-col items-center justify-center gap-2 rounded-xl bg-gray-100"
+              className="spot-card-short-photo-placeholder mb-3 flex flex-col items-center justify-center gap-2 rounded-xl bg-gray-100"
               style={{ width: '100px', height: '125px' }}
               aria-label="이미지 없음"
             >

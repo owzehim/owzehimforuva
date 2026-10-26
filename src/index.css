@@ -223,7 +223,8 @@ html:not(.dark) .text-gray-400 {
   }
 
   .spot-card-short-photo-thumbnail,
-  .spot-card-short-photo-thumbnail img {
+  .spot-card-short-photo-thumbnail img,
+  .spot-card-short-photo-placeholder {
     height: 95px !important;
   }
 }
