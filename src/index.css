@@ -294,10 +294,11 @@ textarea.good-to-know-note-textarea:focus {
 
 .spot-card-title {
   display: -webkit-box;
-  min-height: 28px;
-  max-height: 56px;
+  font-size: clamp(16px, 4.58vw, 18px);
+  min-height: clamp(24px, 7.12vw, 28px);
+  max-height: clamp(48px, 14.25vw, 56px);
   overflow: hidden;
-  line-height: 28px;
+  line-height: clamp(24px, 7.12vw, 28px);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
