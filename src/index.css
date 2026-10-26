@@ -164,14 +164,13 @@ html:not(.dark) .text-gray-400 {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
   opacity: 0;
   pointer-events: none;
-  transform: scale(var(--inverse-zoom)) translateY(4px);
+  transform: scale(var(--inverse-zoom));
   transform-origin: top left;
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity 180ms ease;
 }
 
 .zoom-viewport-minimap.is-visible {
   opacity: 1;
-  transform: scale(var(--inverse-zoom)) translateY(0);
 }
 
 .zoom-viewport-minimap-screen {
