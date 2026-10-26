@@ -937,6 +937,17 @@ export function SpotCard({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onWheel={(e) => {
+          const scrollableContent = e.target.closest?.('.spot-card-expanded-content')
+          const canScrollContent = Boolean(
+            scrollableContent &&
+            spotCardHeightMode === 'full' &&
+            !isCollapsed &&
+            window.matchMedia('(orientation: portrait) and (max-width: 380px) and (max-height: 660px)').matches &&
+            ((e.deltaY > 0 && scrollableContent.scrollTop + scrollableContent.clientHeight < scrollableContent.scrollHeight - 1) ||
+              (e.deltaY < 0 && scrollableContent.scrollTop > 0)),
+          )
+          if (canScrollContent) return
+
           if (spotCardHeightMode !== 'full') {
             if (e.deltaY < 0) triggerClose()
           } else {
