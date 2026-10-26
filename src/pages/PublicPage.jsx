@@ -363,9 +363,9 @@ const MEMBERSHIP_SLIDES = [
   {
     key: 'discounts',
     title: (
-      <span className="inline-flex items-center gap-2">
-        <ForkKnife size={30} weight="fill" color="#f97316" />
-        <span>로컬 맛집 & 카페 제휴 할인</span>
+      <span className="inline-flex max-w-full items-center gap-[clamp(4px,1.3vw,7px)] whitespace-nowrap">
+        <ForkKnife size="clamp(18px,6vw,26px)" weight="fill" color="#f97316" />
+        <span className="whitespace-nowrap">로컬 맛집 & 카페 제휴 할인</span>
       </span>
     ),
     description: '암스테르담 곳곳의 제휴 매장 혜택',
@@ -377,9 +377,9 @@ const MEMBERSHIP_SLIDES = [
   {
     key: 'events',
     title: (
-      <span className="inline-flex items-center gap-2">
-        <CalendarDots size={30} weight="fill" color="#3b82f6" />
-        <span>UvA-IN 이벤트 참여 혜택</span>
+      <span className="inline-flex max-w-full items-center gap-[clamp(4px,1.3vw,7px)] whitespace-nowrap">
+        <CalendarDots size="clamp(18px,6vw,26px)" weight="fill" color="#3b82f6" />
+        <span className="whitespace-nowrap">UvA-IN 이벤트 참여 혜택</span>
       </span>
     ),
     description: 'UvA-IN 독점 이벤트 지원 혜택 및 참가비 할인',
@@ -390,9 +390,9 @@ const MEMBERSHIP_SLIDES = [
   {
     key: 'network',
     title: (
-      <span className="inline-flex items-center gap-2">
-        <Users size={30} weight="fill" color="#22c55e" />
-        <span>글로벌 캠퍼스 네트워크</span>
+      <span className="inline-flex max-w-full items-center gap-[clamp(4px,1.3vw,7px)] whitespace-nowrap">
+        <Users size="clamp(18px,6vw,26px)" weight="fill" color="#22c55e" />
+        <span className="whitespace-nowrap">글로벌 캠퍼스 네트워크</span>
       </span>
     ),
     description: 'UvA 학생 전용 커뮤니티 연결',
@@ -580,7 +580,7 @@ function MembershipCarousel() {
           zIndex: 20,
         }}
       >
-        <h2 className="max-w-sm text-[clamp(27px,7.2vw,31px)] font-bold leading-tight text-gray-950 dark:text-white">
+        <h2 className="max-w-sm text-[clamp(18px,6vw,26px)] font-bold leading-tight text-gray-950 dark:text-white">
           {slides[realActiveSlide].title}
         </h2>
         {slides[realActiveSlide].description && (
