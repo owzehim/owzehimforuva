@@ -100,9 +100,6 @@ export default function ZoomViewportMinimap() {
     <div
       className={`zoom-viewport-overlay${visible ? ' is-visible' : ''}`}
       aria-hidden="true"
-      style={{
-        transform: `translate(${viewport.offsetLeft}px, ${viewport.offsetTop}px) scale(${scaleCompensation})`,
-      }}
     >
       <div
         className="zoom-viewport-minimap"
@@ -111,6 +108,7 @@ export default function ZoomViewportMinimap() {
           top: viewport.safeTop + 10,
           width: mapWidth,
           height: mapHeight,
+          transform: `scale(${scaleCompensation})`,
         }}
       >
         <div className="zoom-viewport-minimap-screen">

@@ -162,9 +162,7 @@ html:not(.dark) .text-gray-400 {
   height: 100dvh;
   pointer-events: none;
   opacity: 0;
-  transform-origin: top left;
   transition: opacity 180ms ease;
-  will-change: transform;
 }
 
 .zoom-viewport-overlay.is-visible {
@@ -173,6 +171,7 @@ html:not(.dark) .text-gray-400 {
 
 .zoom-viewport-minimap {
   position: absolute;
+  transform-origin: top left;
   padding: 6px;
   border-radius: 10px;
   background: rgba(17, 17, 17, 0.9);
