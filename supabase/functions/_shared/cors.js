@@ -3,6 +3,7 @@ const PRODUCTION_SUPABASE_PROJECT_REF = 'npvcghdzrtqrlliprtnw'
 const DEV_ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'https://uvain-app-git-dev-woojaylim-4666s-projects.vercel.app',
+  'https://dev.app.uva-in.nl',
 ]
 const PRODUCTION_ALLOWED_ORIGINS = [
   'https://app.uva-in.nl',
