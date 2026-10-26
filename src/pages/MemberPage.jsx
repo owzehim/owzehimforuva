@@ -3978,10 +3978,12 @@ const effectiveDateColor = isDragging
                                   height: '100%',
                                   objectFit: 'cover',
                                   display: 'block',
-                                  opacity: eventPhotoZoomBounds && index === displayImageSlide
+                                  opacity: eventPhotoZoomBounds && index === displayImageSlide && eventPhotoIsPinching
                                     ? 0
                                     : loadedEventPreviewImages[url] ? 1 : 0,
-                                  transition: 'opacity 0.28s ease',
+                                  transition: eventPhotoZoomBounds && index === displayImageSlide && !eventPhotoIsPinching
+                                    ? 'none'
+                                    : 'opacity 0.28s ease',
                                 }}
                             draggable={false}
                               />
