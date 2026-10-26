@@ -424,7 +424,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
   const [benefitsAcknowledgementVisible, setBenefitsAcknowledgementVisible] = useState(false)
   const tourLayout = {
     contentTopOffset: 'clamp(0px, calc((100dvh - 667px) * 0.1), 24px)',
-    animationTextGap: 'clamp(14px, 2.4dvh, 20px)',
+    animationTextGap: 'clamp(12px, calc(12px + (100dvh - 667px) * 0.04), 20px)',
     controlsBottomOffset: 'clamp(22px, calc((100dvh - 640px) * 0.42), 82px)',
   }
   const firstName = member?.first_name_korean || member?.first_name_ko || member?.first_name || ''
@@ -520,7 +520,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
         )}
       </div>
 
-      <div className="welcome-tour-content-region flex min-h-0 flex-1 flex-col justify-center overflow-y-auto px-8">
+      <div className="welcome-tour-content-region flex min-h-0 flex-1 flex-col justify-center overflow-hidden px-8">
         <div
           key={index}
           className="mx-auto flex w-full max-w-sm flex-col items-start"
@@ -529,14 +529,18 @@ function WelcomeSlides({ member, onFinish, onBack }) {
             transform: `translateY(${tourLayout.contentTopOffset})`,
           }}
         >
-          {slide.demo === 'membership-card' ? (
-            <MembershipCardTourDemo member={member} bottomGap={tourLayout.animationTextGap} />
-          ) : slide.demo === 'events' ? (
-            <EventsTourDemo bottomGap={tourLayout.animationTextGap} />
-          ) : slide.demo === 'spot' ? (
-            <SpotTourDemo bottomGap={tourLayout.animationTextGap} />
-          ) : slide.demo === 'benefits' ? (
-            <BenefitsTourDemo bottomGap={tourLayout.animationTextGap} />
+          {slide.demo ? (
+            <div className="welcome-tour-demo-shell" style={{ marginBottom: tourLayout.animationTextGap }}>
+              {slide.demo === 'membership-card' ? (
+                <MembershipCardTourDemo member={member} bottomGap="0px" />
+              ) : slide.demo === 'events' ? (
+                <EventsTourDemo bottomGap="0px" />
+              ) : slide.demo === 'spot' ? (
+                <SpotTourDemo bottomGap="0px" />
+              ) : (
+                <BenefitsTourDemo bottomGap="0px" />
+              )}
+            </div>
           ) : (
             <div
               className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-orange-500 dark:bg-orange-500/10"
@@ -556,11 +560,11 @@ function WelcomeSlides({ member, onFinish, onBack }) {
           <p className="mb-3 text-xs font-black tracking-[0.22em] text-orange-500">
             {slide.eyebrow}
           </p>
-          <h1 className="text-[34px] font-black leading-tight tracking-normal">
+          <h1 className="welcome-tour-title font-black tracking-normal">
             {TitleIcon && <TitleIcon size={30} weight="bold" className="mr-2 inline-block align-[-0.1em] text-gray-950 dark:text-white" />}
             {slide.title}
           </h1>
-          <p className="mt-5 text-base font-medium leading-7 text-gray-500 dark:text-gray-300">
+          <p className="welcome-tour-body mt-5 font-medium text-gray-500 dark:text-gray-300">
             {slide.bodyNode || slide.body}
           </p>
         </div>
@@ -622,11 +626,20 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       </div>
 
       <style>{`
-        @media (max-height: 700px) {
-          .welcome-tour-content-region { justify-content: flex-start; }
-        }
         .welcome-tour-content-region { scrollbar-width: none; }
         .welcome-tour-content-region::-webkit-scrollbar { display: none; }
+        .welcome-tour-demo-shell { height: 360px; }
+        .welcome-tour-title { font-size: clamp(30px, 8.6vw, 34px); line-height: 1.1; }
+        .welcome-tour-body { font-size: clamp(14px, 4vw, 16px); line-height: 1.75; }
+        @media (max-height: 760px) {
+          .welcome-tour-demo-shell { height: 317px; }
+          .welcome-tour-demo-shell > div { transform: scale(0.88); transform-origin: top center; }
+        }
+        @media (max-height: 700px) {
+          .welcome-tour-demo-shell { height: 281px; }
+          .welcome-tour-demo-shell > div { transform: scale(0.78); }
+          .welcome-tour-content-region { justify-content: flex-start; }
+        }
         @keyframes welcomeSlideIn {
           from { opacity: 0; }
           to { opacity: 1; }
