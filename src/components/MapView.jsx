@@ -138,7 +138,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
             ? '0 2px 10px rgba(0,0,0,0.55)'
             : '0 2px 6px rgba(0,0,0,0.15)'
     const displayName = r.map_label || r.name || ''
-    const iconColor = isPaidAd ? '#111827' : isHighlighted ? (dark ? '#121212' : 'white') : '#f97316'
+    const iconColor = isPaidAd ? 'white' : isHighlighted ? (dark ? '#121212' : 'white') : '#f97316'
     const iconSvg = getMapIconSvg(r.category, iconColor)
 
     const el = document.createElement('div')
@@ -214,7 +214,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       disclosure.style.cssText = `
         display: ${isSelected ? 'block' : 'none'};
         background: ${isPaidAd ? PAID_AD_MARKER_COLOR : '#f97316'};
-        color: ${isPaidAd ? '#111827' : '#ffffff'};
+        color: #ffffff;
         font-size: 8px;
         font-weight: 700;
         line-height: 11px;
