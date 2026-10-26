@@ -48,7 +48,7 @@ export default function LegalPage() {
         <div className="mx-auto max-w-3xl" style={{ height: 'calc(env(safe-area-inset-top) + 56px)' }} />
         <nav
           aria-label={language === 'ko' ? '법률 문서' : 'Legal documents'}
-          className="mx-auto flex max-w-3xl gap-2 overflow-x-auto"
+          className="scrollbar-hidden mx-auto flex max-w-3xl gap-2 overflow-x-auto"
           style={{ marginTop: 'calc(16px - max(0px, calc(12px - env(safe-area-inset-top))))' }}
         >
           {documentKeys.map((key) => (
