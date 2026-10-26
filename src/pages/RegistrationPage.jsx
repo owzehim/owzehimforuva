@@ -30,8 +30,13 @@ function isCompactPortraitViewport() {
     return false;
   }
 
-  const screenHeight = window.screen?.availHeight || window.screen?.height || window.innerHeight;
-  return Math.min(window.innerHeight, screenHeight) <= 760;
+  const screenHeight = window.screen?.availHeight || window.screen?.height;
+  const isTouchViewport = window.matchMedia('(pointer: coarse)').matches;
+  // The virtual keyboard can shrink innerHeight on phones. Keep the compact
+  // layout decision tied to the device viewport so the bottom action does not
+  // jump when a dropdown input receives or loses focus.
+  const layoutHeight = isTouchViewport && screenHeight ? screenHeight : window.innerHeight;
+  return layoutHeight <= 760;
 }
 
 const COUNTRIES = [
@@ -502,6 +507,7 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
   const [searchText, setSearchText] = useState('');
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
@@ -519,14 +525,14 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
   );
 
   const handleSelect = (val) => {
+    setOpen(false);
+    inputRef.current?.blur();
     if (allowCustom && val === CUSTOM_TYPE_OPTION) {
       setSearchText('');
-      setOpen(false);
       onChange({ target: { name, value: '' } });
       return;
     }
     setSearchText(val);
-    setOpen(false);
     onChange({ target: { name, value: val } });
   };
 
@@ -542,6 +548,7 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
   return (
     <div ref={containerRef} style={s.typeaheadContainer}>
       <input
+        ref={inputRef}
         id={name}
         name={name}
         value={open ? searchText : value || ''}
