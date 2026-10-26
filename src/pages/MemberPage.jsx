@@ -4333,24 +4333,20 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
     return () => observer.disconnect()
   }, [])
 
-  const filtered = useMemo(
-    () =>
-      activeCategory === '전체'
-        ? restaurants
-        : restaurants.filter((r) => r.category === activeCategory),
-    [restaurants, activeCategory],
-  )
-
   const visibleCategories = useMemo(
     () => getVisibleMapCategories(restaurants),
     [restaurants],
   )
-
-  useEffect(() => {
-    if (!visibleCategories.includes(activeCategory)) {
-      setActiveCategory('전체')
-    }
-  }, [activeCategory, visibleCategories])
+  const selectedCategory = visibleCategories.includes(activeCategory)
+    ? activeCategory
+    : '전체'
+  const filtered = useMemo(
+    () =>
+      selectedCategory === '전체'
+        ? restaurants
+        : restaurants.filter((r) => r.category === selectedCategory),
+    [restaurants, selectedCategory],
+  )
 
   return (
     <div
@@ -4371,7 +4367,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
   }} 
 >
         {visibleCategories.map((cat) => {
-          const isActive = activeCategory === cat
+          const isActive = selectedCategory === cat
           const iconSvg = isActive
             ? darkMode
               ? CATEGORY_ICONS_BLACK[cat]
