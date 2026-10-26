@@ -2376,6 +2376,7 @@ function EventsTab({ events }) {
   const eventPhotoZoomBoundsRef = useRef(null)
   const eventPhotoZoomOffsetRef = useRef({ x: 0, y: 0 })
   const eventPhotoPanStart = useRef(null)
+  const eventPhotoZoomResetTimer = useRef(null)
   const eventPreviewGestureAxis = useRef(null)
   const eventCardGestureAxis = useRef(null)
   const eventImageBoxRatioRef = useRef(1)
@@ -2418,6 +2419,10 @@ function EventsTab({ events }) {
   }, [selectedEvent])
 
   const resetEventPhotoZoom = () => {
+    if (eventPhotoZoomResetTimer.current) {
+      window.clearTimeout(eventPhotoZoomResetTimer.current)
+      eventPhotoZoomResetTimer.current = null
+    }
     eventPinchStartDistance.current = null
     eventPinchStartCenter.current = null
     eventPinchMode.current = null
@@ -2429,6 +2434,31 @@ function EventsTab({ events }) {
     setEventPhotoIsPinching(false)
     setEventPhotoZoomBounds(null)
   }
+
+  const animateEventPhotoZoomBack = () => {
+    eventPinchStartDistance.current = null
+    eventPinchStartCenter.current = null
+    eventPinchMode.current = null
+    eventPhotoPanStart.current = null
+    eventPhotoZoomOffsetRef.current = { x: 0, y: 0 }
+    setEventPhotoZoomScale(1)
+    setEventPhotoZoomOffset({ x: 0, y: 0 })
+    setEventPhotoIsPinching(false)
+    if (eventPhotoZoomResetTimer.current) {
+      window.clearTimeout(eventPhotoZoomResetTimer.current)
+    }
+    eventPhotoZoomResetTimer.current = window.setTimeout(() => {
+      eventPhotoZoomBoundsRef.current = null
+      setEventPhotoZoomBounds(null)
+      eventPhotoZoomResetTimer.current = null
+    }, 240)
+  }
+
+  useEffect(() => () => {
+    if (eventPhotoZoomResetTimer.current) {
+      window.clearTimeout(eventPhotoZoomResetTimer.current)
+    }
+  }, [])
 
   const setSlide = (id, idx) => {
     resetEventPhotoZoom()
@@ -2764,6 +2794,10 @@ function EventsTab({ events }) {
   const handleEventPreviewTouchStart = (e) => {
     if (!eventCardOpen) return
     if (e.touches.length === 2) {
+      if (eventPhotoZoomResetTimer.current) {
+        window.clearTimeout(eventPhotoZoomResetTimer.current)
+        eventPhotoZoomResetTimer.current = null
+      }
       const [first, second] = e.touches
       eventPinchStartDistance.current = Math.hypot(
         second.clientX - first.clientX,
@@ -2815,7 +2849,7 @@ function EventsTab({ events }) {
           offset: eventPhotoZoomOffsetRef.current,
         }
       } else if (e.touches.length === 0) {
-        resetEventPhotoZoom()
+        animateEventPhotoZoomBack()
         eventPreviewTouchStartX.current = null
         eventPreviewTouchStartY.current = null
         eventPreviewGestureAxis.current = null
@@ -3495,29 +3529,44 @@ const effectiveDateColor = isDragging
         }
       `}</style>
       {eventPhotoZoomBounds && typeof document !== 'undefined' && createPortal(
-        <img
-          src={displayImages[displayImageSlide]}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
-          style={{
-            position: 'fixed',
-            left: eventPhotoZoomBounds.left,
-            top: eventPhotoZoomBounds.top,
-            width: eventPhotoZoomBounds.width,
-            height: eventPhotoZoomBounds.height,
-            objectFit: 'cover',
-            borderRadius: 12,
-            boxShadow: '0 10px 36px rgba(0,0,0,0.38)',
-            transform: `translate3d(${eventPhotoZoomOffset.x}px, ${eventPhotoZoomOffset.y}px, 0) scale(${eventPhotoZoomScale})`,
-            transformOrigin: 'center center',
-            transition: eventPhotoIsPinching ? 'none' : 'transform 160ms ease-out',
-            zIndex: 2147483647,
-            pointerEvents: 'none',
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-          }}
-        />,
+        <>
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0,0,0,1)',
+              opacity: Math.min(0.42, Math.max(0, (eventPhotoZoomScale - 1) * 0.21)),
+              transition: eventPhotoIsPinching ? 'none' : 'opacity 240ms ease-out',
+              zIndex: 2147483646,
+              pointerEvents: 'none',
+            }}
+          />
+          <img
+            src={displayImages[displayImageSlide]}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            style={{
+              position: 'fixed',
+              left: eventPhotoZoomBounds.left,
+              top: eventPhotoZoomBounds.top,
+              width: eventPhotoZoomBounds.width,
+              height: eventPhotoZoomBounds.height,
+              objectFit: 'cover',
+              borderRadius: 12,
+              boxShadow: '0 10px 36px rgba(0,0,0,0.38)',
+              transform: `translate3d(${eventPhotoZoomOffset.x}px, ${eventPhotoZoomOffset.y}px, 0) scale(${eventPhotoZoomScale})`,
+              transformOrigin: 'center center',
+              transition: eventPhotoIsPinching ? 'none' : 'transform 240ms cubic-bezier(0.2,0.8,0.2,1)',
+              willChange: 'transform',
+              zIndex: 2147483647,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+            }}
+          />
+        </>,
         document.body,
       )}
       <div
