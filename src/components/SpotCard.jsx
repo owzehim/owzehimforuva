@@ -533,10 +533,9 @@ export function SpotCard({
     reviewAudience,
   )
 
-  const { WIN_H, WIN_W } = useMemo(
+  const { WIN_H } = useMemo(
     () => ({
       WIN_H: typeof window !== 'undefined' ? window.innerHeight : 700,
-      WIN_W: typeof window !== 'undefined' ? window.innerWidth : 390,
     }),
     [],
   )
@@ -547,11 +546,7 @@ export function SpotCard({
       ? 'full'
       : 'compact'
   const COMPACT_HEIGHT = Math.min(WIN_H * 0.22, 150)
-  // The photo strip overlaps the fixed Maps action on narrow, medium-height screens.
-  const HAS_PHOTO_ACTION_OVERLAP = WIN_W <= 480 && WIN_H > 700 && WIN_H <= 900
-  const FULL_HEIGHT = HAS_PHOTO_ACTION_OVERLAP
-    ? Math.min(WIN_H * 0.48, 340)
-    : Math.min(WIN_H * 0.44, 315)
+  const FULL_HEIGHT = Math.min(WIN_H * 0.44, 315)
   const MIN_HEIGHT = spotCardHeightMode === 'full' ? FULL_HEIGHT : COMPACT_HEIGHT
   const MAX_HEIGHT = Math.max(320, sheetMaxHeight || WIN_H)
   const cardHeight = Math.min(cardHeightValue, MAX_HEIGHT)
