@@ -311,7 +311,8 @@ select {
 
 .spot-card-title {
   display: -webkit-box;
-  height: 56px;
+  min-height: 28px;
+  max-height: 56px;
   overflow: hidden;
   line-height: 28px;
   -webkit-box-orient: vertical;
