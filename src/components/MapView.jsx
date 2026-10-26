@@ -5,8 +5,8 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 
 maplibregl.setWorkerUrl(maplibreWorkerUrl)
 
-const PAID_AD_MARKER_COLOR = '#70E000'
-const PAID_AD_MARKER_SHADOW = 'rgba(112,224,0,0.5)'
+const PAID_AD_MARKER_COLOR = '#FFB81C'
+const PAID_AD_MARKER_SHADOW = 'rgba(255,184,28,0.5)'
 
 import { getMapIconSvg } from '../lib/mapCategories'
 import {
@@ -131,7 +131,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     const shadow = isSelected
       ? `0 3px 12px ${selectedShadow}`
       : isPaidAd
-        ? '0 3px 12px rgba(112,224,0,0.45)'
+        ? '0 3px 12px rgba(255,184,28,0.45)'
         : isSponsored
           ? '0 3px 12px rgba(249,115,22,0.4)'
           : dark
@@ -413,7 +413,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
       if (isPaidAd) {
         circle.style.border = `3px solid ${dark ? '#121212' : 'white'}`
-        circle.style.boxShadow = '0 3px 12px rgba(112,224,0,0.45)'
+        circle.style.boxShadow = '0 3px 12px rgba(255,184,28,0.45)'
       } else if (isSponsored) {
         circle.style.border = `3px solid ${dark ? '#121212' : 'white'}`
         circle.style.boxShadow = '0 3px 12px rgba(249,115,22,0.4)'
