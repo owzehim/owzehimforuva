@@ -68,15 +68,14 @@ html:not(.dark) .text-gray-400 {
   -webkit-user-select: text !important;
 }
 
-.dev-no-zoom-selection,
-.dev-no-zoom-selection * {
+.dev-no-selection,
+.dev-no-selection * {
   user-select: none !important;
   -webkit-user-select: none !important;
   -webkit-user-drag: none !important;
 }
 
-.dev-no-zoom-selection {
-  touch-action: pan-x pan-y;
+.dev-no-selection {
   min-height: 100dvh;
 }
 
@@ -238,7 +237,7 @@ html:not(.dark) .text-gray-400 {
     overscroll-behavior-y: contain;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
   }
 
   .spot-card-expanded-content::-webkit-scrollbar {
