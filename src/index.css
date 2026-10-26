@@ -299,7 +299,7 @@ html:not(.dark) .text-gray-400 {
   }
 
   .app-landscape-top-tabs {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 6px) !important;
+    padding-top: 6px !important;
     padding-left: max(12px, env(safe-area-inset-left, 0px)) !important;
     padding-right: max(12px, env(safe-area-inset-right, 0px)) !important;
     padding-bottom: 6px !important;
