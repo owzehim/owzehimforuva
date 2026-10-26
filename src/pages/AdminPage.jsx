@@ -2543,7 +2543,7 @@ function RestaurantForm({
           className="text-sm text-gray-700 flex items-center gap-1"
         >
           <span className="w-2 h-2 rounded-full bg-orange-500 inline-block" />
-          주황색 강조 마커
+          제휴/스폰서 강조 마커
         </label>
       </div>
 
