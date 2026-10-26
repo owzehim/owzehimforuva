@@ -1962,6 +1962,8 @@ function NavBtn({ onClick, children, style = {} }) {
 function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const [index, setIndex] = useState(startIndex)
   const [visible, setVisible] = useState(false)
+  const [zoomScale, setZoomScale] = useState(1)
+  const [isPinching, setIsPinching] = useState(false)
   const [imageRatios, setImageRatios] = useState({})
   const [lightboxBounds, setLightboxBounds] = useState(() => ({
     width: typeof window === 'undefined' ? 360 : window.innerWidth * 0.9,
@@ -1969,6 +1971,7 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   }))
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
+  const pinchGestureRef = useRef(null)
   const dialogRef = useRef(null)
 
   const activeImageRatio = imageRatios[index] || 1
@@ -1985,6 +1988,9 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const goToIndex = (nextIndex) => {
     const clampedIndex = Math.max(0, Math.min(nextIndex, imgs.length - 1))
     if (clampedIndex === index) return
+    pinchGestureRef.current = null
+    setZoomScale(1)
+    setIsPinching(false)
     setIndex(clampedIndex)
     onIndexChange?.(clampedIndex)
   }
@@ -2028,11 +2034,66 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const handleDialogKeyDown = useModalFocus(dialogRef, handleClose)
 
   const handleTouchStart = (e) => {
+    if (e.touches.length > 1) {
+      const activePhoto = e.target instanceof Element
+        ? e.target.closest('[data-lightbox-active-photo="true"]')
+        : null
+      if (e.touches.length === 2 && activePhoto) {
+        const [first, second] = e.touches
+        pinchGestureRef.current = {
+          startDistance: Math.hypot(
+            second.clientX - first.clientX,
+            second.clientY - first.clientY,
+          ),
+        }
+        touchStartX.current = null
+        touchStartY.current = null
+        setZoomScale(1)
+        setIsPinching(true)
+      } else {
+        pinchGestureRef.current = null
+        touchStartX.current = null
+        touchStartY.current = null
+      }
+      return
+    }
+
+    if (pinchGestureRef.current || e.touches.length !== 1) return
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }
 
+  const handleTouchMove = (e) => {
+    const pinchGesture = pinchGestureRef.current
+    if (!pinchGesture || e.touches.length !== 2 || pinchGesture.startDistance <= 0) return
+
+    e.preventDefault()
+    const [first, second] = e.touches
+    const distance = Math.hypot(
+      second.clientX - first.clientX,
+      second.clientY - first.clientY,
+    )
+    const nextScale = Math.min(3, Math.max(1, distance / pinchGesture.startDistance))
+    setZoomScale(nextScale)
+  }
+
   const handleTouchEnd = (e) => {
+    if (pinchGestureRef.current) {
+      if (e.touches.length < 2) {
+        pinchGestureRef.current = null
+        setZoomScale(1)
+        setIsPinching(false)
+      }
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
+
+    if (e.touches.length > 0) {
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
     if (touchStartX.current == null || touchStartY.current == null) return
 
     const dx = e.changedTouches[0].clientX - touchStartX.current
@@ -2093,7 +2154,9 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
         className="no-highlight-zone"
         onClick={handleClose}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
         style={{
           position: 'fixed',
           inset: 0,
@@ -2168,6 +2231,7 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
                     fetchPriority={imgIndex === index ? 'high' : 'auto'}
                     loading={Math.abs(imgIndex - index) <= 1 ? 'eager' : 'lazy'}
                     alt={`사진 ${imgIndex + 1}`}
+                    data-lightbox-active-photo={imgIndex === index ? 'true' : undefined}
                     onLoad={(event) => {
                       const ratio = event.currentTarget.naturalWidth / event.currentTarget.naturalHeight
                       if (!Number.isFinite(ratio) || ratio <= 0) return
@@ -2183,6 +2247,9 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
                       objectFit: 'contain',
                       borderRadius: 12,
                       boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+                      transform: `scale(${imgIndex === index ? zoomScale : 1})`,
+                      transformOrigin: 'center center',
+                      transition: isPinching ? 'none' : 'transform 160ms ease-out',
                       userSelect: 'none',
                       WebkitUserSelect: 'none',
                     }}
