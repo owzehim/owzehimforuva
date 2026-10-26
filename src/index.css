@@ -203,9 +203,11 @@ select {
   font-size: max(16px, 1rem);
 }
 
-#root input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(.border-none):focus,
-#root textarea:not(.border-none):focus,
-#root select:not(.border-none):focus {
+#root :where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(.border-none),
+  textarea:not(.border-none),
+  select:not(.border-none)
+):focus {
   border-color: #2563eb !important;
   box-shadow: 0 0 0 2px #2563eb !important;
   outline: none !important;
@@ -223,6 +225,7 @@ select {
 #root :is(label, div)[class*='border']:has(> input:focus, > textarea:focus, > select:focus) > :is(input, textarea, select):focus {
   border-color: transparent !important;
   box-shadow: none !important;
+  outline: none !important;
 }
 
 @media (min-width: 768px) and (min-height: 640px) and (display-mode: browser) {
