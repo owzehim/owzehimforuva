@@ -576,7 +576,13 @@ function Lightbox({ imgs, startIndex, onClose }) {
                   e.stopPropagation()
                   goToIndex(i)
                 }}
-                className="flex h-8 w-8 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
+                className="flex items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
+                style={{
+                  width: 8,
+                  height: 8,
+                  border: 0,
+                  padding: 0,
+                }}
               >
                 <span
                   aria-hidden="true"
