@@ -69,14 +69,6 @@ function getCenterTarget(control) {
   return control.closest('.registration-field, .input-focus-frame') || control
 }
 
-function hasFixedPositionAncestor(element) {
-  while (element && element !== document.body && element !== document.documentElement) {
-    if (window.getComputedStyle(element).position === 'fixed') return true
-    element = element.parentElement
-  }
-  return false
-}
-
 function getViewportMetrics(visualViewport) {
   const top = visualViewport?.offsetTop ?? 0
   const height = visualViewport?.height ?? window.innerHeight
@@ -97,40 +89,6 @@ function restoreScrollPositions(scroll) {
   window.scrollTo({ left: scroll.windowLeft, top: scroll.windowTop, behavior: 'instant' })
 }
 
-function getInlineTranslateY(element) {
-  const value = window.getComputedStyle(element).translate
-  if (!value || value === 'none') return 0
-  const parts = value.split(/\s+/)
-  const y = parts.length > 1 ? Number.parseFloat(parts[1]) : 0
-  return Number.isFinite(y) ? y : 0
-}
-
-function shiftFieldForKeyboard(focus, offset) {
-  const field = getCenterTarget(focus.control)
-  if (focus.shiftedField && focus.shiftedField !== field) removeKeyboardShift(focus)
-  if (!focus.shiftedField) {
-    focus.shiftedField = field
-    focus.originalTranslate = field.style.getPropertyValue('translate')
-    focus.originalTranslatePriority = field.style.getPropertyPriority('translate')
-    focus.baseTranslateY = getInlineTranslateY(field)
-    focus.currentTranslateY = focus.baseTranslateY
-  }
-  focus.currentTranslateY += offset
-  field.style.setProperty('translate', `0px ${focus.currentTranslateY}px`, 'important')
-}
-
-function removeKeyboardShift(focus) {
-  const field = focus?.shiftedField
-  if (!field) return
-  if (focus.originalTranslate) {
-    field.style.setProperty('translate', focus.originalTranslate, focus.originalTranslatePriority)
-  } else {
-    field.style.removeProperty('translate')
-  }
-  focus.shiftedField = null
-  focus.currentTranslateY = focus.baseTranslateY
-}
-
 function ensureKeyboardScrollSpace(focus) {
   if (focus.keyboardScrollSpace) return
   const host = focus.control.closest('.phone-app-shell, .member-app-shell') || document.scrollingElement
@@ -146,7 +104,7 @@ function ensureKeyboardScrollSpace(focus) {
   }
   host.classList.add('landscape-keyboard-scroll-host')
   host.style.setProperty('overflow-y', 'auto', 'important')
-  host.style.setProperty('--landscape-keyboard-scroll-space', `${Math.max(160, focus.viewportHeight)}px`)
+  host.style.setProperty('--landscape-keyboard-scroll-space', `${Math.max(240, focus.viewportHeight * 2)}px`)
 
   if (!focus.scroll.ancestors.some((ancestor) => ancestor.element === host)) {
     const bodyIndex = focus.scroll.ancestors.findIndex((ancestor) => ancestor.element === document.body)
@@ -175,51 +133,37 @@ function removeKeyboardScrollSpace(focus) {
 
 function centerFocusedField(focus, visualViewport) {
   const target = getCenterTarget(focus.control)
-  const viewport = getViewportMetrics(visualViewport)
-  let bounds = target.getBoundingClientRect()
-  let correction = (bounds.top + bounds.bottom) / 2 - viewport.center
-
-  if (hasFixedPositionAncestor(target)) {
-    shiftFieldForKeyboard(focus, -correction)
-    return
-  }
-
-  // Make room inside fixed-height app shells, then let the browser scroll nested layouts.
+  // Make room inside fixed-height app shells, then choose one scroll container to animate.
   ensureKeyboardScrollSpace(focus)
-  try {
-    target.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' })
-  } catch {
-    target.scrollIntoView({ block: 'center', inline: 'nearest' })
-  }
-  bounds = target.getBoundingClientRect()
-  correction = (bounds.top + bounds.bottom) / 2 - viewport.center
 
-  // Scroll inner content first, then the document, so the surrounding screen follows the field.
-  for (const ancestor of focus.scroll.ancestors) {
-    if (Math.abs(correction) < 1) break
-    const element = ancestor.element
-    if (!element.isConnected || element === document.body || element.scrollHeight <= element.clientHeight + 1) continue
-    const maxScroll = element.scrollHeight - element.clientHeight
-    const nextScrollTop = Math.min(maxScroll, Math.max(0, element.scrollTop + correction))
-    if (nextScrollTop === element.scrollTop) continue
-    element.scrollTop = nextScrollTop
-    bounds = target.getBoundingClientRect()
-    correction = (bounds.top + bounds.bottom) / 2 - viewport.center
-  }
+  const viewport = getViewportMetrics(visualViewport)
+  const bounds = target.getBoundingClientRect()
+  const correction = (bounds.top + bounds.bottom) / 2 - viewport.center
+  if (Math.abs(correction) < 2) return
 
-  if (Math.abs(correction) >= 1) {
-    const documentElement = document.documentElement
-    const maxScroll = Math.max(0, documentElement.scrollHeight - documentElement.clientHeight)
-    const nextScrollTop = Math.min(maxScroll, Math.max(0, window.scrollY + correction))
-    if (nextScrollTop !== window.scrollY) {
-      window.scrollTo({ left: window.scrollX, top: nextScrollTop, behavior: 'instant' })
-      bounds = target.getBoundingClientRect()
-      correction = (bounds.top + bounds.bottom) / 2 - viewport.center
+  const host = focus.keyboardScrollSpace?.host
+  const candidates = []
+  let element = target.parentElement
+  while (element && element !== document.body && element !== document.documentElement) {
+    const overflowY = window.getComputedStyle(element).overflowY
+    if (/(auto|scroll|hidden|overlay)/.test(overflowY) && element.scrollHeight > element.clientHeight + 1) {
+      candidates.push(element)
     }
+    if (element === host) break
+    element = element.parentElement
   }
 
-  // Some landscape forms anchor fields with position: fixed, so scrolling cannot move them.
-  if (Math.abs(correction) >= 1) shiftFieldForKeyboard(focus, -correction)
+  if (host && !candidates.includes(host)) candidates.push(host)
+  const scrollCapacity = (candidate) => correction > 0
+    ? candidate.scrollHeight - candidate.clientHeight - candidate.scrollTop
+    : candidate.scrollTop
+  const scrollTarget = candidates.find((candidate) => scrollCapacity(candidate) >= Math.abs(correction) - 2)
+    || [...candidates].sort((left, right) => scrollCapacity(right) - scrollCapacity(left))[0]
+
+  if (!scrollTarget) return
+  const maxScroll = Math.max(0, scrollTarget.scrollHeight - scrollTarget.clientHeight)
+  const nextScrollTop = Math.min(maxScroll, Math.max(0, scrollTarget.scrollTop + correction))
+  scrollTarget.scrollTo({ top: nextScrollTop, behavior: 'smooth' })
 }
 
 export default function LandscapeInputFocusGuard() {
@@ -230,31 +174,19 @@ export default function LandscapeInputFocusGuard() {
     let activeFocus = null
     let settleTimer = 0
     let blurTimer = 0
-    let delayedCenterTimers = []
 
     const clearActiveFocus = (preserveKeyboardScrollSpace = false) => {
       window.clearTimeout(settleTimer)
-      delayedCenterTimers.forEach(window.clearTimeout)
-      delayedCenterTimers = []
       if (activeFocus) {
-        visualViewport?.removeEventListener('resize', scheduleScrollCheck)
-        window.removeEventListener('resize', scheduleScrollCheck)
+        visualViewport?.removeEventListener('resize', handleViewportResize)
+        window.removeEventListener('resize', handleViewportResize)
         removeZoomGuard(activeFocus.control)
-        removeKeyboardShift(activeFocus)
         if (!preserveKeyboardScrollSpace) removeKeyboardScrollSpace(activeFocus)
       }
       activeFocus = null
     }
 
-    const scheduleDelayedCenter = (focus) => {
-      delayedCenterTimers.forEach(window.clearTimeout)
-      delayedCenterTimers = [300, 550].map((delay) => window.setTimeout(() => {
-        if (activeFocus !== focus || document.activeElement !== focus.control || !media.matches) return
-        if (isKeyboardOpen(focus, visualViewport)) centerFocusedField(focus, visualViewport)
-      }, delay))
-    }
-
-    const scheduleScrollCheck = () => {
+    const scheduleScrollCheck = (delay = 260) => {
       if (!activeFocus) return
       window.clearTimeout(settleTimer)
       settleTimer = window.setTimeout(() => {
@@ -264,20 +196,23 @@ export default function LandscapeInputFocusGuard() {
         const keyboardOpen = isKeyboardOpen(focus, visualViewport)
         if (keyboardOpen) {
           focus.keyboardWasOpen = true
-          if (document.activeElement === focus.control && Math.abs((visualViewport?.scale ?? 1) - focus.scale) <= 0.03) {
+          if (!focus.centeredForKeyboard && document.activeElement === focus.control && Math.abs((visualViewport?.scale ?? 1) - focus.scale) <= 0.03) {
             centerFocusedField(focus, visualViewport)
+            focus.centeredForKeyboard = true
           }
           return
         }
 
         if (focus.keyboardWasOpen) {
-          removeKeyboardShift(focus)
           removeKeyboardScrollSpace(focus)
           restoreScrollPositions(focus.scroll)
           focus.keyboardWasOpen = false
+          focus.centeredForKeyboard = false
         }
-      }, 160)
+      }, delay)
     }
+
+    const handleViewportResize = () => scheduleScrollCheck(260)
 
     const handlePointerDown = (event) => {
       if (!media.matches) {
@@ -317,16 +252,16 @@ export default function LandscapeInputFocusGuard() {
         viewportHeight: pointer?.viewportHeight ?? previousFocus?.viewportHeight ?? getViewportMetrics(visualViewport).height,
         viewportTop: pointer?.viewportTop ?? previousFocus?.viewportTop ?? getViewportMetrics(visualViewport).top,
         keyboardWasOpen: previousFocus?.keyboardWasOpen ?? false,
+        centeredForKeyboard: false,
         keyboardScrollSpace: previousFocus?.keyboardScrollSpace ?? null,
       }
       clearActiveFocus(Boolean(session.keyboardScrollSpace))
       window.clearTimeout(blurTimer)
       addZoomGuard(control)
       activeFocus = session
-      visualViewport?.addEventListener('resize', scheduleScrollCheck)
-      window.addEventListener('resize', scheduleScrollCheck)
-      scheduleScrollCheck()
-      scheduleDelayedCenter(session)
+      visualViewport?.addEventListener('resize', handleViewportResize)
+      window.addEventListener('resize', handleViewportResize)
+      scheduleScrollCheck(450)
     }
 
     const handleFocusOut = (event) => {
@@ -337,7 +272,6 @@ export default function LandscapeInputFocusGuard() {
       window.clearTimeout(blurTimer)
       blurTimer = window.setTimeout(() => {
         if (activeFocus !== blurredFocus || resolveTextControl(document.activeElement)) return
-        removeKeyboardShift(blurredFocus)
         removeKeyboardScrollSpace(blurredFocus)
         restoreScrollPositions(blurredFocus.scroll)
         clearActiveFocus()
@@ -347,7 +281,6 @@ export default function LandscapeInputFocusGuard() {
     const handleOrientationChange = () => {
       if (!media.matches) {
         if (activeFocus?.keyboardWasOpen) {
-          removeKeyboardShift(activeFocus)
           removeKeyboardScrollSpace(activeFocus)
           restoreScrollPositions(activeFocus.scroll)
         }
@@ -369,7 +302,6 @@ export default function LandscapeInputFocusGuard() {
       media.removeEventListener('change', handleOrientationChange)
       window.clearTimeout(blurTimer)
       if (activeFocus?.keyboardWasOpen) {
-        removeKeyboardShift(activeFocus)
         removeKeyboardScrollSpace(activeFocus)
         restoreScrollPositions(activeFocus.scroll)
       }

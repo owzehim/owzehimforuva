@@ -1325,6 +1325,19 @@ select {
     pointer-events: none;
   }
 
+  #root .landscape-keyboard-scroll-host.registration-academic-step .registration-major-field,
+  #root .landscape-keyboard-scroll-host.registration-academic-step .registration-major-field:focus-within,
+  #root .landscape-keyboard-scroll-host.registration-academic-step .registration-year-field {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
   #root .landscape-focus-zoom-guard {
     box-sizing: border-box !important;
     width: var(--landscape-focus-width) !important;
