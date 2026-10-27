@@ -1311,6 +1311,20 @@ select {
 }
 
 @media (orientation: landscape) and (pointer: coarse) {
+  #root .landscape-keyboard-scroll-host {
+    overflow-y: auto !important;
+  }
+
+  #root .landscape-keyboard-scroll-host::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 1px;
+    height: var(--landscape-keyboard-scroll-space, 0px);
+    pointer-events: none;
+  }
+
   #root .landscape-focus-zoom-guard {
     box-sizing: border-box !important;
     width: var(--landscape-focus-width) !important;
