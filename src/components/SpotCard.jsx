@@ -1066,6 +1066,11 @@ export function SpotCard({
     isCollapsed &&
     typeof window !== 'undefined' &&
     window.matchMedia('(orientation: portrait)').matches
+  const shouldShowGoogleMapsButton =
+    showFixedGoogleMapsButton &&
+    isVisible &&
+    !closing &&
+    (!shouldCenterGoogleMapsButtonInPortrait || googleMapsButtonCenterY != null)
 
   useEffect(() => {
     if (
@@ -1562,10 +1567,7 @@ export function SpotCard({
         <div
           className={
             'spot-card-google-maps-button fixed left-0 right-0 pointer-events-none flex justify-center transition-opacity duration-200 ' +
-            (showFixedGoogleMapsButton &&
-            (!shouldCenterGoogleMapsButtonInPortrait || googleMapsButtonCenterY != null)
-              ? 'opacity-100'
-              : 'opacity-0')
+            (shouldShowGoogleMapsButton ? 'opacity-100' : 'opacity-0')
           }
           style={{
             ...(googleMapsButtonCenterY == null
@@ -1594,7 +1596,7 @@ export function SpotCard({
               rel="noopener noreferrer"
               className={
                 'bg-orange-500 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg flex items-center gap-1.5 ' +
-                (showFixedGoogleMapsButton ? 'pointer-events-auto' : 'pointer-events-none')
+                (shouldShowGoogleMapsButton ? 'pointer-events-auto' : 'pointer-events-none')
               }
               onTouchStart={(e) => e.stopPropagation()}
             >
