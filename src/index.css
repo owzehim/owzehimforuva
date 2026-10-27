@@ -1247,6 +1247,7 @@ select {
 @media (min-width: 768px) and (min-height: 640px) and (display-mode: browser) {
   .phone-app-shell,
   .member-app-shell {
+    --membership-card-width: min(calc(100vw - 40px), 390px);
     --member-screen-width: min(calc(100vw - 32px), 398px);
     --app-screen-width: min(calc(100vw - 32px), 398px);
     width: min(100vw, 430px);
