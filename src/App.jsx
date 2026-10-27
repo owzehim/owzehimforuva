@@ -22,15 +22,13 @@ import { useTheme } from './hooks/useTheme'
 import { WifiX } from '@phosphor-icons/react'
 import LoadingIndicator from './components/LoadingIndicator'
 import DevScreenInteractionLock from './components/DevScreenInteractionLock'
+import ZoomViewportMinimap from './components/ZoomViewportMinimap'
 import { hasAppAccessClaim } from './domain/auth/authRules'
 import { LEGAL_DOCUMENT_VERSION } from './content/legalDocuments'
 import { hasCurrentLegalConsent } from './domain/legalConsent'
 
 const OTP_PENDING_KEY = 'uvain_otp_pending_email'
 const OTP_PENDING_EVENT = 'uvain-otp-pending-change'
-
-const isStandaloneApp = () =>
-  window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
 
 function App() {
   useTheme()
@@ -139,32 +137,6 @@ function App() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!isStandaloneApp()) return undefined
-
-    const viewport = document.querySelector('meta[name="viewport"]')
-    const previousViewport = viewport?.getAttribute('content')
-    viewport?.setAttribute(
-      'content',
-      'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=overlays-content',
-    )
-
-    const preventPinch = (e) => {
-      if (e.touches?.length > 1) e.preventDefault()
-    }
-    const preventGesture = (e) => e.preventDefault()
-
-    document.addEventListener('touchmove', preventPinch, { passive: false })
-    document.addEventListener('gesturestart', preventGesture)
-    document.addEventListener('gesturechange', preventGesture)
-
-    return () => {
-      if (previousViewport) viewport?.setAttribute('content', previousViewport)
-      document.removeEventListener('touchmove', preventPinch)
-      document.removeEventListener('gesturestart', preventGesture)
-      document.removeEventListener('gesturechange', preventGesture)
-    }
-  }, [])
   if (isOffline) {
     return (
       <DevScreenInteractionLock>
@@ -239,6 +211,7 @@ function App() {
   return (
     <BrowserRouter>
       <InstallBanner />
+      <ZoomViewportMinimap />
       <Routes>
         <Route
           path="/login"

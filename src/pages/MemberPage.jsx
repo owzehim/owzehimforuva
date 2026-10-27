@@ -220,7 +220,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center bg-white dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`} style={{ touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}>
+      <div className={`min-h-screen flex items-center justify-center bg-white dark:bg-[#121212] ${lockInteractions ? 'dev-no-selection' : ''}`} style={{ touchAction: lockInteractions ? 'pan-x pan-y pinch-zoom' : undefined }}>
         <LoadingIndicator />
       </div>
     )
@@ -230,8 +230,8 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
 
   return (
     <div
-      className={`member-app-shell viewport-height-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212] ${lockInteractions ? 'dev-no-zoom-selection' : ''}`}
-      style={{ height: '100dvh', touchAction: lockInteractions ? 'pan-x pan-y' : undefined }}
+      className={`member-app-shell viewport-height-shell relative flex flex-col bg-white overflow-hidden dark:bg-[#121212] ${lockInteractions ? 'dev-no-selection' : ''}`}
+      style={{ height: '100dvh', touchAction: lockInteractions ? 'pan-x pan-y pinch-zoom' : undefined }}
     >
       {/* Review modal */}
       <ReviewModal
@@ -1666,6 +1666,9 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const [cardLiftOffset, setCardLiftOffset] = useState(0)
   const [isCardDragging, setIsCardDragging] = useState(false)
   const [cardFlipped, setCardFlipped] = useState(false)
+  const [nativeZoomed, setNativeZoomed] = useState(() =>
+    typeof window !== 'undefined' && (window.visualViewport?.scale ?? 1) > 1.04,
+  )
   const [darkMode, setDarkMode] = useState(() =>
     typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
   )
@@ -1688,12 +1691,22 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
 
   const handleTouchStart = (e) => {
     if (cardFlipped) return
+    if (nativeZoomed || e.touches.length !== 1) {
+      touchStartY.current = null
+      setIsCardDragging(false)
+      return
+    }
     touchStartY.current = e.touches[0].clientY
     setIsCardDragging(true)
   }
 
   const handleTouchMove = (e) => {
     if (cardFlipped) return
+    if (nativeZoomed || e.touches.length !== 1) {
+      touchStartY.current = null
+      setIsCardDragging(false)
+      return
+    }
     if (touchStartY.current == null) return
     const dy = touchStartY.current - e.touches[0].clientY
     if (Math.abs(dy) > 10) {
@@ -1703,6 +1716,11 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
 
   const handleTouchEnd = (e) => {
     if (cardFlipped) return
+    if (nativeZoomed || e.touches.length > 0) {
+      touchStartY.current = null
+      setIsCardDragging(false)
+      return
+    }
     if (touchStartY.current == null) return
     const dy = touchStartY.current - e.changedTouches[0].clientY
     const max = getMaxLift()
@@ -1726,6 +1744,15 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
     setCardLiftOffset(lifted ? getMaxLift() : 0)
     if (onLiftChange) onLiftChange(lifted)
   }, [lifted, onLiftChange])
+
+  useEffect(() => {
+    const visualViewport = window.visualViewport
+    if (!visualViewport) return undefined
+
+    const updateZoomState = () => setNativeZoomed(visualViewport.scale > 1.04)
+    visualViewport.addEventListener('resize', updateZoomState)
+    return () => visualViewport.removeEventListener('resize', updateZoomState)
+  }, [])
 
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return undefined
@@ -1800,7 +1827,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
         position: 'relative',
         height: '100%',
         overflow: 'hidden',
-        touchAction: 'none',
+        touchAction: nativeZoomed ? 'pan-x pan-y pinch-zoom' : 'pinch-zoom',
         WebkitTapHighlightColor: 'transparent',
       }}
       onTouchStart={handleTouchStart}
@@ -3143,11 +3170,21 @@ function EventsTab({ events }) {
   }
 
   const handleEventCardTouchStart = (e) => {
+    if (e.touches.length !== 1) {
+      eventCardStartY.current = null
+      eventCardGestureAxis.current = 'pinch'
+      return
+    }
     eventCardStartY.current = e.touches[0].clientY
     eventCardGestureAxis.current = null
   }
 
   const handleEventCardTouchMove = (e) => {
+    if (e.touches.length !== 1) {
+      eventCardStartY.current = null
+      eventCardGestureAxis.current = 'pinch'
+      return
+    }
     if (!eventCardOpen || eventCardStartY.current == null) return
 
     if (eventCardGestureAxis.current === 'x') {
@@ -3871,6 +3908,7 @@ const effectiveDateColor = isDragging
                 style={{
                   overflowY: eventCardOpen ? 'auto' : 'hidden',
                   paddingBottom: 'calc(env(safe-area-inset-bottom) + 116px)',
+                  touchAction: 'pan-y pinch-zoom',
                 }}
               >
                 <div
