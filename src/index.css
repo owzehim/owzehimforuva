@@ -287,7 +287,11 @@ html:not(.dark) .text-gray-400 {
     --landscape-login-center-inset: clamp(25px, calc(110px - 11vw), 55px);
     --landscape-login-panel-width: min(
       24rem,
-      calc(50vw - var(--landscape-content-gutter) - var(--landscape-content-gutter))
+      calc(
+        var(--landscape-safe-width) / 2 -
+        var(--landscape-content-gutter) -
+        var(--landscape-content-gutter)
+      )
     );
   }
 
@@ -514,8 +518,8 @@ html:not(.dark) .text-gray-400 {
   }
 
   .login-page.login-landscape-credentials {
-    padding-left: var(--landscape-content-gutter) !important;
-    padding-right: var(--landscape-content-gutter) !important;
+    padding-left: calc(env(safe-area-inset-left, 0px) + var(--landscape-content-gutter)) !important;
+    padding-right: calc(env(safe-area-inset-right, 0px) + var(--landscape-content-gutter)) !important;
   }
 
   .login-landscape-credentials .login-content-shell {
@@ -533,6 +537,11 @@ html:not(.dark) .text-gray-400 {
     margin-left: 0 !important;
     margin-right: auto !important;
     transform: none !important;
+  }
+
+  .login-landscape-credentials > button:first-of-type {
+    top: 6px !important;
+    left: max(14px, calc(env(safe-area-inset-left, 0px) + 8px)) !important;
   }
 
   .login-landscape-credentials .login-brand {
@@ -596,8 +605,12 @@ html:not(.dark) .text-gray-400 {
 
   .login-landscape-credentials .login-signup-prompt {
     position: fixed !important;
-    left: var(--landscape-content-gutter) !important;
-    right: calc(50% + var(--landscape-content-gutter)) !important;
+    left: calc(env(safe-area-inset-left, 0px) + var(--landscape-content-gutter)) !important;
+    right: calc(
+      env(safe-area-inset-right, 0px) +
+      var(--landscape-safe-width) / 2 +
+      var(--landscape-content-gutter)
+    ) !important;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
     z-index: 30 !important;
     display: flex !important;
@@ -607,6 +620,16 @@ html:not(.dark) .text-gray-400 {
     margin: 0 !important;
     padding: 0 !important;
     white-space: nowrap !important;
+  }
+
+  .legal-page .legal-page-controls > button:first-of-type {
+    top: 6px !important;
+    left: max(14px, calc(env(safe-area-inset-left, 0px) + 8px)) !important;
+  }
+
+  .legal-page .legal-page-controls > button:nth-of-type(2) {
+    top: 10px !important;
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 8px)) !important;
   }
 
   .registration-about-step .registration-step,
