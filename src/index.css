@@ -557,6 +557,10 @@ html:not(.dark) .text-gray-400 {
     padding-bottom: 6px !important;
   }
 
+  .public-spot-category-slider {
+    padding-top: 9px !important;
+  }
+
   .app-landscape-bottom-tabs {
     padding-left: env(safe-area-inset-left, 0px) !important;
     padding-right: env(safe-area-inset-right, 0px) !important;
@@ -625,18 +629,32 @@ html:not(.dark) .text-gray-400 {
     overflow: hidden;
   }
 
+  .spot-card-landscape-review-box > .flex-1 {
+    min-height: 0 !important;
+    flex: 1 1 0% !important;
+    overflow: hidden !important;
+  }
+
+  .spot-card-landscape-review-box .spot-card-review-guide-content {
+    min-height: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   .spot-card-landscape-review-box .spot-card-landscape-usullang .spot-card-compact-stars {
-    gap: clamp(4px, 1.5dvh, 7px) !important;
-    margin-bottom: clamp(6px, 2dvh, 10px) !important;
+    gap: clamp(2px, 1dvh, 5px) !important;
+    margin-bottom: clamp(2px, 1dvh, 6px) !important;
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-usullang .spot-card-compact-stars svg {
-    width: clamp(36px, 14dvh, 68px) !important;
-    height: clamp(36px, 14dvh, 68px) !important;
+    width: clamp(24px, 12dvh, 56px) !important;
+    height: clamp(24px, 12dvh, 56px) !important;
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-speech-bubble {
-    width: min(92%, clamp(200px, 80dvh, 360px));
+    width: min(86%, clamp(170px, 68dvh, 320px));
     margin-left: auto;
     margin-right: auto;
   }
@@ -647,7 +665,15 @@ html:not(.dark) .text-gray-400 {
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-speech-text {
-    font-size: clamp(9px, 3.5dvh, 14px) !important;
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    font-size: clamp(8px, 2.8dvh, 12px) !important;
+    line-height: 1.1 !important;
+    text-overflow: ellipsis;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    line-clamp: 2;
+    overflow-wrap: anywhere;
   }
 
   .spot-card-landscape-review-box .spot-card-review-guide-content {
@@ -655,28 +681,45 @@ html:not(.dark) .text-gray-400 {
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-content {
-    padding-top: clamp(6px, 2dvh, 10px) !important;
+    padding-top: clamp(3px, 1.2dvh, 7px) !important;
+    flex-shrink: 0;
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-heading {
-    margin-bottom: 6px !important;
+    min-height: 12px;
+    margin-bottom: clamp(2px, 1dvh, 5px) !important;
+    flex-shrink: 0;
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-rows {
-    gap: clamp(4px, 1.5dvh, 7px) !important;
-    padding-left: 12px !important;
+    gap: clamp(2px, 1dvh, 4px) !important;
+    padding-left: 8px !important;
+    flex-shrink: 0;
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-row {
-    gap: 6px !important;
+    min-height: 12px;
+    gap: 4px !important;
+    flex-shrink: 0;
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-member-evaluation .spot-card-tag-chart-row > div:nth-child(2) {
-    height: clamp(4px, 1.5dvh, 7px) !important;
+    height: clamp(4px, 1.4dvh, 6px) !important;
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-member-evaluation {
     margin-top: auto;
+    flex: 0 0 auto;
+  }
+
+  .spot-card-landscape-review-box .spot-card-tag-chart,
+  .spot-card-landscape-review-box .spot-card-tag-chart-content {
+    flex-shrink: 0;
+  }
+
+  .spot-card-landscape-review-box .spot-card-review-pagination {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
   }
 
   .spot-card-google-maps-button {

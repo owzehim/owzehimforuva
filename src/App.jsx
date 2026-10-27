@@ -180,6 +180,8 @@ function App() {
     new URLSearchParams(window.location.search).get('preview') === 'form'
   const isTutorialPreview = import.meta.env.DEV &&
     new URLSearchParams(window.location.search).get('preview') === 'tutorial'
+  const isSettingsPreview = import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get('preview') === 'screen'
 
   const consentForCurrentUser = legalConsentState?.userId === userId
     ? legalConsentState.status
@@ -235,7 +237,11 @@ function App() {
         />
         <Route
           path="/settings"
-          element={devScreen(protectWithConsent(<SettingsPage userId={userId} isAdmin={isAdmin} />))}
+          element={devScreen(
+            isSettingsPreview
+              ? <SettingsPage previewOnly />
+              : protectWithConsent(<SettingsPage userId={userId} isAdmin={isAdmin} />),
+          )}
         />
         <Route
           path="/settings/password"

@@ -250,7 +250,7 @@ function PublicMapTab({ restaurants, active }) {
   return (
     <div className="h-full flex flex-col no-highlight-zone">
       <div
-        className="app-landscape-top-tabs bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
+        className="app-landscape-top-tabs public-spot-category-slider bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
         style={{
           paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
           zIndex: 10,

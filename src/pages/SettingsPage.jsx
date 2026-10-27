@@ -71,7 +71,7 @@ async function getCroppedImgAsBlob(imageSrc, pixelCrop) {
 
 // ─── Page component ───────────────────────────────────────────────────────────
 
-export default function SettingsPage({ userId, isAdmin }) {
+export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
   const navigate = useNavigate()
   const [member, setMember] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -118,6 +118,22 @@ export default function SettingsPage({ userId, isAdmin }) {
 
   useEffect(() => {
     const load = async () => {
+      if (previewOnly) {
+        setMember({
+          id: 'settings-preview-member',
+          user_id: 'settings-preview-user',
+          first_name_korean: '민수',
+          last_name_korean: '김',
+          first_name: 'Minsoo',
+          last_name: 'Kim',
+          username: 'minsoo_kim',
+          email: 'minsoo.kim@example.com',
+          profile_image_url: null,
+          avatar_color_seed: 'settings-preview',
+        })
+        setLoading(false)
+        return
+      }
       if (!userId) { navigate('/login'); return }
       const { data: memberData, error: memberError } = await supabase
         .from('members')
@@ -132,7 +148,7 @@ export default function SettingsPage({ userId, isAdmin }) {
       setLoading(false)
     }
     load()
-  }, [navigate, userId])
+  }, [navigate, previewOnly, userId])
 
   useEffect(() => {
     const edgeWidth = 30
@@ -191,11 +207,13 @@ export default function SettingsPage({ userId, isAdmin }) {
   }, [])
 
   const handleLogout = async () => {
+    if (previewOnly) return
     navigate('/public', { replace: true })
     await supabase.auth.signOut({ scope: 'local' })
   }
 
   const handleDeleteAccount = async () => {
+    if (previewOnly) return
     setDeleteAccountError('')
     if (deleteAccountConfirmation !== 'DELETE') {
       setDeleteAccountError('계속하려면 DELETE를 입력해 주세요.')
@@ -280,6 +298,7 @@ export default function SettingsPage({ userId, isAdmin }) {
   }
 
   const handleCropConfirm = async () => {
+    if (previewOnly) return
     if (!member || !cropImageSrc || !croppedAreaPixels) return
     setUploading(true)
     setError('')
@@ -311,6 +330,7 @@ export default function SettingsPage({ userId, isAdmin }) {
   }
 
   const handleDeleteProfileImage = async () => {
+    if (previewOnly) return
     if (!member) return
     setError('')
     setUploading(true)
@@ -346,6 +366,7 @@ export default function SettingsPage({ userId, isAdmin }) {
   }
 
   const handleUsernameSave = async () => {
+    if (previewOnly) return
     if (!member || usernameSaving) return
 
     const trimmedUsername = usernameDraft.trim()
@@ -413,7 +434,7 @@ export default function SettingsPage({ userId, isAdmin }) {
 
   return (
     <div
-      className="phone-app-shell flex flex-col bg-white no-highlight-zone dark:bg-[#121212]"
+      className="settings-page phone-app-shell flex flex-col bg-white no-highlight-zone dark:bg-[#121212]"
       style={{
         height: '100dvh',
         minHeight: 0,
@@ -426,16 +447,110 @@ export default function SettingsPage({ userId, isAdmin }) {
         .no-highlight-zone * {
           -webkit-tap-highlight-color: transparent;
         }
+        @media (orientation: landscape) {
+          .settings-page {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            width: 100vw !important;
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            overflow: hidden !important;
+          }
+          .settings-header {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            height: calc(env(safe-area-inset-top, 0px) + 56px) !important;
+            min-height: calc(env(safe-area-inset-top, 0px) + 56px) !important;
+            padding: 0 !important;
+          }
+          .settings-back-button {
+            top: 6px !important;
+            left: max(14px, calc(env(safe-area-inset-left, 0px) + 8px)) !important;
+          }
+          .settings-content {
+            position: absolute !important;
+            top: calc(env(safe-area-inset-top, 0px) + 56px) !important;
+            right: env(safe-area-inset-right, 0px) !important;
+            bottom: env(safe-area-inset-bottom, 0px) !important;
+            left: env(safe-area-inset-left, 0px) !important;
+            display: block !important;
+            overflow: hidden !important;
+            padding: 10px clamp(20px, 4vw, 48px) !important;
+            box-sizing: border-box !important;
+          }
+          .settings-layout {
+            display: grid !important;
+            width: 100% !important;
+            max-width: none !important;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: center;
+            column-gap: clamp(20px, 4vw, 48px);
+            row-gap: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .settings-profile-column,
+          .settings-actions-column {
+            width: min(100%, 380px);
+            min-width: 0;
+            justify-self: center;
+          }
+          .settings-profile-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .settings-profile-card {
+            gap: 8px !important;
+            padding: 12px 16px !important;
+          }
+          .settings-profile-card > button:first-child {
+            width: 72px !important;
+            height: 72px !important;
+          }
+          .settings-profile-card > button:first-child > div {
+            width: 72px !important;
+            height: 72px !important;
+          }
+          .settings-profile-card > button:first-child > span {
+            width: 24px !important;
+            height: 24px !important;
+          }
+          .settings-theme-card {
+            padding: 10px 12px !important;
+          }
+          .settings-theme-card .mb-3 {
+            margin-bottom: 6px !important;
+          }
+          .settings-theme-card button {
+            height: 32px !important;
+          }
+          .settings-actions-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .settings-actions-column > button {
+            min-height: 36px;
+            padding: 8px 12px !important;
+            font-size: 12px !important;
+            line-height: 16px !important;
+          }
+        }
       `}</style>
       {/* Header */}
       <div
-        className="relative z-50 flex flex-shrink-0 items-center gap-2 bg-white px-4 dark:bg-[#121212]"
+        className="settings-header relative z-50 flex flex-shrink-0 items-center gap-2 bg-white px-4 dark:bg-[#121212]"
         style={settingsHeaderStyle}
       >
         <button
           type="button"
-          onClick={() => navigate('/member')}
-          className="text-[#374151] dark:text-[#c7c7cc]"
+          onClick={() => navigate(previewOnly ? '/public' : '/member')}
+          className="settings-back-button text-[#374151] dark:text-[#c7c7cc]"
           style={settingsBackButtonStyle}
           aria-label="Back to member page"
         >
@@ -444,15 +559,16 @@ export default function SettingsPage({ userId, isAdmin }) {
       </div>
 
       {/* Content */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto space-y-6 px-4 pt-1 pb-6" style={{ maxWidth: 'var(--app-screen-width)' }}>
+      <div className="settings-content min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="settings-layout mx-auto space-y-6 px-4 pt-1 pb-6" style={{ maxWidth: 'var(--app-screen-width)' }}>
 
+          <div className="settings-profile-column flex flex-col gap-3">
           {/* Profile card */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
+          <div className="settings-profile-card bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
 
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={previewOnly ? undefined : () => fileInputRef.current?.click()}
               disabled={uploading}
               aria-label="프로필 사진 변경"
               style={{
@@ -556,7 +672,7 @@ export default function SettingsPage({ userId, isAdmin }) {
                     {isAdmin && <AdminBadge size={14} />}
                     <button
                       type="button"
-                      onClick={handleUsernameEditStart}
+                      onClick={previewOnly ? undefined : handleUsernameEditStart}
                       className="absolute left-full top-1/2 ml-1 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-gray-500 dark:text-gray-400"
                       aria-label="사용자 이름 편집"
                     >
@@ -590,19 +706,24 @@ export default function SettingsPage({ userId, isAdmin }) {
             {error && <p className="text-xs text-red-500 text-center mt-1">{error}</p>}
           </div>
 
-          <div className="space-y-6 pb-6">
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
+          <div className="settings-theme-card rounded-2xl border border-gray-100 bg-white p-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">화면 모드</p>
               </div>
-              <ThemeToggle />
-            </div>
+              <ThemeToggle disabled={previewOnly} />
+          </div>
+          </div>
 
+          <div className="settings-actions-column flex flex-col gap-6 pb-6">
             <button
               type="button"
               onClick={() => {
                 // Keep a one-time fallback signal in case navigation state is lost
                 // when the member page remounts in an installed PWA.
+                if (previewOnly) {
+                  navigate('/member?preview=tutorial')
+                  return
+                }
                 window.sessionStorage.setItem('uvain_reopen_welcome_slides', '1')
                 navigate('/member', { state: { reopenWelcomeSlides: true } })
               }}
@@ -613,7 +734,7 @@ export default function SettingsPage({ userId, isAdmin }) {
 
             <button
               type="button"
-              onClick={() => navigate('/settings/password')}
+              onClick={() => navigate(previewOnly ? '/settings/password?preview=form' : '/settings/password')}
               className="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 text-center shadow-sm dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
             >
               비밀번호 바꾸기
@@ -624,7 +745,7 @@ export default function SettingsPage({ userId, isAdmin }) {
               onClick={() => navigate('/legal?lang=ko')}
               className="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-center text-sm font-semibold text-gray-700 shadow-sm dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
             >
-              이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
+              약관 및 정책
             </button>
 
             <button
@@ -638,6 +759,7 @@ export default function SettingsPage({ userId, isAdmin }) {
             <button
               type="button"
               onClick={() => {
+                if (previewOnly) return
                 setDeleteAccountError('')
                 setDeleteAccountConfirmation('')
                 setDeleteAccountOpen(true)
