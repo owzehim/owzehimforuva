@@ -77,8 +77,9 @@ function revealFocusedControl(control, visualViewport) {
   const viewportTop = visualViewport?.offsetTop ?? 0
   const viewportBottom = viewportTop + (visualViewport?.height ?? window.innerHeight)
   let correction = getVerticalVisibilityCorrection(control, viewportTop, viewportBottom)
-  if (Math.abs(correction) < 1) return
+  if (Math.abs(correction) < 1) return false
 
+  let didScroll = false
   let element = control.parentElement
   while (element && element !== document.body && element !== document.documentElement && Math.abs(correction) >= 1) {
     if (element.scrollHeight > element.clientHeight + 1) {
@@ -86,13 +87,19 @@ function revealFocusedControl(control, visualViewport) {
       element.scrollTop += correction
       const appliedScroll = element.scrollTop - previousScrollTop
       if (appliedScroll !== 0) {
+        didScroll = true
         correction = getVerticalVisibilityCorrection(control, viewportTop, viewportBottom)
       }
     }
     element = element.parentElement
   }
 
-  if (Math.abs(correction) >= 1) window.scrollBy(0, correction)
+  if (Math.abs(correction) >= 1) {
+    const previousScrollTop = window.scrollY
+    window.scrollBy(0, correction)
+    didScroll ||= window.scrollY !== previousScrollTop
+  }
+  return didScroll
 }
 
 export default function LandscapeInputFocusGuard() {
@@ -149,14 +156,18 @@ export default function LandscapeInputFocusGuard() {
           restoredLeft + bounds.width <= viewportRight - margin &&
           restoredTop + bounds.height <= viewportBottom - margin
 
-        if (remainsVisible && hasScrollMoved) {
+        if (remainsVisible && hasScrollMoved && !focus.preserveKeyboardScroll) {
           for (const ancestor of focus.scroll.ancestors) {
             ancestor.element.scrollTo(ancestor.left, ancestor.top)
           }
           window.scrollTo(focus.scroll.windowLeft, focus.scroll.windowTop)
+        } else if (!remainsVisible && hasScrollMoved) {
+          focus.preserveKeyboardScroll = true
         }
 
-        revealFocusedControl(focus.control, visualViewport)
+        if (revealFocusedControl(focus.control, visualViewport)) {
+          focus.preserveKeyboardScroll = true
+        }
       }, 160)
     }
 
@@ -192,6 +203,7 @@ export default function LandscapeInputFocusGuard() {
         control,
         scroll: pointer?.scroll ?? captureScrollPositions(control),
         scale: pointer?.scale ?? (visualViewport?.scale ?? 1),
+        preserveKeyboardScroll: false,
       }
       visualViewport?.addEventListener('resize', scheduleScrollCheck)
       window.addEventListener('resize', scheduleScrollCheck)
