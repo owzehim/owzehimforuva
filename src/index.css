@@ -281,6 +281,9 @@ html:not(.dark) .text-gray-400 {
 @media (orientation: landscape) and (max-height: 600px) {
   :root {
     --landscape-content-gutter: clamp(40px, 6vw, 56px);
+    --landscape-safe-width: calc(
+      100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)
+    );
     --landscape-login-center-inset: clamp(25px, calc(110px - 11vw), 55px);
     --landscape-login-panel-width: min(
       24rem,
@@ -448,20 +451,22 @@ html:not(.dark) .text-gray-400 {
   }
 
   .membership-slide-copy {
-    left: 0 !important;
-    right: 50% !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
     bottom: 48px !important;
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
 
   .membership-slide-copy-inner {
+    grid-column: 1;
     width: calc(100% - var(--landscape-content-gutter) - var(--landscape-content-gutter));
     max-width: 360px;
-    margin-left: auto;
-    margin-right: auto;
+    justify-self: center;
+    margin: 0;
     text-align: left;
   }
 
@@ -476,7 +481,10 @@ html:not(.dark) .text-gray-400 {
   }
 
   .membership-slide-dots {
-    left: max(var(--landscape-content-gutter), calc(25vw - 180px)) !important;
+    left: calc(
+      env(safe-area-inset-left, 0px) +
+      max(var(--landscape-content-gutter), calc(var(--landscape-safe-width) / 4 - 180px))
+    ) !important;
     right: auto !important;
     bottom: 18px !important;
     justify-content: flex-start !important;
@@ -613,6 +621,9 @@ html:not(.dark) .text-gray-400 {
   .registration-academic-step,
   .registration-account-step {
     --landscape-content-gutter: 40px;
+    --registration-landscape-safe-width: calc(
+      100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)
+    );
     --registration-landscape-column-width: min(
       368px,
       calc(50vw - 48px),
@@ -622,10 +633,11 @@ html:not(.dark) .text-gray-400 {
   }
 
   .registration-account-step {
-    --registration-account-column-inset: max(
-      calc(25vw - 184px),
-      24px,
-      calc(25vw - 50dvh + 16px)
+    --registration-account-consent-left: calc(
+      env(safe-area-inset-left, 0px) +
+      var(--registration-landscape-safe-width) -
+      var(--registration-landscape-safe-width) / 4 -
+      var(--registration-landscape-field-width) / 2
     );
   }
 
@@ -676,10 +688,10 @@ html:not(.dark) .text-gray-400 {
 
   .registration-about-step .registration-name-grid {
     top: 24px !important;
-    left: 50% !important;
-    right: auto !important;
-    width: 100vw !important;
-    transform: translateX(-50%) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    width: auto !important;
+    transform: none !important;
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     column-gap: 0 !important;
@@ -737,10 +749,12 @@ html:not(.dark) .text-gray-400 {
   }
 
   .registration-academic-step .registration-academic-grid {
+    position: fixed !important;
     top: 32px !important;
-    left: 0 !important;
-    right: auto !important;
-    width: 100vw !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: 0 !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    width: auto !important;
     transform: none !important;
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -764,9 +778,10 @@ html:not(.dark) .text-gray-400 {
   .registration-account-step .registration-account-grid {
     position: fixed !important;
     top: 20px !important;
-    right: 0 !important;
+    right: env(safe-area-inset-right, 0px) !important;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 124px) !important;
-    left: 0 !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    width: auto !important;
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     column-gap: 0 !important;
@@ -793,7 +808,7 @@ html:not(.dark) .text-gray-400 {
   .registration-account-step .registration-account-profile-slot {
     position: fixed !important;
     top: auto !important;
-    left: calc(50vw + var(--registration-account-column-inset)) !important;
+    left: var(--registration-account-consent-left) !important;
     right: auto !important;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px - 4px) !important;
     z-index: 35 !important;
@@ -1010,9 +1025,9 @@ html:not(.dark) .text-gray-400 {
   }
 
   .registration-academic-step .registration-year-field {
-    position: fixed !important;
+    position: absolute !important;
     top: auto !important;
-    left: 75vw !important;
+    left: 75% !important;
     right: auto !important;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 57px) !important;
     width: var(--registration-landscape-column-width) !important;
@@ -1027,9 +1042,9 @@ html:not(.dark) .text-gray-400 {
   }
 
   .registration-academic-step .registration-major-field {
-    position: fixed !important;
+    position: absolute !important;
     top: auto !important;
-    left: 25vw !important;
+    left: 25% !important;
     right: auto !important;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 23px) !important;
     width: var(--registration-landscape-field-width) !important;
@@ -1044,7 +1059,7 @@ html:not(.dark) .text-gray-400 {
   }
 
   .registration-academic-step .registration-major-field:focus-within {
-    position: fixed !important;
+    position: absolute !important;
     z-index: 60 !important;
   }
 
@@ -1155,9 +1170,10 @@ html:not(.dark) .text-gray-400 {
 
   .registration-about-step .registration-name-grid {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 32px) !important;
-    left: 50% !important;
-    width: var(--registration-landscape-field-width) !important;
-    transform: translateX(-50%) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    width: auto !important;
+    transform: none !important;
     overflow-y: auto !important;
     overscroll-behavior: contain;
   }
@@ -1173,10 +1189,10 @@ html:not(.dark) .text-gray-400 {
 
   .registration-academic-step .registration-academic-grid {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 32px) !important;
-    left: 50% !important;
-    right: auto !important;
-    width: var(--registration-landscape-field-width) !important;
-    transform: translateX(-50%) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    width: auto !important;
+    transform: none !important;
     overflow-y: auto !important;
     overscroll-behavior: contain;
   }
@@ -1193,6 +1209,17 @@ html:not(.dark) .text-gray-400 {
     z-index: 1 !important;
   }
 
+  .registration-academic-step .registration-year-field {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+
   .registration-account-step .registration-account-grid {
     row-gap: 10px !important;
   }
@@ -1203,6 +1230,14 @@ html:not(.dark) .text-gray-400 {
 
   .registration-account-step .registration-account-consents {
     margin-top: 0 !important;
+  }
+
+  .registration-account-step .registration-account-profile-slot {
+    left: calc(
+      env(safe-area-inset-left, 0px) +
+      var(--registration-landscape-safe-width) / 2 -
+      var(--registration-landscape-field-width) / 2
+    ) !important;
   }
 }
 
