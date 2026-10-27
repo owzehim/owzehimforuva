@@ -278,6 +278,107 @@ html:not(.dark) .text-gray-400 {
   white-space: nowrap;
 }
 
+.email-confirmed-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.email-confirmed-left-fields {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.email-confirmed-email-field {
+  width: 100%;
+  min-width: 0;
+  height: 54px;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 12px 7px;
+  box-sizing: border-box;
+  border: 1px solid var(--reg-border, #d8dde5);
+  border-radius: 8px;
+  background: var(--reg-field-bg, #fff);
+}
+
+.registration-email-result-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.registration-email-result-fields {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.registration-email-result-field {
+  width: 100%;
+  min-width: 0;
+  height: 54px;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 12px 7px;
+  box-sizing: border-box;
+  border: 1px solid var(--reg-border, #d8dde5);
+  border-radius: 8px;
+  background: var(--reg-field-bg, #fff);
+}
+
+.registration-email-result-field label {
+  font-size: 12px;
+  line-height: 12px;
+  font-weight: 400;
+  text-align: left;
+  color: var(--reg-muted, #6b7280);
+}
+
+.registration-email-result-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.registration-email-result-actions > p {
+  width: 100%;
+  margin: 0;
+  text-align: center;
+}
+
+.registration-email-result-actions > button,
+.registration-email-result-success > .registration-email-result-home-button {
+  width: 100%;
+  border-radius: 9999px;
+}
+
+.registration-email-result-actions > .registration-email-result-home-button {
+  border: 0;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
 @media (orientation: landscape) and (max-height: 600px) {
   :root {
     --landscape-content-gutter: clamp(40px, 6vw, 56px);
@@ -300,6 +401,139 @@ html:not(.dark) .text-gray-400 {
     position: relative !important;
     top: calc(0px - env(safe-area-inset-top, 0px)) !important;
     height: calc(100dvh + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .email-confirmed-page {
+    min-height: 100dvh !important;
+    height: auto !important;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px)
+      max(16px, calc(env(safe-area-inset-right, 0px) + 16px))
+      calc(env(safe-area-inset-bottom, 0px) + 12px)
+      max(16px, calc(env(safe-area-inset-left, 0px) + 16px)) !important;
+  }
+
+  .registration-email-result-page {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: env(safe-area-inset-top, 0px)
+      env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px)
+      env(safe-area-inset-left, 0px) !important;
+    overflow: hidden !important;
+  }
+
+  .registration-email-result-failure {
+    position: fixed !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    display: grid !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    align-items: center !important;
+    column-gap: 0 !important;
+  }
+
+  .registration-email-result-failure .registration-email-result-info {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: min(100%, 360px) !important;
+    justify-self: center !important;
+  }
+
+  .registration-email-result-field input {
+    min-height: 18px !important;
+    font-size: 14px !important;
+    line-height: 18px !important;
+  }
+
+  .registration-email-result-actions {
+    position: absolute !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    width: auto !important;
+    max-width: none !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .registration-email-result-actions > button,
+  .registration-email-result-success > .registration-email-result-home-button {
+    width: 180px !important;
+    max-width: none !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    box-sizing: border-box !important;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+  }
+
+  .email-confirmed-panel.email-confirmed-error {
+    position: fixed !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    display: grid !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    align-items: center !important;
+    column-gap: 0 !important;
+  }
+
+  .email-confirmed-error .email-confirmed-info {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: min(100%, 360px) !important;
+    justify-self: center !important;
+  }
+
+  .email-confirmed-error .email-confirmed-email-field input {
+    min-height: 18px !important;
+    font-size: 14px !important;
+    line-height: 18px !important;
+  }
+
+  .email-confirmed-actions {
+    position: absolute !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    width: auto !important;
+    max-width: none !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .email-confirmed-actions > button {
+    width: 180px !important;
+    max-width: none !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    box-sizing: border-box !important;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
   }
 
   .member-top-bar {
@@ -701,12 +935,87 @@ html:not(.dark) .text-gray-400 {
     top: 10px !important;
   }
 
-  .registration-about-step > div:first-of-type > button:first-of-type {
+  .registration-page-enter .registration-top-bar > button:first-of-type {
     left: max(14px, calc(env(safe-area-inset-left, 0px) + 8px)) !important;
   }
 
-  .registration-about-step > div:first-of-type > button:nth-of-type(2) {
+  .registration-page-enter .registration-top-bar > button:nth-of-type(2) {
     right: max(14px, calc(env(safe-area-inset-right, 0px) + 8px)) !important;
+  }
+
+  .registration-captcha-step .registration-captcha-icon {
+    margin-bottom: 12px !important;
+  }
+
+  .registration-captcha-step .registration-captcha-intro {
+    margin-bottom: 14px !important;
+  }
+
+  .registration-email-step .registration-email-card {
+    position: fixed !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    column-gap: 24px !important;
+    transform: none !important;
+  }
+
+  .registration-email-step .registration-email-icon {
+    margin-bottom: 12px !important;
+  }
+
+  .registration-email-step .registration-email-intro {
+    width: 100% !important;
+    max-width: 368px !important;
+    justify-self: center !important;
+    margin: 0 !important;
+  }
+
+  .registration-email-step .registration-email-actions {
+    position: absolute !important;
+    left: 50% !important;
+    right: 0 !important;
+    bottom: calc(54px + 38px) !important;
+    z-index: 30 !important;
+    display: flex !important;
+    width: auto !important;
+    max-width: none !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .registration-email-step .registration-email-actions > button {
+    width: 180px !important;
+    max-width: none !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    box-sizing: border-box !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+  }
+
+  .registration-email-step .registration-email-actions .registration-email-change-button {
+    order: 2 !important;
+  }
+
+  .registration-email-step .registration-email-actions .registration-email-return-button {
+    order: 1 !important;
   }
 
   .registration-about-step .registration-name-grid {

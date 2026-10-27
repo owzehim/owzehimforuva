@@ -4,7 +4,7 @@
 // ??Do NOT copy to React Native ??rewrite UI with RN components.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Camera, CaretDown, CaretLeft, CheckCircle, EnvelopeSimple, Eye, EyeSlash, UserCircle, XCircle } from '@phosphor-icons/react';
 import Cropper from 'react-easy-crop';
 import { useRegisterMember } from '../hooks/useRegisterMember';
@@ -13,6 +13,7 @@ import { LEGAL_DOCUMENT_VERSION, legalDocuments } from '../content/legalDocument
 import { isProductionEnv } from '../lib/appEnv';
 import { getPastelColor } from '../lib/avatarColor';
 import CaptchaChallenge from '../components/CaptchaChallenge';
+import DevelopmentCaptchaPreview from '../components/DevelopmentCaptchaPreview';
 import { isCaptchaEnabled } from '../lib/captcha';
 import { checkSignupEmailConfirmation, resendConfirmationEmail } from '../api/authRepository';
 import { useModalFocus } from '../hooks/useModalFocus';
@@ -20,6 +21,7 @@ import { useModalFocus } from '../hooks/useModalFocus';
 const isMobileChromeBrowser = typeof navigator !== 'undefined'
   && /(?:Chrome|CriOS)\//.test(navigator.userAgent)
   && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+const REGISTRATION_PREVIEW_MODES = new Set(['about', 'academic', 'account', 'captcha', 'email', 'complete', 'failed']);
 
 function isCompactPortraitViewport() {
   if (
@@ -621,6 +623,10 @@ function TypeaheadSelect({ name, value, onChange, options, placeholder = '', all
 // ?? Main component ????????????????????????????????????????????????????????????
 export default function RegistrationPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedPreview = import.meta.env.DEV ? searchParams.get('preview') : null;
+  const previewMode = REGISTRATION_PREVIEW_MODES.has(requestedPreview) ? requestedPreview : null;
+  const isPreviewMode = previewMode !== null;
   const [language, setLanguage] = useState('ko');
 
   useEffect(() => {
@@ -722,6 +728,20 @@ export default function RegistrationPage() {
     editEmail,
   } = useRegisterMember();
 
+  const previewEmail = formData.email || 'preview@uva.example';
+  const visibleStep = previewMode === 'captcha'
+    ? 'account'
+    : ['about', 'academic', 'account'].includes(previewMode)
+      ? previewMode
+      : ['email', 'complete', 'failed'].includes(previewMode)
+      ? 'email'
+      : step;
+  const visibleConfirmationResult = previewMode === 'complete'
+    ? 'success'
+    : previewMode === 'failed'
+      ? 'failure'
+      : confirmationResult;
+
   const yearOptions = getYearOptions(formData.educationLevel);
   const t = translations[language];
   const displayName =
@@ -798,6 +818,7 @@ export default function RegistrationPage() {
 
   const handleAccountSubmit = (event) => {
     event.preventDefault();
+    if (isPreviewMode) return;
     if (!isCaptchaEnabled) {
       void submitRegistration();
       return;
@@ -807,12 +828,17 @@ export default function RegistrationPage() {
   };
 
   const handleSignupCaptchaVerify = (token) => {
+    if (isPreviewMode) return;
     if (token && showSignupCaptcha && !loading) {
       void submitRegistration(token);
     }
   };
 
   const returnToAccountForm = () => {
+    if (previewMode === 'captcha') {
+      navigate('/register?preview=account');
+      return;
+    }
     setShowSignupCaptcha(false);
     setCaptchaResetKey((key) => key + 1);
   };
@@ -826,6 +852,7 @@ export default function RegistrationPage() {
   };
 
   const handleResendConfirmation = async () => {
+    if (isPreviewMode) return;
     setResendingConfirmation(true);
     setResendConfirmationMessage('');
     setResendConfirmationError('');
@@ -845,6 +872,7 @@ export default function RegistrationPage() {
 
   const handleCheckConfirmation = useCallback(async (captchaToken = confirmationCheckCaptchaToken) => {
     if (
+      isPreviewMode ||
       confirmationCheckStartedRef.current ||
       !formData.email ||
       !formData.password ||
@@ -884,7 +912,7 @@ export default function RegistrationPage() {
         setConfirmationCheckCaptchaResetKey((key) => key + 1);
       }
     }
-  }, [formData.email, formData.password, confirmationCheckCaptchaToken, confirmationCheckNeedsCaptcha, language]);
+  }, [formData.email, formData.password, confirmationCheckCaptchaToken, confirmationCheckNeedsCaptcha, language, isPreviewMode]);
 
   useEffect(() => {
     if (step !== 'email') return undefined;
@@ -935,7 +963,11 @@ export default function RegistrationPage() {
     t,
   };
   const handleTopBack = () => {
-    if (step === 'about') {
+    if (previewMode === 'captcha') {
+      navigate('/register?preview=account');
+      return;
+    }
+    if (isPreviewMode || step === 'about') {
       navigate('/public');
       return;
     }
@@ -945,9 +977,9 @@ export default function RegistrationPage() {
   const academicComplete = getRegistrationStepComplete('academic', formData, yearOptions);
 
   // Final step: after successful registration, tell user to check email
-  if (step === 'email') {
-    if (confirmationResult) {
-      const isConfirmationSuccess = confirmationResult === 'success';
+  if (visibleStep === 'email') {
+    if (visibleConfirmationResult) {
+      const isConfirmationSuccess = visibleConfirmationResult === 'success';
       const resultTitle = isConfirmationSuccess
         ? (language === 'ko' ? '인증이 완료되었습니다' : 'Email verification is complete')
         : (language === 'ko' ? '이메일 인증을 완료하지 못했어요.' : 'Email verification could not be completed.');
@@ -956,43 +988,53 @@ export default function RegistrationPage() {
         : (language === 'ko' ? '이메일 주소를 확인하고 인증 링크를 다시 받아보세요.' : 'Check your email address and request a new confirmation link.');
 
       return (
-        <div className="phone-app-shell viewport-height-shell registration-page-enter" style={{ ...s.page, height: '100svh', overflowY: 'auto', boxSizing: 'border-box', padding: '24px 16px', fontFamily: 'var(--font-app)' }}>
+        <div className="phone-app-shell viewport-height-shell registration-page-enter registration-email-result-page" style={{ ...s.page, height: '100svh', overflowY: 'auto', boxSizing: 'border-box', padding: '24px 16px', fontFamily: 'var(--font-app)' }}>
           <style>{registrationMotionCss}</style>
-          <div style={{ ...s.emailCard, position: 'relative', top: 'auto', transform: 'none', margin: 'auto 0' }}>
-            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+          <div className={`registration-email-result-card ${isConfirmationSuccess ? 'registration-email-result-success' : 'registration-email-result-failure'}`} style={{ ...s.emailCard, position: 'relative', top: 'auto', transform: 'none', margin: 'auto', width: '100%', maxWidth: '360px', padding: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+            <div className="registration-email-result-info">
               {isConfirmationSuccess
-                ? <CheckCircle size={54} weight="fill" color="#f97316" style={{ display: 'block', margin: '0 auto 12px' }} />
-                : <XCircle size={54} weight="fill" color="#ef4444" />}
-              <h1 style={s.title}>{resultTitle}</h1>
-              <p style={s.emailText}>{resultMessage}</p>
+                ? <CheckCircle size={64} weight="fill" color="#f97316" />
+                : <XCircle size={64} weight="fill" color="#ef4444" />}
+              <h1 style={{ ...s.title, fontSize: '24px', lineHeight: 1.25, margin: '8px 0 0' }}>{resultTitle}</h1>
+              <p style={{ ...s.emailText, lineHeight: 1.65 }}>{resultMessage}</p>
+              {!isConfirmationSuccess && (
+                <div className="registration-email-result-fields">
+                  <div className="registration-field registration-email-result-field">
+                    <label htmlFor="retry-confirmation-email">
+                      {language === 'ko' ? '이메일 *' : 'Email *'}
+                    </label>
+                    <input
+                      id="retry-confirmation-email"
+                      type="email"
+                      autoComplete="email"
+                      value={retryEmail || (isPreviewMode ? previewEmail : '')}
+                      onChange={(event) => setRetryEmail(event.target.value)}
+                      placeholder=""
+                      style={s.input}
+                    />
+                  </div>
+                  {(isCaptchaEnabled || isPreviewMode) && (
+                    isPreviewMode
+                      ? <DevelopmentCaptchaPreview language={language} />
+                      : <CaptchaChallenge onVerify={setRetryCaptchaToken} resetKey={retryCaptchaResetKey} />
+                  )}
+                </div>
+              )}
             </div>
             {isConfirmationSuccess ? (
-              <button type="button" onClick={() => navigate('/public')} style={s.submitBtn}>
+              <button type="button" onClick={() => navigate('/public')} className="registration-email-result-home-button" style={s.submitBtn}>
                 {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
               </button>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <label htmlFor="retry-confirmation-email" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--reg-text)' }}>
-                  {language === 'ko' ? '이메일 주소' : 'Email address'}
-                </label>
-                <input
-                  id="retry-confirmation-email"
-                  type="email"
-                  autoComplete="email"
-                  value={retryEmail}
-                  onChange={(event) => setRetryEmail(event.target.value)}
-                  style={{ ...s.input, padding: '12px', border: '1px solid var(--reg-border)', borderRadius: '12px', minHeight: '44px' }}
-                />
-                {isCaptchaEnabled && (
-                  <CaptchaChallenge onVerify={setRetryCaptchaToken} resetKey={retryCaptchaResetKey} />
-                )}
+              <div className="registration-email-result-actions">
                 {resendConfirmationMessage && <p style={{ ...s.emailText, color: '#15803d' }}>{resendConfirmationMessage}</p>}
                 {resendConfirmationError && <p style={{ ...s.emailText, color: '#dc2626' }}>{resendConfirmationError}</p>}
                 <button
                   type="button"
                   onClick={handleResendConfirmation}
-                  disabled={resendingConfirmation || !retryEmail.trim() || (isCaptchaEnabled && !retryCaptchaToken)}
-                  style={{ ...s.submitBtn, opacity: resendingConfirmation || !retryEmail.trim() || (isCaptchaEnabled && !retryCaptchaToken) ? 0.55 : 1 }}
+                  disabled={resendingConfirmation || (!retryEmail.trim() && !isPreviewMode) || (isCaptchaEnabled && !retryCaptchaToken && !isPreviewMode)}
+                  className="registration-email-result-resend-button"
+                  style={{ ...s.submitBtn, opacity: resendingConfirmation || (!retryEmail.trim() && !isPreviewMode) || (isCaptchaEnabled && !retryCaptchaToken && !isPreviewMode) ? 0.55 : 1 }}
                 >
                   {resendingConfirmation
                     ? (language === 'ko' ? '전송 중...' : 'Sending...')
@@ -1000,15 +1042,10 @@ export default function RegistrationPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setRetryEmail('');
-                    document.getElementById('retry-confirmation-email')?.focus();
-                  }}
+                  onClick={() => navigate('/public')}
+                  className="registration-email-result-home-button"
                   style={s.ghostBtn}
                 >
-                  {language === 'ko' ? '이메일 주소 다시 입력하기' : 'Enter email address again'}
-                </button>
-                <button type="button" onClick={() => navigate('/public')} style={s.ghostBtn}>
                   {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
                 </button>
               </div>
@@ -1020,12 +1057,12 @@ export default function RegistrationPage() {
 
     return (
       <div
-        className="phone-app-shell viewport-height-shell registration-page-enter"
+        className="phone-app-shell viewport-height-shell registration-page-enter registration-email-step"
         onDragStart={(event) => event.preventDefault()}
         style={{ ...s.page, fontFamily: 'var(--font-app)', WebkitTapHighlightColor: 'transparent' }}
       >
         <style>{registrationMotionCss}</style>
-        <div style={s.topBar}>
+        <div className="registration-top-bar" style={s.topBar}>
           <button
             type="button"
             onClick={() => navigate('/public')}
@@ -1041,60 +1078,72 @@ export default function RegistrationPage() {
             {language === 'en' ? '한국어' : 'English'}
           </button>
         </div>
-        <div style={s.emailCard}>
-          <div style={{ textAlign: 'center', marginBottom: '22px' }}>
-            <div style={s.emailIcon}>
+        <div className="registration-email-card" style={s.emailCard}>
+          <div className="registration-email-intro" style={{ textAlign: 'center', marginBottom: '22px' }}>
+            <div className="registration-email-icon" style={s.emailIcon}>
               <EnvelopeSimple size={28} weight="fill" color="#f97316" />
             </div>
             <h1 style={s.title}>{t.checkEmail}</h1>
             <p style={s.emailText}>
               {t.emailSent} <br />
-              <strong style={{ color: 'var(--reg-text)' }}>{formData.email}</strong>
+              <strong style={{ color: 'var(--reg-text)' }}>{previewEmail}</strong>
               <br />
               {t.verifyEmail}
             </p>
           </div>
-          <button type="button" onClick={() => navigate('/public')} style={s.submitBtn}>
-            {language === 'ko' ? '\uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30' : 'Return to public page'}
-          </button>
-          {confirmationCheckNeedsCaptcha && (
-            <div style={{ marginTop: '10px' }}>
-              <CaptchaChallenge
-                onVerify={(token) => {
-                  setConfirmationCheckCaptchaToken(token);
-                  if (token) void handleCheckConfirmation(token);
-                }}
-                resetKey={confirmationCheckCaptchaResetKey}
-                language={language}
-              />
-            </div>
-          )}
-          {confirmationCheckError && (
-            <p role="status" style={{ ...s.emailText, color: '#dc2626', marginTop: '10px' }}>
-              {confirmationCheckError}
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={handleEditEmail}
-            style={{ ...s.ghostBtn, width: '100%', marginTop: '10px' }}
-          >
-            {language === 'ko' ? '\uC774\uBA54\uC77C \uC8FC\uC18C \uBCC0\uACBD' : 'Change email address'}
-          </button>
+          <div className="registration-email-actions">
+            <button
+              type="button"
+              onClick={() => navigate('/public')}
+              className="registration-email-return-button"
+              style={s.submitBtn}
+            >
+              {language === 'ko' ? '\uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30' : 'Return to public page'}
+            </button>
+            {confirmationCheckNeedsCaptcha && (
+              <div>
+                {isPreviewMode ? (
+                  <DevelopmentCaptchaPreview language={language} />
+                ) : (
+                  <CaptchaChallenge
+                    onVerify={(token) => {
+                      setConfirmationCheckCaptchaToken(token);
+                      if (token) void handleCheckConfirmation(token);
+                    }}
+                    resetKey={confirmationCheckCaptchaResetKey}
+                    language={language}
+                  />
+                )}
+              </div>
+            )}
+            {confirmationCheckError && (
+              <p role="status" style={{ ...s.emailText, color: '#dc2626', marginTop: '10px' }}>
+                {confirmationCheckError}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleEditEmail}
+              className="registration-email-change-button"
+              style={{ ...s.ghostBtn, width: '100%', marginTop: '10px' }}
+            >
+              {language === 'ko' ? '\uC774\uBA54\uC77C \uC8FC\uC18C \uBCC0\uACBD' : 'Change email address'}
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (showSignupCaptcha) {
+  if (showSignupCaptcha || previewMode === 'captcha') {
     return (
       <div
-        className="phone-app-shell viewport-height-shell registration-page-enter"
+        className="phone-app-shell viewport-height-shell registration-page-enter registration-captcha-step"
         onDragStart={(event) => event.preventDefault()}
         style={{ ...s.page, fontFamily: 'var(--font-app)', WebkitTapHighlightColor: 'transparent' }}
       >
         <style>{registrationMotionCss}</style>
-        <div style={s.topBar}>
+        <div className="registration-top-bar" style={s.topBar}>
           <button
             type="button"
             onClick={returnToAccountForm}
@@ -1111,9 +1160,9 @@ export default function RegistrationPage() {
             {language === 'en' ? '한국어' : 'English'}
           </button>
         </div>
-        <div style={s.emailCard}>
-          <div style={{ textAlign: 'center', marginBottom: '22px' }}>
-            <div style={s.emailIcon}>
+        <div className="registration-captcha-card" style={s.emailCard}>
+          <div className="registration-captcha-intro" style={{ textAlign: 'center', marginBottom: '22px' }}>
+            <div className="registration-captcha-icon" style={s.emailIcon}>
               <EnvelopeSimple size={28} weight="fill" color="#f97316" />
             </div>
             <h1 style={s.title}>
@@ -1124,15 +1173,19 @@ export default function RegistrationPage() {
                 ? '아래 보안 확인을 완료한 뒤 가입 확인 이메일을 보냅니다.'
                 : 'Complete the security check below to receive your signup verification email.'}
               <br />
-              <strong style={{ color: 'var(--reg-text)' }}>{formData.email}</strong>
+            <strong style={{ color: 'var(--reg-text)' }}>{previewEmail}</strong>
             </p>
           </div>
-          <CaptchaChallenge
-            onVerify={handleSignupCaptchaVerify}
-            resetKey={captchaResetKey}
-            language={language}
-            appearance="always"
-          />
+          {isPreviewMode ? (
+            <DevelopmentCaptchaPreview language={language} />
+          ) : (
+            <CaptchaChallenge
+              onVerify={handleSignupCaptchaVerify}
+              resetKey={captchaResetKey}
+              language={language}
+              appearance="always"
+            />
+          )}
           {error && <div style={{ ...s.errorBanner, marginTop: '12px' }}>{error}</div>}
         </div>
       </div>
@@ -1141,7 +1194,7 @@ export default function RegistrationPage() {
 
   return (
     <div
-      className={`phone-app-shell viewport-height-shell registration-page-enter ${step === 'about' ? 'registration-about-step' : ''} ${step === 'academic' ? 'registration-academic-step' : ''} ${step === 'account' ? 'registration-account-step' : ''}`}
+      className={`phone-app-shell viewport-height-shell registration-page-enter ${visibleStep === 'about' ? 'registration-about-step' : ''} ${visibleStep === 'academic' ? 'registration-academic-step' : ''} ${visibleStep === 'account' ? 'registration-account-step' : ''}`}
       onDragStart={(event) => event.preventDefault()}
       style={{
         ...s.page,
@@ -1152,7 +1205,7 @@ export default function RegistrationPage() {
     >
       <style>{registrationMotionCss}</style>
       {/* Top Bar with Back Button and Language Toggle */}
-      <div style={s.topBar}>
+      <div className="registration-top-bar" style={s.topBar}>
         <button
           type="button"
           onClick={handleTopBack}
@@ -1179,7 +1232,7 @@ export default function RegistrationPage() {
 
       {error && <div style={s.errorBanner}>{error}</div>}
 
-      {step === 'about' && (
+      {visibleStep === 'about' && (
         <div key="about" className="registration-step" style={s.stepShell}>
           <NameStep
             compactViewport={viewportOrientation === 'portrait' && isCompactPortraitViewport()}
@@ -1193,7 +1246,7 @@ export default function RegistrationPage() {
         </div>
       )}
 
-      {step === 'academic' && (
+      {visibleStep === 'academic' && (
         <div key="academic" className="registration-step registration-step-academic" style={s.stepShell}>
           <AcademicStep
             compactViewport={viewportOrientation === 'portrait' && isCompactPortraitViewport()}
@@ -1212,7 +1265,7 @@ export default function RegistrationPage() {
         </div>
       )}
 
-      {step === 'account' && (
+      {visibleStep === 'account' && (
         <div key="account" className="registration-step registration-step-account" style={s.stepShell}>
           <AccountStep
             compactViewport={viewportOrientation === 'portrait' && isCompactPortraitViewport()}
