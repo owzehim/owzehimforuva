@@ -65,6 +65,36 @@ function captureScrollPositions(control) {
   return { ancestors, windowLeft: window.scrollX, windowTop: window.scrollY }
 }
 
+function getVerticalVisibilityCorrection(control, viewportTop, viewportBottom) {
+  const bounds = control.getBoundingClientRect()
+  const margin = 8
+  if (bounds.bottom > viewportBottom - margin) return bounds.bottom - viewportBottom + margin
+  if (bounds.top < viewportTop + margin) return bounds.top - viewportTop - margin
+  return 0
+}
+
+function revealFocusedControl(control, visualViewport) {
+  const viewportTop = visualViewport?.offsetTop ?? 0
+  const viewportBottom = viewportTop + (visualViewport?.height ?? window.innerHeight)
+  let correction = getVerticalVisibilityCorrection(control, viewportTop, viewportBottom)
+  if (Math.abs(correction) < 1) return
+
+  let element = control.parentElement
+  while (element && element !== document.body && element !== document.documentElement && Math.abs(correction) >= 1) {
+    if (element.scrollHeight > element.clientHeight + 1) {
+      const previousScrollTop = element.scrollTop
+      element.scrollTop += correction
+      const appliedScroll = element.scrollTop - previousScrollTop
+      if (appliedScroll !== 0) {
+        correction = getVerticalVisibilityCorrection(control, viewportTop, viewportBottom)
+      }
+    }
+    element = element.parentElement
+  }
+
+  if (Math.abs(correction) >= 1) window.scrollBy(0, correction)
+}
+
 export default function LandscapeInputFocusGuard() {
   useEffect(() => {
     const media = window.matchMedia(LANDSCAPE_QUERY)
@@ -125,6 +155,8 @@ export default function LandscapeInputFocusGuard() {
           }
           window.scrollTo(focus.scroll.windowLeft, focus.scroll.windowTop)
         }
+
+        revealFocusedControl(focus.control, visualViewport)
       }, 160)
     }
 
