@@ -714,14 +714,12 @@ export function SpotCard({
   const [darkMode, setDarkMode] = useState(() => isDarkMode())
   const [sheetMaxHeight, setSheetMaxHeight] = useState(0)
   const [keepLandscapeExpandedLayout, setKeepLandscapeExpandedLayout] = useState(false)
-  const [googleMapsButtonCenterY, setGoogleMapsButtonCenterY] = useState(null)
   const selectedId = selected?.id
   const [reviewBoxPanelState, setReviewBoxPanelState] = useState(() => ({ selectedId, value: 'guide' }))
   const startYRef = useRef(0)
   const startHeightRef = useRef(0)
   const lastYRef = useRef(0)
   const cardRef = useRef(null)
-  const googleMapsButtonRef = useRef(null)
   const previousSpotRef = useRef(null)
   const reviewBoxTouchStartRef = useRef(null)
   const contentScrollTouchRef = useRef(null)
@@ -1062,84 +1060,6 @@ export function SpotCard({
   const showRating = selected.show_rating !== false
   // Keep the action enabled for existing spots until an admin explicitly hides it.
   const showGoogleMapsButton = selected.show_google_maps_button !== false
-  const shouldCenterGoogleMapsButtonInPortrait =
-    spotCardHeightMode === 'full' &&
-    isCollapsed &&
-    typeof window !== 'undefined' &&
-    window.matchMedia('(orientation: portrait)').matches
-
-  useEffect(() => {
-    if (!selectedId || !showGoogleMapsButton || !shouldCenterGoogleMapsButtonInPortrait) {
-      setGoogleMapsButtonCenterY(null)
-      return undefined
-    }
-
-    const imageBox = cardRef.current?.querySelector(
-      '.spot-card-short-photo-strip, .spot-card-short-photo-placeholder',
-    )
-    const bottomTabs = document.querySelector('.app-landscape-bottom-tabs')
-    if (!imageBox || !bottomTabs) {
-      setGoogleMapsButtonCenterY(null)
-      return undefined
-    }
-
-    let animationFrame = null
-    let settleFrame = null
-    let settleUntil = 0
-    const updateCenter = () => {
-      if (!window.matchMedia('(orientation: portrait)').matches) {
-        setGoogleMapsButtonCenterY(null)
-        return
-      }
-      const imageBottom = imageBox.getBoundingClientRect().bottom
-      const tabsTop = bottomTabs.getBoundingClientRect().top
-      const nextCenter = (imageBottom + tabsTop) / 2
-      if (Number.isFinite(nextCenter)) {
-        setGoogleMapsButtonCenterY((current) =>
-          current == null || Math.abs(current - nextCenter) > 1 ? nextCenter : current,
-        )
-      }
-    }
-    const trackSheetTransition = (timestamp) => {
-      updateCenter()
-      if (timestamp < settleUntil) {
-        settleFrame = window.requestAnimationFrame(trackSheetTransition)
-      }
-    }
-    const startTracking = () => {
-      if (settleFrame != null) window.cancelAnimationFrame(settleFrame)
-      settleUntil = performance.now() + 360
-      settleFrame = window.requestAnimationFrame(trackSheetTransition)
-    }
-
-    updateCenter()
-    animationFrame = window.requestAnimationFrame(startTracking)
-    const observer = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(updateCenter)
-      : null
-    observer?.observe(imageBox)
-    observer?.observe(bottomTabs)
-    if (googleMapsButtonRef.current) observer?.observe(googleMapsButtonRef.current)
-    window.addEventListener('resize', startTracking)
-    window.addEventListener('orientationchange', startTracking)
-
-    return () => {
-      if (animationFrame != null) window.cancelAnimationFrame(animationFrame)
-      if (settleFrame != null) window.cancelAnimationFrame(settleFrame)
-      observer?.disconnect()
-      window.removeEventListener('resize', startTracking)
-      window.removeEventListener('orientationchange', startTracking)
-    }
-  }, [
-    selectedId,
-    showGoogleMapsButton,
-    shouldCenterGoogleMapsButtonInPortrait,
-    hasImages,
-    imgs.length,
-    cardHeight,
-    isVisible,
-    closing,
-  ])
   const ratingSummary = summary?.store_id === selected?.partnership_id
     ? summary
     : null
@@ -1584,22 +1504,17 @@ export function SpotCard({
       {/* Fixed outside the moving sheet so it remains in one place over the SpotCard. */}
       {showGoogleMapsButton && (
         <div
-          ref={googleMapsButtonRef}
           className={
             'spot-card-google-maps-button fixed left-0 right-0 pointer-events-none flex justify-center transition-opacity duration-200 ' +
             (showFixedGoogleMapsButton ? 'opacity-100' : 'opacity-0')
           }
           style={{
-            ...(googleMapsButtonCenterY == null
-              ? { bottom: 'calc(env(safe-area-inset-bottom) + 115px)' }
-              : { top: `${googleMapsButtonCenterY}px`, bottom: 'auto' }),
+            bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
             zIndex: 1020,
             transform:
               closing || !isVisible
-                ? `translateY(calc(-50% + ${fixedButtonHiddenOffset}px))`
-                : googleMapsButtonCenterY == null
-                  ? 'translateY(0)'
-                  : 'translateY(-50%)',
+                ? `translateY(${fixedButtonHiddenOffset}px)`
+                : 'translateY(0)',
             willChange: 'opacity, transform',
           }}
         >
