@@ -1728,20 +1728,21 @@ function AccountStep({
               onAgreementChange={onAgreementChange}
               onOpenDocument={onOpenLegalDocument}
               language={language}
-            />
-            <label className="registration-account-age-confirmation" style={s.legalRow}>
-              <input
-                type="checkbox"
-                checked={ageConfirmed}
-                onChange={(event) => onAgeConfirmedChange(event.target.checked)}
-                style={s.legalCheckbox}
-              />
-              <span style={s.legalText}>
-                {language === 'ko'
-                  ? '만 16세 이상임을 확인합니다'
-                  : 'I confirm that I am at least 16 years old'}
-              </span>
-            </label>
+            >
+              <label className="registration-account-age-confirmation" style={s.legalRow}>
+                <input
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  onChange={(event) => onAgeConfirmedChange(event.target.checked)}
+                  style={s.legalCheckbox}
+                />
+                <span style={s.legalText}>
+                  {language === 'ko'
+                    ? '만 16세 이상임을 확인합니다'
+                    : 'I confirm that I am at least 16 years old'}
+                </span>
+              </label>
+            </LegalAgreementList>
           </div>
         </div>
 
@@ -1774,6 +1775,7 @@ function LegalAgreementList({
   onAgreementChange,
   onOpenDocument,
   language,
+  children,
 }) {
   const labels = {
     terms: language === 'ko' ? '이용약관에 동의합니다' : 'I agree to the Terms & Conditions',
@@ -1810,6 +1812,7 @@ function LegalAgreementList({
           </button>
         </label>
       ))}
+      {children}
     </div>
   );
 }
