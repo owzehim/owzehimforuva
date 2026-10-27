@@ -714,6 +714,7 @@ export function SpotCard({
   const [darkMode, setDarkMode] = useState(() => isDarkMode())
   const [sheetMaxHeight, setSheetMaxHeight] = useState(0)
   const [keepLandscapeExpandedLayout, setKeepLandscapeExpandedLayout] = useState(false)
+  const [googleMapsButtonCenterY, setGoogleMapsButtonCenterY] = useState(null)
   const selectedId = selected?.id
   const [reviewBoxPanelState, setReviewBoxPanelState] = useState(() => ({ selectedId, value: 'guide' }))
   const startYRef = useRef(0)
@@ -1060,6 +1061,61 @@ export function SpotCard({
   const showRating = selected.show_rating !== false
   // Keep the action enabled for existing spots until an admin explicitly hides it.
   const showGoogleMapsButton = selected.show_google_maps_button !== false
+  const shouldCenterGoogleMapsButtonInPortrait =
+    spotCardHeightMode === 'full' &&
+    isCollapsed &&
+    typeof window !== 'undefined' &&
+    window.matchMedia('(orientation: portrait)').matches
+
+  useEffect(() => {
+    if (
+      !selectedId ||
+      !showGoogleMapsButton ||
+      !shouldCenterGoogleMapsButtonInPortrait ||
+      closing ||
+      !isVisible
+    ) {
+      setGoogleMapsButtonCenterY(null)
+      return undefined
+    }
+
+    setGoogleMapsButtonCenterY(null)
+    let measureTimer = null
+    const measureCenter = () => {
+      const imageBox = cardRef.current?.querySelector(
+        '.spot-card-short-photo-strip, .spot-card-short-photo-placeholder',
+      )
+      const bottomTabs = document.querySelector('.app-landscape-bottom-tabs')
+      if (!imageBox || !bottomTabs || !window.matchMedia('(orientation: portrait)').matches) {
+        setGoogleMapsButtonCenterY(null)
+        return
+      }
+
+      const imageBottom = imageBox.getBoundingClientRect().bottom
+      const tabsTop = bottomTabs.getBoundingClientRect().top
+      const nextCenter = (imageBottom + tabsTop) / 2
+      if (Number.isFinite(nextCenter)) setGoogleMapsButtonCenterY(nextCenter)
+    }
+    const scheduleMeasure = () => {
+      if (measureTimer != null) window.clearTimeout(measureTimer)
+      measureTimer = window.setTimeout(measureCenter, 350)
+    }
+
+    scheduleMeasure()
+    window.addEventListener('resize', scheduleMeasure)
+    window.addEventListener('orientationchange', scheduleMeasure)
+    return () => {
+      if (measureTimer != null) window.clearTimeout(measureTimer)
+      window.removeEventListener('resize', scheduleMeasure)
+      window.removeEventListener('orientationchange', scheduleMeasure)
+    }
+  }, [
+    selectedId,
+    showGoogleMapsButton,
+    shouldCenterGoogleMapsButtonInPortrait,
+    isVisible,
+    closing,
+  ])
   const ratingSummary = summary?.store_id === selected?.partnership_id
     ? summary
     : null
@@ -1506,15 +1562,24 @@ export function SpotCard({
         <div
           className={
             'spot-card-google-maps-button fixed left-0 right-0 pointer-events-none flex justify-center transition-opacity duration-200 ' +
-            (showFixedGoogleMapsButton ? 'opacity-100' : 'opacity-0')
+            (showFixedGoogleMapsButton &&
+            (!shouldCenterGoogleMapsButtonInPortrait || googleMapsButtonCenterY != null)
+              ? 'opacity-100'
+              : 'opacity-0')
           }
           style={{
-            bottom: 'calc(env(safe-area-inset-bottom) + 115px)',
+            ...(googleMapsButtonCenterY == null
+              ? { bottom: 'calc(env(safe-area-inset-bottom) + 115px)' }
+              : { top: `${googleMapsButtonCenterY}px`, bottom: 'auto' }),
             zIndex: 1020,
             transform:
               closing || !isVisible
-                ? `translateY(${fixedButtonHiddenOffset}px)`
-                : 'translateY(0)',
+                ? googleMapsButtonCenterY == null
+                  ? `translateY(${fixedButtonHiddenOffset}px)`
+                  : `translateY(calc(-50% + ${fixedButtonHiddenOffset}px))`
+                : googleMapsButtonCenterY == null
+                  ? 'translateY(0)'
+                  : 'translateY(-50%)',
             willChange: 'opacity, transform',
           }}
         >
