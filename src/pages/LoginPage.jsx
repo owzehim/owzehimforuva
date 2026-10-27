@@ -118,7 +118,7 @@ export default function LoginPage() {
 
   return (
     <main
-      className={`phone-app-shell login-page scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212] ${step === 'credentials' ? 'login-landscape-credentials' : ''}`}
+      className={`phone-app-shell login-page scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212] ${step === 'credentials' ? 'login-landscape-credentials' : ''} ${step === 'forgot' ? 'login-landscape-forgot' : ''}`}
       onDragStart={(event) => event.preventDefault()}
       style={{ WebkitTapHighlightColor: 'transparent' }}
     >
@@ -233,39 +233,41 @@ export default function LoginPage() {
           )}
 
           {step === 'forgot' && (
-            <form onSubmit={submitPasswordReset} className="relative -translate-y-[56px] space-y-4">
-              <div className="mb-8 min-h-[176px] pt-[54px] text-left">
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">비밀번호 재설정</h2>
-                <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-                  가입한 이메일을 입력하면 새 비밀번호를 설정할 수 있는 링크를 보내드립니다.
-                </p>
+            <form onSubmit={submitPasswordReset} className="login-forgot-form relative -translate-y-[56px] space-y-4">
+              <div className="login-forgot-info">
+                <div className="login-forgot-heading mb-8 min-h-[176px] pt-[54px] text-left">
+                  <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">비밀번호 재설정</h2>
+                  <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                    가입한 이메일을 입력하면 새 비밀번호를 설정할 수 있는 링크를 보내드립니다.
+                  </p>
+                </div>
+
+                <LoginField label="이메일">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputClass}
+                    placeholder=""
+                    autoComplete="email"
+                    required
+                  />
+                </LoginField>
+
+                {error && <p className="text-sm text-red-500">{error}</p>}
+                {resetSuccess && (
+                  <p className="text-sm leading-relaxed text-green-600">
+                    비밀번호 재설정 링크를 이메일로 보냈습니다.
+                  </p>
+                )}
+
+                <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
               </div>
-
-              <LoginField label="이메일">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClass}
-                  placeholder=""
-                  autoComplete="email"
-                  required
-                />
-              </LoginField>
-
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              {resetSuccess && (
-                <p className="text-sm leading-relaxed text-green-600">
-                  비밀번호 재설정 링크를 이메일로 보냈습니다.
-                </p>
-              )}
-
-              <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
               <button
                 type="submit"
                 disabled={loading || (isCaptchaEnabled && !captchaToken)}
-                className="mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+                className="login-forgot-submit mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
               >
                 {loading ? '전송 중...' : '재설정 링크 보내기'}
               </button>
@@ -273,7 +275,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleBack}
-                className="w-full pt-1 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                className="login-forgot-back w-full pt-1 text-xs text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
               >
                 로그인으로 돌아가기
               </button>

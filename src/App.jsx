@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase'
 import { hasAdminRole } from './lib/adminRoles'
 import LoginPage from './pages/LoginPage'
 import MemberPage from './pages/MemberPage'
+import TutorialPreviewPage from './pages/TutorialPreviewPage'
 import AdminPage from './pages/AdminPage'
 import PublicPage from './pages/PublicPage'
 import ScanPage from './pages/ScanPage'
@@ -175,6 +176,10 @@ function App() {
     typeof window !== 'undefined' &&
     (new URLSearchParams(window.location.search).has('code') ||
       window.location.hash.includes('access_token'))
+  const isPasswordSettingsPreview = import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get('preview') === 'form'
+  const isTutorialPreview = import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get('preview') === 'tutorial'
 
   const consentForCurrentUser = legalConsentState?.userId === userId
     ? legalConsentState.status
@@ -222,7 +227,11 @@ function App() {
 
         <Route
           path="/member"
-          element={protectWithConsent(<MemberPage userId={userId} userEmail={appSession?.user?.email || ''} isAdmin={isAdmin} />, '/public')}
+          element={devScreen(
+            isTutorialPreview
+              ? <TutorialPreviewPage />
+              : protectWithConsent(<MemberPage userId={userId} userEmail={appSession?.user?.email || ''} isAdmin={isAdmin} />, '/public'),
+          )}
         />
         <Route
           path="/settings"
@@ -230,7 +239,11 @@ function App() {
         />
         <Route
           path="/settings/password"
-          element={devScreen(protectWithConsent(<ChangePasswordPage />))}
+          element={devScreen(
+            isPasswordSettingsPreview
+              ? <ChangePasswordPage previewOnly />
+              : protectWithConsent(<ChangePasswordPage />),
+          )}
         />
 
         <Route

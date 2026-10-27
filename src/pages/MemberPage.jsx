@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react'
+import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -424,7 +424,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
   )
 }
 
-function WelcomeSlides({ member, onFinish, onBack }) {
+export function WelcomeSlides({ member, onFinish, onBack }) {
   const [index, setIndex] = useState(0)
   const [closing, setClosing] = useState(false)
   const [benefitsAcknowledged, setBenefitsAcknowledged] = useState(false)
@@ -498,7 +498,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
   return (
     <div
       className={
-        'fixed inset-0 z-[120] flex select-none flex-col bg-white text-gray-950 transition-opacity duration-300 dark:bg-[#121212] dark:text-white ' +
+        'welcome-tour-overlay fixed inset-0 z-[120] flex select-none flex-col bg-white text-gray-950 transition-opacity duration-300 dark:bg-[#121212] dark:text-white ' +
         (closing ? 'opacity-0' : 'opacity-100')
       }
       style={{
@@ -530,14 +530,14 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       <div className="welcome-tour-content-region flex min-h-0 flex-1 flex-col justify-center overflow-hidden px-8">
         <div
           key={index}
-          className="mx-auto flex w-full max-w-sm flex-col items-start"
+          className="welcome-tour-slide-layout mx-auto flex w-full max-w-sm flex-col items-start"
           style={{
             animation: 'welcomeSlideIn 220ms ease-out',
             transform: `translateY(${tourLayout.contentTopOffset})`,
           }}
         >
           {slide.demo ? (
-            <div className="welcome-tour-demo-shell" style={{ marginBottom: tourLayout.animationTextGap }}>
+            <div className="welcome-tour-animation welcome-tour-demo-shell" style={{ marginBottom: tourLayout.animationTextGap }}>
               {slide.demo === 'membership-card' ? (
                 <MembershipCardTourDemo member={member} bottomGap="0px" />
               ) : slide.demo === 'events' ? (
@@ -550,7 +550,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
             </div>
           ) : (
             <div
-              className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-orange-500 dark:bg-orange-500/10"
+              className="welcome-tour-animation flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-orange-500 dark:bg-orange-500/10"
               style={{ marginBottom: tourLayout.animationTextGap }}
             >
               {member?.profile_image_url ? (
@@ -564,38 +564,24 @@ function WelcomeSlides({ member, onFinish, onBack }) {
               )}
             </div>
           )}
-          <p className="mb-3 text-xs font-black tracking-[0.22em] text-orange-500">
-            {slide.eyebrow}
-          </p>
-          <h1 className="welcome-tour-title font-black tracking-normal">
-            {TitleIcon && <TitleIcon size={30} weight="bold" className="mr-2 inline-block align-[-0.1em] text-gray-950 dark:text-white" />}
-            {slide.title}
-          </h1>
-          <p className="welcome-tour-body mt-5 font-medium text-gray-500 dark:text-gray-300">
-            {slide.bodyNode || slide.body}
-          </p>
+          <div className="welcome-tour-copy">
+            <p className="mb-3 text-xs font-black tracking-[0.22em] text-orange-500">
+              {slide.eyebrow}
+            </p>
+            <h1 className="welcome-tour-title font-black tracking-normal">
+              {TitleIcon && <TitleIcon size={30} weight="bold" className="mr-2 inline-block align-[-0.1em] text-gray-950 dark:text-white" />}
+              {slide.title}
+            </h1>
+            <p className="welcome-tour-body mt-5 font-medium text-gray-500 dark:text-gray-300">
+              {slide.bodyNode || slide.body}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="px-8" style={{ paddingBottom: tourLayout.controlsBottomOffset }}>
-        {isLast && (
-          <label
-            className={
-              'mx-auto mb-4 flex max-w-sm items-center justify-center gap-2 text-sm font-bold text-gray-600 transition-opacity duration-500 dark:text-gray-300 ' +
-              (benefitsAcknowledgementVisible ? 'opacity-100' : 'pointer-events-none opacity-0')
-            }
-          >
-            <input
-              type="checkbox"
-              checked={benefitsAcknowledged}
-              onChange={(event) => setBenefitsAcknowledged(event.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 accent-orange-500"
-            />
-            이해했습니다
-          </label>
-        )}
-        <div className="mx-auto flex max-w-sm flex-col gap-5">
-          <div className="flex items-center justify-center gap-1.5">
+      <div className="welcome-tour-controls px-8" style={{ paddingBottom: tourLayout.controlsBottomOffset }}>
+        <div className="welcome-tour-actions-stack mx-auto flex max-w-sm flex-col gap-5">
+          <div className="welcome-tour-dots flex items-center justify-center gap-1.5">
             {slides.map((_, dotIndex) => (
               <span
                 key={dotIndex}
@@ -608,6 +594,22 @@ function WelcomeSlides({ member, onFinish, onBack }) {
               />
             ))}
           </div>
+          {isLast && (
+            <label
+              className={
+                'welcome-tour-ack mx-auto flex max-w-sm items-center justify-center gap-2 text-sm font-bold text-gray-600 transition-opacity duration-500 dark:text-gray-300 ' +
+                (benefitsAcknowledgementVisible ? 'opacity-100' : 'pointer-events-none opacity-0')
+              }
+            >
+              <input
+                type="checkbox"
+                checked={benefitsAcknowledged}
+                onChange={(event) => setBenefitsAcknowledged(event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 accent-orange-500"
+              />
+              이해했습니다
+            </label>
+          )}
           <button
             type="button"
             disabled={isLast && !benefitsAcknowledged}
@@ -620,7 +622,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
               setIndex((value) => value + 1)
             }}
             className={
-              'flex w-full items-center justify-center gap-2 rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50 ' +
+              'welcome-tour-next flex w-full items-center justify-center gap-2 rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50 ' +
               (isLast && !benefitsAcknowledged
                 ? 'cursor-not-allowed'
                 : 'active:bg-orange-600')
@@ -635,9 +637,33 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       <style>{`
         .welcome-tour-content-region { scrollbar-width: none; }
         .welcome-tour-content-region::-webkit-scrollbar { display: none; }
+        .welcome-tour-copy { min-width: 0; }
         .welcome-tour-demo-shell { height: 360px; width: 100%; flex: 0 0 auto; }
         .welcome-tour-title { font-size: clamp(30px, 8.6vw, 34px); line-height: 1.1; }
         .welcome-tour-body { font-size: clamp(14px, 4vw, 16px); line-height: 1.75; }
+        @media (orientation: portrait) {
+          .welcome-tour-actions-stack { padding-top: 28px; }
+          .welcome-tour-actions-stack { position: relative; }
+          .welcome-tour-ack {
+            position: absolute;
+            right: 0;
+            bottom: 60px;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            margin: 0;
+          }
+          .welcome-tour-dots {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 18px);
+            right: max(24px, calc(env(safe-area-inset-right, 0px) + 16px));
+            bottom: auto;
+            left: auto;
+            z-index: 121;
+            justify-content: flex-end;
+            width: max-content;
+          }
+        }
         @media (max-height: 760px) {
           .welcome-tour-demo-shell { height: 317px; }
           .welcome-tour-demo-shell > div { transform: scale(0.88); transform-origin: top center; }
@@ -663,6 +689,95 @@ function WelcomeSlides({ member, onFinish, onBack }) {
           .welcome-tour-content-region { padding-left: 20px; padding-right: 20px; }
           .welcome-tour-title { font-size: 26px; }
           .welcome-tour-body { margin-top: 10px; line-height: 1.4; }
+        }
+        @media (orientation: landscape) {
+          .welcome-tour-overlay {
+            --welcome-tour-gutter: clamp(20px, 5vw, 56px);
+            padding: 0 !important;
+            overflow: hidden;
+          }
+          .welcome-tour-content-region {
+            position: fixed;
+            inset: calc(env(safe-area-inset-top, 0px) + 8px)
+              env(safe-area-inset-right, 0px)
+              env(safe-area-inset-bottom, 0px)
+              env(safe-area-inset-left, 0px);
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0;
+            overflow: hidden;
+          }
+          .welcome-tour-slide-layout {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            grid-template-rows: minmax(0, 1fr);
+            align-items: center;
+            justify-items: center;
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            margin: 0;
+            transform: none !important;
+          }
+          .welcome-tour-animation,
+          .welcome-tour-copy {
+            grid-row: 1;
+            justify-self: center;
+            align-self: center;
+            margin: 0 !important;
+          }
+          .welcome-tour-animation {
+            grid-column: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .welcome-tour-animation.welcome-tour-demo-shell { width: min(100%, 360px); }
+          .welcome-tour-copy {
+            grid-column: 2;
+            align-self: start;
+            width: min(100%, 360px);
+            margin-top: calc(clamp(48px, 30dvh, 150px) - 36px) !important;
+            margin-bottom: 0 !important;
+          }
+          .welcome-tour-demo-shell { height: min(46dvh, 300px); }
+          .welcome-tour-demo-shell > div { transform: scale(0.72); transform-origin: center center; }
+          .welcome-tour-title { font-size: clamp(22px, 3.3vw, 28px); line-height: 1.08; }
+          .welcome-tour-body { margin-top: 8px; font-size: clamp(13px, 1.7vw, 14px); line-height: 1.4; }
+          .welcome-tour-controls { padding: 0; }
+          .welcome-tour-ack {
+            position: fixed;
+            left: 50%;
+            right: env(safe-area-inset-right, 0px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 36px + 12px);
+            width: 180px;
+            height: 20px;
+            margin: 0 auto;
+          }
+          .welcome-tour-dots {
+            position: fixed;
+            left: calc(env(safe-area-inset-left, 0px) + var(--welcome-tour-gutter));
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+            justify-content: flex-start;
+            width: max-content;
+          }
+          .welcome-tour-next {
+            position: fixed;
+            left: 50%;
+            right: env(safe-area-inset-right, 0px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px);
+            width: 180px;
+            max-width: none;
+            height: 36px;
+            min-height: 36px;
+            box-sizing: border-box;
+            margin: 0 auto;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 16px;
+          }
         }
         @keyframes welcomeSlideIn {
           from { opacity: 0; }

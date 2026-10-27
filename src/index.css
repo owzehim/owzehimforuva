@@ -379,6 +379,10 @@ html:not(.dark) .text-gray-400 {
   color: #6b7280;
 }
 
+.login-forgot-info > * + * {
+  margin-top: 1rem;
+}
+
 @media (orientation: landscape) and (max-height: 600px) {
   :root {
     --landscape-content-gutter: clamp(40px, 6vw, 56px);
@@ -854,6 +858,277 @@ html:not(.dark) .text-gray-400 {
     margin: 0 !important;
     padding: 0 !important;
     white-space: nowrap !important;
+  }
+
+  .login-page.login-landscape-forgot {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: 0 !important;
+  }
+
+  .login-landscape-forgot > button:first-of-type {
+    top: max(6px, calc(env(safe-area-inset-top, 0px) + 6px)) !important;
+    left: max(14px, calc(env(safe-area-inset-left, 0px) + 8px)) !important;
+  }
+
+  .login-landscape-forgot .login-content-shell {
+    position: absolute !important;
+    inset: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .login-landscape-forgot .login-content-panel {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+  }
+
+  .login-forgot-form {
+    position: absolute !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    display: grid !important;
+    width: auto !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    padding: 0 var(--landscape-content-gutter) !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    transform: none !important;
+    translate: none !important;
+  }
+
+  .login-forgot-form > :not(button) {
+    grid-column: 1 !important;
+    justify-self: center !important;
+    width: min(100%, 360px) !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+
+  .login-forgot-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    margin: 0 !important;
+  }
+
+  .login-forgot-info > * {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .login-forgot-info > .login-forgot-heading {
+    min-height: 0 !important;
+    padding-top: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  .login-forgot-form > .login-forgot-submit {
+    position: fixed !important;
+    left: calc(50vw + var(--landscape-content-gutter)) !important;
+    right: calc(env(safe-area-inset-right, 0px) + var(--landscape-content-gutter)) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    width: 180px !important;
+    max-width: none !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+    transform: none !important;
+  }
+
+  .login-forgot-form > .login-forgot-back {
+    position: fixed !important;
+    left: calc(50vw + var(--landscape-content-gutter)) !important;
+    right: calc(env(safe-area-inset-right, 0px) + var(--landscape-content-gutter)) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 12px) !important;
+    width: 180px !important;
+    max-width: none !important;
+    height: 16px !important;
+    min-height: 16px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+  }
+
+  .reset-password-page {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: 0 !important;
+  }
+
+  .reset-password-content {
+    position: absolute !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    display: grid !important;
+    width: auto !important;
+    max-width: none !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    padding: 0 var(--landscape-content-gutter) !important;
+    box-sizing: border-box !important;
+  }
+
+  .reset-password-info {
+    grid-column: 1 !important;
+    justify-self: center !important;
+    display: flex !important;
+    width: min(100%, 360px) !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    margin: 0 !important;
+  }
+
+  .reset-password-heading {
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .reset-password-heading > p {
+    margin-top: 12px !important;
+  }
+
+  .reset-password-form {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .reset-password-form > * {
+    margin: 0 !important;
+  }
+
+  .reset-password-form > .reset-password-submit {
+    position: fixed !important;
+    left: calc(50vw + var(--landscape-content-gutter)) !important;
+    right: calc(env(safe-area-inset-right, 0px) + var(--landscape-content-gutter)) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    width: 180px !important;
+    max-width: none !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+  }
+
+  .settings-password-page {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: 0 !important;
+  }
+
+  .settings-password-back {
+    top: max(6px, calc(env(safe-area-inset-top, 0px) + 6px)) !important;
+    left: max(14px, calc(env(safe-area-inset-left, 0px) + 8px)) !important;
+  }
+
+  .settings-password-content {
+    position: absolute !important;
+    top: env(safe-area-inset-top, 0px) !important;
+    right: env(safe-area-inset-right, 0px) !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    left: env(safe-area-inset-left, 0px) !important;
+    display: grid !important;
+    width: auto !important;
+    max-width: none !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    padding: 0 var(--landscape-content-gutter) !important;
+    box-sizing: border-box !important;
+  }
+
+  .settings-password-form {
+    grid-column: 1 !important;
+    justify-self: center !important;
+    display: flex !important;
+    width: min(100%, 360px) !important;
+    min-width: 0 !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    transform: none !important;
+    translate: none !important;
+  }
+
+  .settings-password-heading {
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .settings-password-heading > p {
+    margin-top: 12px !important;
+  }
+
+  .settings-password-fields {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    transform: none !important;
+    translate: none !important;
+  }
+
+  .settings-password-fields > * {
+    margin: 0 !important;
+  }
+
+  .settings-password-fields > .settings-password-submit {
+    position: fixed !important;
+    left: calc(50vw + var(--landscape-content-gutter)) !important;
+    right: calc(env(safe-area-inset-right, 0px) + var(--landscape-content-gutter)) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px) !important;
+    width: 180px !important;
+    max-width: none !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+    border-radius: 9999px !important;
   }
 
   .legal-page .legal-page-controls > button:first-of-type {

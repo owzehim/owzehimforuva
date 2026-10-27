@@ -89,7 +89,12 @@ export function useLogin() {
   useEffect(() => {
     if (!pendingEmail && getOtpPendingEmail()) clearOtpPendingEmail()
   }, [pendingEmail])
-  const [step, setStep] = useState(pendingEmail ? 'otp' : 'credentials') // 'credentials' | 'otp' | 'unconfirmed'
+  const loginPreview = import.meta.env.DEV
+    ? new URLSearchParams(window.location.search).get('preview')
+    : null
+  const [step, setStep] = useState(
+    loginPreview === 'forgot' ? 'forgot' : pendingEmail ? 'otp' : 'credentials',
+  ) // 'credentials' | 'otp' | 'unconfirmed' | 'forgot'
   const [otpSent, setOtpSent] = useState(Boolean(pendingEmail))
 
   const [email, setEmail] = useState(pendingEmail)

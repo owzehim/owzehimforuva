@@ -33,6 +33,9 @@ async function getVerifiedRecoverySession() {
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
+  const previewMode = import.meta.env.DEV
+    ? new URLSearchParams(window.location.search).get('preview')
+    : null
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -45,6 +48,11 @@ export default function ResetPasswordPage() {
   const returnHomeTimerRef = useRef(null)
 
   useEffect(() => {
+    if (previewMode === 'form') {
+      setRecoveryReady(true)
+      return undefined
+    }
+
     let active = true
     const verifyRecoverySession = async () => {
       try {
@@ -114,11 +122,13 @@ export default function ResetPasswordPage() {
       if (returnHomeTimerRef.current) window.clearTimeout(returnHomeTimerRef.current)
       subscription.unsubscribe()
     }
-  }, [])
+  }, [previewMode])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (previewMode === 'form') return
 
     if (!recoveryReady) {
       setError('재설정 링크가 만료되었거나 유효하지 않습니다. 새 링크를 요청해주세요.')
@@ -197,16 +207,17 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="phone-app-shell flex min-h-[100dvh] items-start justify-center overflow-hidden bg-white px-4 pt-[16vh]">
-      <div className="w-full max-w-sm px-2">
-        <div className="mb-8 min-h-[176px] pt-[54px] text-left">
-          <h1 className="text-2xl font-semibold text-gray-900">새 비밀번호 설정</h1>
-          <p className="mt-3 text-sm leading-relaxed text-gray-500">
-            새 비밀번호를 입력해주세요
-          </p>
-        </div>
+    <div className="phone-app-shell reset-password-page flex min-h-[100dvh] items-start justify-center overflow-hidden bg-white px-4 pt-[16vh]">
+      <div className="reset-password-content w-full max-w-sm px-2">
+        <div className="reset-password-info">
+          <div className="reset-password-heading mb-8 min-h-[176px] pt-[54px] text-left">
+            <h1 className="text-2xl font-semibold text-gray-900">새 비밀번호 설정</h1>
+            <p className="mt-3 text-sm leading-relaxed text-gray-500">
+              새 비밀번호를 입력해주세요
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="reset-password-form space-y-4">
             <div className="relative">
               <ResetField label="새 비밀번호">
                 <input
@@ -252,11 +263,12 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-5 w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+              className="reset-password-submit mt-5 w-full rounded-full bg-orange-500 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
             >
               {loading ? '변경 중...' : '비밀번호 변경'}
             </button>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   )

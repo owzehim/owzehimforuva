@@ -20,7 +20,7 @@ const copy = {
   submit: '\uBCC0\uACBD \uC644\uB8CC',
 }
 
-export default function ChangePasswordPage() {
+export default function ChangePasswordPage({ previewOnly = false }) {
   const navigate = useNavigate()
   const [newPassword, setNewPassword] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
@@ -39,6 +39,8 @@ export default function ChangePasswordPage() {
     event.preventDefault()
     setError('')
     setSuccess('')
+
+    if (previewOnly) return
 
     if (newPassword.length < 8) {
       setError(copy.tooShort)
@@ -65,25 +67,25 @@ export default function ChangePasswordPage() {
   }
 
   return (
-    <main className="phone-app-shell scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]">
+    <main className="phone-app-shell settings-password-page scrollbar-hidden relative min-h-[100dvh] overflow-y-auto bg-white px-4 dark:bg-[#121212]">
       <button
         type="button"
         onClick={() => navigate('/settings')}
-        className="fixed left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
+        className="settings-password-back fixed left-[14px] z-10 flex h-11 w-11 items-center justify-center text-[#374151] dark:text-[#c7c7cc]"
         style={{ top: 'calc(env(safe-area-inset-top) + 6px)' }}
         aria-label={copy.back}
       >
         <CaretLeft size={24} weight="bold" />
       </button>
 
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm items-center px-2 py-8">
-        <form onSubmit={handleSubmit} className="w-full -translate-y-[56px] space-y-4">
-          <div className="mb-8 min-h-[176px] pt-[54px] text-left">
+      <div className="settings-password-content mx-auto flex min-h-[100dvh] w-full max-w-sm items-center px-2 py-8">
+        <form onSubmit={handleSubmit} className="settings-password-form w-full -translate-y-[56px] space-y-4">
+          <div className="settings-password-heading mb-8 min-h-[176px] pt-[54px] text-left">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{copy.title}</h1>
             <p className="mt-3 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{copy.description}</p>
           </div>
 
-          <div className="relative -translate-y-9 space-y-4">
+          <div className="settings-password-fields relative -translate-y-9 space-y-4">
             <PasswordField label={copy.currentPassword} value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" />
             <PasswordField label={copy.newPassword} value={newPassword} onChange={setNewPassword} />
             <PasswordField label={copy.confirmPassword} value={confirmPassword} onChange={setConfirmPassword} />
@@ -96,7 +98,7 @@ export default function ChangePasswordPage() {
             <button
               type="submit"
               disabled={loading || (isCaptchaEnabled && !captchaToken)}
-              className="mt-5 w-full rounded-full bg-orange-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+              className="settings-password-submit mt-5 w-full rounded-full bg-orange-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
             >
               {loading ? copy.changing : copy.submit}
             </button>
