@@ -13,6 +13,14 @@ function isDevPreview() {
     (hostname.endsWith('.vercel.app') && hostname.includes('-git-dev-'))
 }
 
+function isInstalledPwa() {
+  if (typeof window === 'undefined') return false
+
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches ||
+    navigator.standalone === true
+}
+
 function readViewport() {
   const visualViewport = window.visualViewport
   if (!visualViewport) return null
@@ -38,7 +46,7 @@ function readViewport() {
 }
 
 export default function ZoomViewportMinimap() {
-  const enabled = isDevPreview()
+  const enabled = isDevPreview() || isInstalledPwa()
   const [visible, setVisible] = useState(false)
   const minimapRef = useRef(null)
   const viewportWindowRef = useRef(null)

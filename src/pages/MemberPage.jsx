@@ -1691,12 +1691,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
 
   const handleTouchStart = (e) => {
     if (cardFlipped) return
-    if (nativeZoomed) {
-      touchStartY.current = null
-      setIsCardDragging(false)
-      return
-    }
-    if (e.touches.length !== 1) {
+    if (nativeZoomed || e.touches.length !== 1) {
       touchStartY.current = null
       setIsCardDragging(false)
       return
@@ -1707,12 +1702,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
 
   const handleTouchMove = (e) => {
     if (cardFlipped) return
-    if (nativeZoomed) {
-      touchStartY.current = null
-      setIsCardDragging(false)
-      return
-    }
-    if (e.touches.length !== 1) {
+    if (nativeZoomed || e.touches.length !== 1) {
       touchStartY.current = null
       setIsCardDragging(false)
       return
@@ -1726,12 +1716,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
 
   const handleTouchEnd = (e) => {
     if (cardFlipped) return
-    if (nativeZoomed) {
-      touchStartY.current = null
-      setIsCardDragging(false)
-      return
-    }
-    if (e.touches.length > 0) {
+    if (nativeZoomed || e.touches.length > 0) {
       touchStartY.current = null
       setIsCardDragging(false)
       return

@@ -81,7 +81,7 @@ export default function PublicPage() {
     <div
       className={
         'phone-app-shell viewport-height-shell flex flex-col overflow-hidden no-highlight-zone ' +
-        (lockInteractions ? 'dev-no-zoom-selection ' : '') +
+        (lockInteractions ? 'dev-no-selection ' : '') +
         (activeTab === 'membership'
           ? 'bg-black'
           : 'bg-white dark:bg-[#121212]')
@@ -89,7 +89,7 @@ export default function PublicPage() {
       style={{
         height: '100dvh',
         WebkitTapHighlightColor: 'transparent',
-        touchAction: lockInteractions ? 'pan-x pan-y' : undefined,
+        touchAction: lockInteractions ? 'pan-x pan-y pinch-zoom' : undefined,
       }}
     >
       <style>{`
