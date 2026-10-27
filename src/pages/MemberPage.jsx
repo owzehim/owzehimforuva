@@ -1230,7 +1230,7 @@ function MembershipCard({
   const [flipped, setFlipped] = useState(false)
 
   const W =
-    'min(var(--membership-card-width, min(calc(100vw - 40px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
+    'min(var(--membership-card-width, min(calc(100vw - 48px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
   const cardW = W
   const fs = {
     brand: '3.8cqw',
@@ -1677,7 +1677,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const touchStartY = useRef(null)
   const liftedRef = useRef(false)
   const W =
-    'min(var(--membership-card-width, min(calc(100vw - 40px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
+    'min(var(--membership-card-width, min(calc(100vw - 48px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
   const cardRestingOffsetPx = 0
   const liftedActivityGapPx = 0
   const cardRestingOffsetY = `${cardRestingOffsetPx}px`
