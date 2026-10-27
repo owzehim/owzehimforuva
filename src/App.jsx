@@ -23,6 +23,7 @@ import { WifiX } from '@phosphor-icons/react'
 import LoadingIndicator from './components/LoadingIndicator'
 import DevScreenInteractionLock from './components/DevScreenInteractionLock'
 import ZoomViewportMinimap from './components/ZoomViewportMinimap'
+import LandscapeInputFocusGuard from './components/LandscapeInputFocusGuard'
 import { hasAppAccessClaim } from './domain/auth/authRules'
 import { LEGAL_DOCUMENT_VERSION } from './content/legalDocuments'
 import { hasCurrentLegalConsent } from './domain/legalConsent'
@@ -212,6 +213,7 @@ function App() {
     <BrowserRouter>
       <InstallBanner />
       <ZoomViewportMinimap />
+      <LandscapeInputFocusGuard />
       <Routes>
         <Route
           path="/login"
