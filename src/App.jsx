@@ -180,6 +180,8 @@ function App() {
     new URLSearchParams(window.location.search).get('preview') === 'form'
   const isTutorialPreview = import.meta.env.DEV &&
     new URLSearchParams(window.location.search).get('preview') === 'tutorial'
+  const isMemberScreenPreview = import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get('preview') === 'screen'
   const isSettingsPreview = import.meta.env.DEV &&
     new URLSearchParams(window.location.search).get('preview') === 'screen'
 
@@ -232,6 +234,8 @@ function App() {
           element={devScreen(
             isTutorialPreview
               ? <TutorialPreviewPage />
+              : isMemberScreenPreview
+                ? <MemberPage previewOnly />
               : protectWithConsent(<MemberPage userId={userId} userEmail={appSession?.user?.email || ''} isAdmin={isAdmin} />, '/public'),
           )}
         />

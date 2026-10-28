@@ -40,12 +40,72 @@ function getStoredEventListOpen() {
   return window.sessionStorage.getItem(MEMBER_EVENT_LIST_OPEN_KEY) === '1'
 }
 
-export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }) {
+function getPreviewTab() {
+  if (typeof window === 'undefined') return 'qr'
+  return new URLSearchParams(window.location.search).get('tab') === 'events'
+    ? 'events'
+    : 'qr'
+}
+
+function createPreviewEvents() {
+  const futureDate = (daysFromNow) => {
+    const date = new Date()
+    date.setDate(date.getDate() + daysFromNow)
+    return date.toISOString()
+  }
+
+  return [
+    {
+      id: 'member-preview-event-1',
+      created_at: new Date().toISOString(),
+      event_date: futureDate(8),
+      event_dates: [futureDate(8)],
+      title: 'UvA-IN 네트워킹 나이트',
+      description: '암스테르담에서 멤버들과 만나고 새로운 인연을 만들어 보세요.',
+      location: 'Amsterdam',
+      location_description: '장소 안내는 행사 전 공지됩니다.',
+      participation_url: null,
+      instagram_url: null,
+      image_urls: ['/PublicPage_MembershipTab_Images/uvain-network-1.webp'],
+      is_registration_closed: false,
+    },
+    {
+      id: 'member-preview-event-2',
+      created_at: new Date().toISOString(),
+      event_date: futureDate(18),
+      event_dates: [futureDate(18)],
+      title: '멤버 전용 문화 체험',
+      description: 'UvA-IN 멤버를 위한 문화 체험 프로그램입니다.',
+      location: 'Amsterdam',
+      location_description: '',
+      participation_url: null,
+      instagram_url: null,
+      image_urls: ['/PublicPage_MembershipTab_Images/uvain-event-1.webp'],
+      is_registration_closed: false,
+    },
+    {
+      id: 'member-preview-event-3',
+      created_at: new Date().toISOString(),
+      event_date: futureDate(30),
+      event_dates: [futureDate(30)],
+      title: 'UvA-IN 커뮤니티 모임',
+      description: '함께 이야기 나누고 커뮤니티 소식을 확인하는 모임입니다.',
+      location: 'Amsterdam',
+      location_description: '',
+      participation_url: null,
+      instagram_url: null,
+      image_urls: ['/PublicPage_MembershipTab_Images/uva-campus-1.webp'],
+      is_registration_closed: false,
+    },
+  ]
+}
+
+export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin, previewOnly = false }) {
   const [member, setMember] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState(getStoredMemberTab)
+  const [activeTab, setActiveTab] = useState(() => previewOnly ? getPreviewTab() : getStoredMemberTab())
   const [tabKey, setTabKey] = useState(0)
-  const [hasOpenedMap, setHasOpenedMap] = useState(() => getStoredMemberTab() === 'map')
+  const [hasOpenedMap, setHasOpenedMap] = useState(() => !previewOnly && getStoredMemberTab() === 'map')
   const lockInteractions = useDevInteractionLock(activeTab !== 'map')
   const [events, setEvents] = useState([])
   const [restaurants, setRestaurants] = useState([])
@@ -101,6 +161,30 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
   // Load user, member, events, restaurants
   useEffect(() => {
     const fetchData = async () => {
+      if (previewOnly) {
+        setMember({
+          id: 'member-screen-preview',
+          user_id: null,
+          first_name_korean: '민수',
+          last_name_korean: '김',
+          first_name: 'Minsoo',
+          last_name: 'Kim',
+          username: 'minsoo_kim',
+          email: 'minsoo.kim@example.com',
+          is_member: true,
+          account_status: 'active',
+          membership_valid_until: '2099-12-31',
+          tutorial_completed_at: new Date().toISOString(),
+          profile_image_url: null,
+          avatar_color_seed: 'member-screen-preview',
+        })
+        setEvents(createPreviewEvents())
+        setRestaurants([])
+        setWelcomeSlidesOpen(false)
+        setLoading(false)
+        return
+      }
+
       if (!sessionUserId) {
         setLoading(false)
         return
@@ -169,7 +253,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
     }
 
     fetchData()
-  }, [sessionUserId, reopenWelcomeSlides])
+  }, [previewOnly, sessionUserId, reopenWelcomeSlides])
 
   // Prevent iOS edge-swipe back gesture
   useEffect(() => {
@@ -189,7 +273,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
   const handleTabChange = (key) => {
     if (key === activeTab) return
 
-    window.sessionStorage.setItem(MEMBER_ACTIVE_TAB_KEY, key)
+    if (!previewOnly) window.sessionStorage.setItem(MEMBER_ACTIVE_TAB_KEY, key)
     setActiveTab(key)
     if (key === 'map') setHasOpenedMap(true)
     setTabKey((prev) => prev + 1)
@@ -286,8 +370,8 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
         </button>
       )}
       <button
-        onClick={() => navigate('/settings')}
-        className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 dark:text-gray-400 dark:hover:bg-gray-800"
+        onClick={() => navigate(previewOnly ? '/settings?preview=screen' : '/settings')}
+        className="app-landscape-top-action member-events-top-right fixed flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 dark:text-gray-400 dark:hover:bg-gray-800"
         aria-label="Settings"
         style={{
           right: '14px',
@@ -306,7 +390,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
       {activeTab === 'qr' && (
         <div
           className={
-            'app-landscape-top-actions fixed flex items-center gap-2 transition-opacity duration-200 ' +
+            'app-landscape-top-actions member-events-top-right fixed flex items-center gap-2 transition-opacity duration-200 ' +
             (qrCardLifted ? 'opacity-0 pointer-events-none' : 'opacity-100')
           }
           style={{
@@ -359,6 +443,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
             <QRTab
               member={member}
               isValid={isValid}
+              previewOnly={previewOnly}
               scannerOpenSignal={scannerOpenSignal}
               onLiftChange={(lifted) => setQrCardLifted(lifted)}
             />
@@ -1336,6 +1421,7 @@ function TourBottomTab({ activeIndex, style, lift = 5 }) {
 function MembershipCard({
   member,
   isValid,
+  className = '',
   onQRScanned,
   disabled = false,
   onFlipChange,
@@ -1641,6 +1727,7 @@ function MembershipCard({
   if (!isValid) {
     return (
       <div
+        className={className}
         style={{
           width: cardW,
           aspectRatio: '1 / 1.586',
@@ -1697,6 +1784,7 @@ function MembershipCard({
 
   return (
     <div
+      className={className}
       style={{
         width: cardW,
         aspectRatio: '1 / 1.586',
@@ -1763,9 +1851,11 @@ function MembershipCard({
             }}
           >
             {flipped && (
-              <Suspense fallback={null}>
-                <QRScanner onScan={onQRScanned} darkMode={darkMode} />
-              </Suspense>
+              <div className="membership-card-camera-content">
+                <Suspense fallback={null}>
+                  <QRScanner onScan={onQRScanned} darkMode={darkMode} />
+                </Suspense>
+              </div>
             )}
           </div>
         </div>
@@ -1775,9 +1865,10 @@ function MembershipCard({
 }
 
 // QR Tab
-function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
+function QRTab({ member, isValid, previewOnly = false, scannerOpenSignal = 0, onLiftChange }) {
   const navigate = useNavigate()
   const [lifted, setLifted] = useState(false)
+  const [landscapeCardShifted, setLandscapeCardShifted] = useState(false)
   const [cardLiftOffset, setCardLiftOffset] = useState(0)
   const [isCardDragging, setIsCardDragging] = useState(false)
   const [cardFlipped, setCardFlipped] = useState(false)
@@ -1789,6 +1880,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   )
   const cardLayerRef = useRef(null)
   const activityRef = useRef(null)
+  const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const liftedRef = useRef(false)
   const W =
@@ -1805,13 +1897,30 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const getMaxLift = () =>
     (activityRef.current?.offsetHeight ?? 260) + cardRestingOffsetPx + liftedActivityGapPx
 
+  useEffect(() => {
+    const resetLandscapeShift = () => {
+      if (!window.matchMedia('(orientation: landscape)').matches) {
+        setLandscapeCardShifted(false)
+      }
+    }
+
+    window.addEventListener('resize', resetLandscapeShift)
+    window.addEventListener('orientationchange', resetLandscapeShift)
+    return () => {
+      window.removeEventListener('resize', resetLandscapeShift)
+      window.removeEventListener('orientationchange', resetLandscapeShift)
+    }
+  }, [])
+
   const handleTouchStart = (e) => {
     if (cardFlipped) return
     if (nativeZoomed || e.touches.length !== 1) {
+      touchStartX.current = null
       touchStartY.current = null
       setIsCardDragging(false)
       return
     }
+    touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
     setIsCardDragging(true)
   }
@@ -1819,13 +1928,16 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const handleTouchMove = (e) => {
     if (cardFlipped) return
     if (nativeZoomed || e.touches.length !== 1) {
+      touchStartX.current = null
       touchStartY.current = null
       setIsCardDragging(false)
       return
     }
-    if (touchStartY.current == null) return
+    if (touchStartX.current == null || touchStartY.current == null) return
+    const dx = touchStartX.current - e.touches[0].clientX
     const dy = touchStartY.current - e.touches[0].clientY
-    if (Math.abs(dy) > 10) {
+    const landscape = window.matchMedia('(orientation: landscape)').matches
+    if (Math.abs(dy) > 10 || (landscape && Math.abs(dx) > 10)) {
       e.preventDefault()
     }
   }
@@ -1833,12 +1945,22 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const handleTouchEnd = (e) => {
     if (cardFlipped) return
     if (nativeZoomed || e.touches.length > 0) {
+      touchStartX.current = null
       touchStartY.current = null
       setIsCardDragging(false)
       return
     }
-    if (touchStartY.current == null) return
+    if (touchStartX.current == null || touchStartY.current == null) return
+    const dx = touchStartX.current - e.changedTouches[0].clientX
     const dy = touchStartY.current - e.changedTouches[0].clientY
+    const landscape = window.matchMedia('(orientation: landscape)').matches
+    if (landscape && Math.abs(dx) > Math.max(40, Math.abs(dy) * 1.2)) {
+      setLandscapeCardShifted(dx > 0)
+      setIsCardDragging(false)
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
     const max = getMaxLift()
     const SWIPE_THRESHOLD = 40
     let nextLifted = liftedRef.current
@@ -1853,6 +1975,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
     liftedRef.current = nextLifted
     setLifted(nextLifted)
     setIsCardDragging(false)
+    touchStartX.current = null
     touchStartY.current = null
   }
 
@@ -1904,7 +2027,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
     if (onLiftChange) onLiftChange(false)
     return (
       <div
-        className="no-highlight-zone"
+        className="no-highlight-zone my-qr-tab"
         style={{
           position: 'relative',
           height: '100%',
@@ -1915,6 +2038,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
         }}
       >
         <div
+          className="my-qr-card-stage"
           style={{
             position: 'absolute',
             inset: 0,
@@ -1924,11 +2048,11 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '0 16px',
-            transform: `translate3d(0, ${inactiveCardRestingOffsetY}, 0)`,
+            transform: `translate3d(0, calc(${inactiveCardRestingOffsetY} + var(--my-card-center-offset, 0px)), 0)`,
           }}
         >
-          <div style={{ width: W }}>
-            <MembershipCard member={member} isValid={false} darkMode={darkMode} />
+          <div className="my-membership-card-frame" style={{ width: W }}>
+            <MembershipCard member={member} isValid={false} darkMode={darkMode} className="my-membership-card" />
           </div>
         </div>
       </div>
@@ -1938,7 +2062,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   // Scanning state
   return (
     <div
-      className="no-highlight-zone"
+      className={`no-highlight-zone my-qr-tab${landscapeCardShifted ? ' is-landscape-card-shifted' : ''}`}
       style={{
         position: 'relative',
         height: '100%',
@@ -1952,7 +2076,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
     >
       {/* Recent activity + long fade when lifted */}
       <div
-        ref={activityRef}
+        className="my-qr-activity-panel"
         style={{
           position: 'absolute',
           bottom: 0,
@@ -1963,7 +2087,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
         }}
       >
         {isValid && (
-          <div className="relative">
+          <div ref={activityRef} className="my-qr-activity-stack relative">
             <ActivityStatsCard userId={member?.user_id} />
           </div>
         )}
@@ -1972,6 +2096,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
       {/* Membership card layer */}
       <div
         ref={cardLayerRef}
+        className={`my-qr-card-stage${landscapeCardShifted ? ' is-landscape-card-shifted' : ''}`}
         style={{
           position: 'absolute',
           bottom: 0,
@@ -1985,14 +2110,15 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '0 16px',
-          transform: `translate3d(0, calc(${cardRestingOffsetY} - ${cardLiftOffset}px), 0)`,
+          transform: `translate3d(${landscapeCardShifted ? 'var(--my-card-slide-offset)' : '0px'}, calc(${cardRestingOffsetY} - ${cardLiftOffset}px + var(--my-card-center-offset, 0px)), 0)`,
           transition: isCardDragging
             ? 'none'
             : 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
           willChange: 'transform',
         }}
       >
-        <div
+          <div
+          className="my-membership-card-frame"
           style={{
             position: 'relative',
             width: W,
@@ -2001,13 +2127,15 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
           <MembershipCard
             member={member}
             isValid={isValid}
+            className="my-membership-card"
             onQRScanned={handleQRScanned}
-            disabled={lifted}
+            disabled={lifted || previewOnly}
             onFlipChange={setCardFlipped}
             darkMode={darkMode}
             scannerOpenSignal={scannerOpenSignal}
           />
           <div
+            className="my-qr-guide-hint"
             style={{
               position: 'absolute',
               top: `calc(100% + ${guideTextGapY})`,
@@ -2021,19 +2149,20 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
             }}
           >
             {!cardFlipped && (
-              <span
-                style={{
-                  fontSize: fs.guide,
-                  lineHeight: 1,
-                  color: darkMode ? '#FAFAFA' : 'rgba(44,42,39,0.35)',
-                  fontWeight: 500,
-                  transition: 'color 0.25s ease',
-                }}
-              >
-                {lifted
-                   ? '내려서 Check-IN 하기'
-                   : '위로 올려서 최근 활동 보기'}
-              </span>
+              <>
+                <span
+                  className="my-qr-guide-portrait"
+                  style={{
+                    fontSize: fs.guide,
+                    lineHeight: 1,
+                    color: darkMode ? '#FAFAFA' : 'rgba(44,42,39,0.35)',
+                    fontWeight: 500,
+                    transition: 'color 0.25s ease',
+                  }}
+                >
+                  {lifted ? '내려서 Check-IN 하기' : '위로 올려서 최근 활동 보기'}
+                </span>
+              </>
             )}
             {cardFlipped && (
               <span
@@ -2050,6 +2179,17 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
           </div>
         </div>
       </div>
+
+      <div className="my-qr-landscape-hint-anchor" aria-hidden="true">
+        <span
+          className="my-qr-landscape-hint"
+          style={{ color: darkMode ? '#FAFAFA' : 'rgba(44,42,39,0.35)' }}
+        >
+          {cardFlipped ? '눌러서 돌아가기' : '왼쪽으로 밀어서 최근 활동 보기'}
+        </span>
+      </div>
+
+      <div className="my-card-left-edge-fade" aria-hidden="true" />
 
       {/* Top fade → soften the safe-area/card line when lifted */}
       {lifted && (
@@ -2489,6 +2629,7 @@ function EventsTab({ events }) {
   const eventListDialogRef = useRef(null)
   const [eventListClosing, setEventListClosing] = useState(false)
   const [eventListNewestFirst, setEventListNewestFirst] = useState(true)
+  const [eventListPreviewId, setEventListPreviewId] = useState(initialEvent?.id ?? null)
   const [eventCardOpen, setEventCardOpen] = useState(false)
   const [eventPhotoZoomScale, setEventPhotoZoomScale] = useState(1)
   const [eventPhotoZoomOffset, setEventPhotoZoomOffset] = useState({ x: 0, y: 0 })
@@ -2511,10 +2652,13 @@ function EventsTab({ events }) {
   })
 
   const containerRef = useRef(null)
+  const eventListScrollRef = useRef(null)
+  const eventListWheelLockedRef = useRef(false)
   const eventSwipeStartX = useRef(null)
   const eventSwipeStartY = useRef(null)
   const eventCardStartY = useRef(null)
   const eventCardScrollRef = useRef(null)
+  const eventLandscapeCopyScrollRef = useRef(null)
   const eventPreviewRef = useRef(null)
   const eventActiveImageRef = useRef(null)
   const eventPreviewTouchStartX = useRef(null)
@@ -3353,7 +3497,10 @@ function EventsTab({ events }) {
       return
     }
 
-    const scrollTop = eventCardScrollRef.current?.scrollTop || 0
+    const scrollTarget = e.target.closest?.('.event-landscape-copy-scroll')
+      ? eventLandscapeCopyScrollRef.current
+      : eventCardScrollRef.current
+    const scrollTop = scrollTarget?.scrollTop || 0
     if (e.deltaY < 0 && (!eventCardOpen || scrollTop <= 0)) {
       e.preventDefault()
       closeEventCard()
@@ -3413,6 +3560,83 @@ function EventsTab({ events }) {
     monthGroup.events.push(ev)
     return years
   }, [])
+
+  const eventListPreviewEvent =
+    sortedListEvents.find((event) => event.id === eventListPreviewId) ||
+    selectedEvent ||
+    initialEvent
+  const eventListPreviewImage = eventListPreviewEvent?.image_urls?.[0]
+
+  const updateEventListPreview = () => {
+    const scrollContainer = eventListScrollRef.current
+    if (!scrollContainer) return
+
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const centerY = containerRect.top + containerRect.height / 2
+    const cards = scrollContainer.querySelectorAll('[data-event-list-id]')
+    let closestCard = null
+    let closestDistance = Number.POSITIVE_INFINITY
+
+    cards.forEach((card) => {
+      const rect = card.getBoundingClientRect()
+      const distance = Math.abs(rect.top + rect.height / 2 - centerY)
+      if (distance < closestDistance) {
+        closestCard = card
+        closestDistance = distance
+      }
+    })
+
+    if (closestCard) {
+      const nextId = closestCard.getAttribute('data-event-list-id')
+      setEventListPreviewId((currentId) => (currentId === nextId ? currentId : nextId))
+    }
+  }
+
+  const handleEventListWheel = (event) => {
+    if (Math.abs(event.deltaY) < 2) return
+    event.preventDefault()
+
+    if (eventListWheelLockedRef.current) return
+    const scrollContainer = eventListScrollRef.current
+    if (!scrollContainer) return
+
+    const cards = [...scrollContainer.querySelectorAll('[data-event-list-id]')]
+    if (cards.length < 2) return
+
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const centerY = containerRect.top + containerRect.height / 2
+    let currentIndex = 0
+    let closestDistance = Number.POSITIVE_INFINITY
+    cards.forEach((card, index) => {
+      const rect = card.getBoundingClientRect()
+      const distance = Math.abs(rect.top + rect.height / 2 - centerY)
+      if (distance < closestDistance) {
+        currentIndex = index
+        closestDistance = distance
+      }
+    })
+
+    const nextIndex = Math.max(
+      0,
+      Math.min(currentIndex + (event.deltaY > 0 ? 1 : -1), cards.length - 1),
+    )
+    if (nextIndex === currentIndex) return
+
+    const targetRect = cards[nextIndex].getBoundingClientRect()
+    const nextScrollTop =
+      scrollContainer.scrollTop + targetRect.top + targetRect.height / 2 - centerY
+    eventListWheelLockedRef.current = true
+    scrollContainer.scrollTo({ top: nextScrollTop, behavior: 'smooth' })
+    window.setTimeout(() => {
+      eventListWheelLockedRef.current = false
+    }, 320)
+  }
+
+  useEffect(() => {
+    if (!eventListOpen) return undefined
+    const frame = window.requestAnimationFrame(updateEventListPreview)
+    return () => window.cancelAnimationFrame(frame)
+  }, [eventListOpen, eventListNewestFirst, allEvents.length])
 
   const renderEvent = (ev) => {
     if (!ev) return null
@@ -3729,7 +3953,7 @@ const effectiveDateColor = isDragging
         document.body,
       )}
       <div
-        className="relative h-full overflow-hidden bg-white text-gray-950 no-highlight-zone dark:bg-[#121212] dark:text-white"
+        className="event-tab-screen relative h-full overflow-hidden bg-white text-gray-950 no-highlight-zone dark:bg-[#121212] dark:text-white"
         onTouchStart={handleFrameworkTouchStart}
         onTouchEnd={handleFrameworkTouchEnd}
       >
@@ -3737,10 +3961,11 @@ const effectiveDateColor = isDragging
           type="button"
           onClick={() => {
             setEventListNewestFirst(true)
+            setEventListPreviewId(selectedEvent?.id ?? initialEvent?.id ?? null)
             window.sessionStorage.setItem(MEMBER_EVENT_LIST_OPEN_KEY, '1')
             setEventListOpen(true)
           }}
-          className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
+          className="app-landscape-top-action member-events-top-left fixed flex h-11 w-11 items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
           aria-label="Open event list"
           style={{
             left: '14px',
@@ -3905,6 +4130,65 @@ const effectiveDateColor = isDragging
               </div>
             </div>
 
+            <section className={`event-landscape-copy ${eventCardOpen ? 'is-expanded' : 'is-collapsed'}`}>
+              <div
+                ref={eventLandscapeCopyScrollRef}
+                className="event-landscape-copy-scroll"
+                onWheel={handleEventCardWheel}
+              >
+                {eventDateParts && (
+                  <button
+                    type="button"
+                    className="event-landscape-date"
+                    onClick={() => addToCalendar(displayEvent)}
+                    aria-label="Add event to calendar"
+                  >
+                    <span>{eventDateParts.dateNum}</span>
+                    <span>{eventDateParts.monthName}</span>
+                    <span>{eventDateParts.dayName} · {eventDateParts.year}</span>
+                    <span className={isNextSelected ? 'text-orange-500' : ''}>{getEventStatus(displayEvent)}</span>
+                  </button>
+                )}
+                <h1 className="event-landscape-title">{displayEvent.title || 'Untitled event'}</h1>
+                <div className="event-landscape-metadata">
+                  {getPrimaryEventDate(displayEvent) && (
+                    <div className="flex items-center gap-2">
+                      <Clock size={18} weight="fill" color="#f97316" />
+                      <span>{formatTimeRange(displayEvent)}</span>
+                    </div>
+                  )}
+                  {displayEvent.location && (
+                    <div className="flex items-center gap-2">
+                      <NavigationArrow size={18} weight="fill" color="#f97316" />
+                      <span>{plainText(displayEvent.location)}</span>
+                    </div>
+                  )}
+                  {displayEvent.location_description && (
+                    <div className="flex items-center gap-2">
+                      <Door size={18} weight="fill" color="#f97316" />
+                      <span>{plainText(displayEvent.location_description)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {showParticipationButton && (
+              <button
+                type="button"
+                onClick={() => openParticipationForm(displayEvent)}
+                disabled={!canOpenParticipationForm}
+                className={
+                  'event-landscape-participation-button ' +
+                  (canOpenParticipationForm
+                    ? 'bg-gray-950 text-white active:bg-gray-800 dark:bg-white dark:text-gray-950 dark:active:bg-gray-200'
+                    : 'cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500')
+                }
+              >
+                {participationButtonLabel}
+              </button>
+            )}
+
             <div
               className="event-compact-details absolute left-0 right-0 px-6"
               style={{
@@ -3993,7 +4277,7 @@ const effectiveDateColor = isDragging
             )}
 
             <div
-              className="absolute left-0 right-0 bg-white dark:bg-[#121212]"
+              className={`event-card-sheet absolute left-0 right-0 bg-white dark:bg-[#121212] ${eventCardOpen ? 'is-expanded' : 'is-collapsed'}`}
               onTouchStart={handleEventCardTouchStart}
               onTouchMove={handleEventCardTouchMove}
               onTouchEnd={handleEventCardTouchEnd}
@@ -4014,13 +4298,13 @@ const effectiveDateColor = isDragging
                 backfaceVisibility: 'hidden',
               }}
             >
-              <div className="flex justify-center pb-3 pt-2.5">
+              <div className="event-card-handle flex justify-center pb-3 pt-2.5">
                 <div className="h-1 w-10 rounded-full bg-gray-300" />
               </div>
 
               <div
                 ref={eventCardScrollRef}
-                className="scrollbar-hidden h-full px-5"
+                className={`event-card-scroll scrollbar-hidden h-full px-5 ${eventCardOpen ? 'is-expanded' : 'is-collapsed'}`}
                 style={{
                   overflowY: eventCardOpen ? 'auto' : 'hidden',
                   paddingBottom: 'calc(env(safe-area-inset-bottom) + 116px)',
@@ -4038,7 +4322,7 @@ const effectiveDateColor = isDragging
                   }}
                 >
                   <div
-                    className="overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800"
+                    className="event-card-image-box overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800"
                     style={{
                       aspectRatio: `${eventImageBoxRatio} / 1`,
                       contain: 'layout paint size',
@@ -4161,6 +4445,7 @@ const effectiveDateColor = isDragging
                   </div>
                   {displayImages.length > 1 && (
                     <div
+                      className="event-image-pagination"
                       style={{
                         display: 'flex',
                         justifyContent: 'center',
@@ -4220,7 +4505,7 @@ const effectiveDateColor = isDragging
                   )}
                   {displayEvent.description && (
                     <div
-                      className="mt-4 rounded-2xl bg-gray-50 px-4 py-4 dark:bg-gray-900"
+                      className="event-card-description-box mt-4 rounded-2xl bg-gray-50 px-4 py-4 dark:bg-gray-900"
                       style={{
                         display: eventCardOpen ? 'block' : 'none',
                       }}
@@ -4250,7 +4535,7 @@ const effectiveDateColor = isDragging
           aria-label="이벤트 목록"
           tabIndex={-1}
           onKeyDown={handleEventListKeyDown}
-          className="fixed inset-0"
+          className="event-list-dialog fixed inset-0"
           style={{
             zIndex: 120,
             backgroundColor: eventListBg,
@@ -4262,6 +4547,29 @@ const effectiveDateColor = isDragging
           }}
           onClick={closeEventList}
         >
+          <div className="event-list-landscape-preview" aria-live="polite">
+            <div className="event-list-landscape-artwork" style={{ backgroundColor: eventListBg }}>
+              {eventListPreviewImage ? (
+                <img
+                  key={`${eventListPreviewEvent?.id}-${eventListPreviewImage}`}
+                  src={eventListPreviewImage}
+                  alt={eventListPreviewEvent?.title || 'Event preview'}
+                  draggable={false}
+                />
+              ) : (
+                <div
+                  className="event-list-landscape-no-image flex flex-col gap-3 bg-white text-gray-400 dark:bg-[#121212] dark:text-gray-500"
+                >
+                  <ImageIcon size={34} weight="regular" />
+                  <span className="text-xs">No images</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="event-list-landscape-right">
+            <div className="event-list-landscape-caret" aria-hidden="true">
+              <CaretLeft size={24} weight="fill" color="#f97316" />
+            </div>
           <div
             className="fixed left-0 right-0 top-0"
             style={{
@@ -4276,7 +4584,7 @@ const effectiveDateColor = isDragging
               e.stopPropagation()
               closeEventList()
             }}
-            className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center"
+            className="app-landscape-top-action member-events-top-left fixed flex h-11 w-11 items-center justify-center"
             aria-label="Close event list"
             style={{
               left: '14px',
@@ -4296,7 +4604,7 @@ const effectiveDateColor = isDragging
               e.stopPropagation()
               setEventListNewestFirst((v) => !v)
             }}
-            className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center"
+            className="app-landscape-top-action member-events-top-right fixed flex h-11 w-11 items-center justify-center"
             aria-label={eventListNewestFirst ? 'Sort events old to new' : 'Sort events new to old'}
             style={{
               right: '14px',
@@ -4338,6 +4646,7 @@ const effectiveDateColor = isDragging
 
           <div
             className="event-list-scroll h-full overflow-y-auto px-6"
+            ref={eventListScrollRef}
             style={{
               paddingTop: 'calc(env(safe-area-inset-top) + 84px)',
               paddingBottom: 'calc(env(safe-area-inset-bottom) + 116px)',
@@ -4345,6 +4654,8 @@ const effectiveDateColor = isDragging
               msOverflowStyle: 'none',
             }}
             onClick={(e) => e.stopPropagation()}
+            onScroll={updateEventListPreview}
+            onWheel={handleEventListWheel}
           >
             <div className="mx-auto w-full max-w-md">
               <div className="space-y-8">
@@ -4365,6 +4676,7 @@ const effectiveDateColor = isDragging
                         return (
                           <button
                             key={ev.id}
+                            data-event-list-id={ev.id}
                             type="button"
                             onClick={() => selectEventFromList(ev)}
                             className="w-full rounded-2xl border px-3 py-2.5 text-left transition-transform active:scale-[0.99]"
@@ -4429,6 +4741,7 @@ const effectiveDateColor = isDragging
                 )}
               </div>
             </div>
+          </div>
           </div>
         </div>
       )}
