@@ -4830,7 +4830,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
     >
       {/* Category slider */}
 <div 
-  className="app-landscape-top-tabs bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
+  className="app-landscape-top-tabs public-spot-category-slider bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
   style={{ 
     paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
     zIndex: 10,  // Keep category slider above the map
@@ -4846,6 +4846,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
               ? CATEGORY_ICONS_BLACK[cat]
               : CATEGORY_ICONS_WHITE[cat]
             : CATEGORY_ICONS_ORANGE[cat]
+          const activeTextClass = darkMode ? 'text-[#121212]' : 'text-white'
           return (
             <button
               key={cat}
@@ -4856,8 +4857,8 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
               className={
                 'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 select-none ' +
                 (isActive
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700')
+                  ? `bg-orange-500 ${activeTextClass}`
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
               }
               style={{
                 userSelect: 'none',
