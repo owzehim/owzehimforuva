@@ -135,7 +135,7 @@ export default function SettingsPage({ userId, isAdmin }) {
       setLoading(false)
     }
     load()
-  }, [navigate, userId])
+  }, [navigate])
 
   useEffect(() => {
     const edgeWidth = 30
@@ -416,7 +416,7 @@ export default function SettingsPage({ userId, isAdmin }) {
 
   return (
     <div
-      className="phone-app-shell flex flex-col bg-white no-highlight-zone dark:bg-[#121212]"
+      className="settings-page phone-app-shell flex flex-col bg-white no-highlight-zone dark:bg-[#121212]"
       style={{
         height: '100dvh',
         minHeight: 0,
@@ -429,16 +429,110 @@ export default function SettingsPage({ userId, isAdmin }) {
         .no-highlight-zone * {
           -webkit-tap-highlight-color: transparent;
         }
+        @media (orientation: landscape) {
+          .settings-page {
+            position: fixed !important;
+            inset: 0 !important;
+            top: 0 !important;
+            width: 100vw !important;
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            overflow: hidden !important;
+          }
+          .settings-header {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            height: calc(env(safe-area-inset-top, 0px) + 56px) !important;
+            min-height: calc(env(safe-area-inset-top, 0px) + 56px) !important;
+            padding: 0 !important;
+          }
+          .settings-back-button {
+            top: 6px !important;
+            left: max(14px, calc(env(safe-area-inset-left, 0px) + 8px)) !important;
+          }
+          .settings-content {
+            position: absolute !important;
+            top: calc(env(safe-area-inset-top, 0px) + 56px) !important;
+            right: env(safe-area-inset-right, 0px) !important;
+            bottom: env(safe-area-inset-bottom, 0px) !important;
+            left: env(safe-area-inset-left, 0px) !important;
+            display: block !important;
+            overflow: hidden !important;
+            padding: 10px clamp(20px, 4vw, 48px) !important;
+            box-sizing: border-box !important;
+          }
+          .settings-layout {
+            display: grid !important;
+            width: 100% !important;
+            max-width: none !important;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: center;
+            column-gap: clamp(20px, 4vw, 48px);
+            row-gap: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .settings-profile-column,
+          .settings-actions-column {
+            width: min(100%, 380px);
+            min-width: 0;
+            justify-self: center;
+          }
+          .settings-profile-column {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .settings-profile-card {
+            gap: 8px !important;
+            padding: 12px 16px !important;
+          }
+          .settings-profile-card > button:first-child {
+            width: 72px !important;
+            height: 72px !important;
+          }
+          .settings-profile-card > button:first-child > div {
+            width: 72px !important;
+            height: 72px !important;
+          }
+          .settings-profile-card > button:first-child > span {
+            width: 24px !important;
+            height: 24px !important;
+          }
+          .settings-theme-card {
+            padding: 10px 12px !important;
+          }
+          .settings-theme-card .mb-3 {
+            margin-bottom: 6px !important;
+          }
+          .settings-theme-card button {
+            height: 32px !important;
+          }
+          .settings-actions-column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .settings-actions-column > button {
+            min-height: 36px;
+            padding: 8px 12px !important;
+            font-size: 12px !important;
+            line-height: 16px !important;
+          }
+        }
       `}</style>
       {/* Header */}
       <div
-        className="relative z-50 flex flex-shrink-0 items-center gap-2 bg-white px-4 dark:bg-[#121212]"
+        className="settings-header relative z-50 flex flex-shrink-0 items-center gap-2 bg-white px-4 dark:bg-[#121212]"
         style={settingsHeaderStyle}
       >
         <button
           type="button"
           onClick={() => navigate('/member')}
-          className="text-[#374151] dark:text-[#c7c7cc]"
+          className="settings-back-button text-[#374151] dark:text-[#c7c7cc]"
           style={settingsBackButtonStyle}
           aria-label="Back to member page"
         >
@@ -447,11 +541,12 @@ export default function SettingsPage({ userId, isAdmin }) {
       </div>
 
       {/* Content */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto space-y-6 px-4 pt-1 pb-6" style={{ maxWidth: 'var(--app-screen-width)' }}>
+      <div className="settings-content min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div className="settings-layout mx-auto space-y-6 px-4 pt-1 pb-6" style={{ maxWidth: 'var(--app-screen-width)' }}>
 
+          <div className="settings-profile-column flex flex-col gap-3">
           {/* Profile card */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
+          <div className="settings-profile-card bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
 
             <button
               type="button"
@@ -593,14 +688,15 @@ export default function SettingsPage({ userId, isAdmin }) {
             {error && <p className="text-xs text-red-500 text-center mt-1">{error}</p>}
           </div>
 
-          <div className="space-y-6 pb-6">
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
+          <div className="settings-theme-card rounded-2xl border border-gray-100 bg-white p-4 dark:border-[#2c2c2e] dark:bg-[#111111]">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">화면 모드</p>
               </div>
               <ThemeToggle />
-            </div>
+          </div>
+          </div>
 
+          <div className="settings-actions-column flex flex-col gap-6 pb-6">
             <button
               type="button"
               onClick={() => {
@@ -627,7 +723,7 @@ export default function SettingsPage({ userId, isAdmin }) {
               onClick={() => navigate('/legal?lang=ko')}
               className="w-full rounded-full border border-gray-200 bg-white px-5 py-3 text-center text-sm font-semibold text-gray-700 shadow-sm dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
             >
-              이용약관 · 개인정보 처리방침 · 커뮤니티 가이드라인
+              약관 및 정책
             </button>
 
             <button

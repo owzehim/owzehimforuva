@@ -19,7 +19,6 @@ const copy = {
 }
 
 const CONFIRMATION_EVENT_KEY = 'uvain-email-confirmation-result'
-
 function announceConfirmationFinished(status) {
   try {
     window.localStorage.setItem(
@@ -119,112 +118,151 @@ export default function EmailConfirmedPage() {
     return () => { cancelled = true }
   }, [finish])
 
-  const isVerifying = status === 'verifying'
-  const isSuccess = status === 'success'
+  const visibleStatus = status
+  const isVerifying = visibleStatus === 'verifying'
+  const isSuccess = visibleStatus === 'success'
+  const isError = !isVerifying && !isSuccess
+  const isRegistrationError = visibleStatus === 'registration_error'
+  const isEmailChangeError = visibleStatus === 'email_change_error'
   const isEnglish = navigator.language?.toLowerCase().startsWith('en')
   const title = isVerifying
     ? copy.verifyingTitle
     : isSuccess
       ? (isEnglish ? copy.successTitleEn : copy.successTitle)
-      : status === 'registration_error'
-        ? '이메일 인증은 완료됐지만 회원가입 저장에 실패했습니다.'
-        : status === 'email_change_error'
-          ? '이메일 인증은 완료됐지만 계정 이메일 변경 마무리에 실패했습니다.'
+      : visibleStatus === 'registration_error'
+        ? '이메일 인증은 완료되었으나, 회원 정보 등록에 실패했습니다'
+        : visibleStatus === 'email_change_error'
+          ? '이메일 인증은 완료되었지만, 이메일 주소를 변경하지 못했어요.'
         : copy.errorTitle
   const message = isVerifying
     ? copy.verifyingMessage
     : isSuccess
       ? (isEnglish ? copy.successMessageEn : copy.successMessage)
-      : status === 'registration_error'
-        ? '로그인하면 회원가입 저장을 다시 시도합니다. 문제가 계속되면 지원팀에 문의해주세요.'
-        : status === 'email_change_error'
-          ? '이 페이지를 새로고침해 다시 시도해주세요. 문제가 계속되면 지원팀에 문의해주세요.'
+      : visibleStatus === 'registration_error'
+        ? '로그인해 주시면 가입 절차를 다시 시도합니다. 문제가 지속되면 지원팀으로 문의해 주세요.'
+        : visibleStatus === 'email_change_error'
+          ? '페이지를 새로고침해 다시 시도해 주세요. 문제가 계속되면 지원팀에 문의해 주세요.'
         : copy.errorMessage
 
   return (
-    <div className="phone-app-shell" style={styles.page}>
-      <div style={styles.panel}>
-        {isVerifying ? (
-          <SpinnerGap size={54} weight="bold" color="#f97316" style={styles.spinnerIcon} />
-        ) : isSuccess ? (
-          <CheckCircle size={64} weight="fill" color="#f97316" />
-        ) : (
-          <XCircle size={64} weight="fill" color="#ef4444" />
-        )}
-        <h1 style={styles.title}>{title}</h1>
-        <p style={styles.message}>{message}</p>
-        {!isVerifying && (
-          isSuccess ? (
-            <button
-              type="button"
-              onClick={() => navigate('/public', { replace: true })}
-              style={styles.returnButton}
-            >
-              {isEnglish ? 'Return to homepage' : '홈 화면으로 이동'}
-            </button>
+    <div className="phone-app-shell email-confirmed-page" style={styles.page}>
+      <div className={`email-confirmed-panel${isError ? ' email-confirmed-error' : ''}`} style={styles.panel}>
+        <div className="email-confirmed-info">
+          {isVerifying ? (
+            <SpinnerGap size={54} weight="bold" color="#f97316" style={styles.spinnerIcon} />
+          ) : isSuccess || isRegistrationError || isEmailChangeError ? (
+            <CheckCircle size={64} weight="fill" color="#f97316" />
           ) : (
-            <div style={styles.actions}>
-              <label htmlFor="confirmation-email" style={styles.emailLabel}>이메일 주소</label>
-              <input
-                id="confirmation-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="name@example.com"
-                style={styles.emailInput}
-              />
+            <XCircle size={64} weight="fill" color="#ef4444" />
+          )}
+          <h1 style={styles.title}>{title}</h1>
+          <p style={styles.message}>{message}</p>
+          {isError && !isRegistrationError && !isEmailChangeError && (
+            <div className="email-confirmed-left-fields">
+              <div className="registration-field email-confirmed-email-field">
+                <label htmlFor="confirmation-email" style={styles.emailFieldLabel}>
+                  {isEnglish ? 'Email *' : '이메일 *'}
+                </label>
+                <input
+                  id="confirmation-email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder=""
+                  style={styles.emailInput}
+                />
+              </div>
               {isCaptchaEnabled && (
                 <CaptchaChallenge
                   onVerify={setCaptchaToken}
                   resetKey={captchaResetKey}
                 />
               )}
-              {resendMessage && <p style={styles.successMessage}>{resendMessage}</p>}
-              {resendError && <p style={styles.errorMessage}>{resendError}</p>}
-              <button
-                type="button"
-                disabled={resending || !email.trim() || (isCaptchaEnabled && !captchaToken)}
-                onClick={async () => {
-                  setResending(true)
-                  setResendMessage('')
-                  setResendError('')
-                  try {
-                    await resendConfirmationEmail(email, captchaToken)
-                    setResendMessage('인증 이메일을 다시 보냈습니다.')
-                  } catch (error) {
-                    setResendError(error.message || '인증 이메일을 다시 보내지 못했습니다.')
-                  } finally {
-                    setResending(false)
-                    if (isCaptchaEnabled) {
-                      setCaptchaToken('')
-                      setCaptchaResetKey((key) => key + 1)
-                    }
-                  }
-                }}
-                style={{ ...styles.returnButton, opacity: resending || !email.trim() || (isCaptchaEnabled && !captchaToken) ? 0.55 : 1 }}
-              >
-                {resending ? '전송 중...' : '인증 이메일 다시 보내기'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('')
-                  document.getElementById('confirmation-email')?.focus()
-                }}
-                style={styles.secondaryButton}
-              >
-                이메일 주소 다시 입력하기
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/public', { replace: true })}
-                style={styles.secondaryButton}
-              >
-                홈 화면으로 이동
-              </button>
             </div>
-          )
+          )}
+        </div>
+        {isSuccess && (
+          <button
+            type="button"
+            onClick={() => navigate('/public', { replace: true })}
+            style={{ ...styles.returnButton, borderRadius: '9999px' }}
+          >
+            {isEnglish ? 'Return to homepage' : '홈 화면으로 이동'}
+          </button>
+        )}
+        {isRegistrationError && (
+          <div className="email-confirmed-actions" style={styles.actions}>
+            <button
+              type="button"
+              onClick={() => navigate('/login', { replace: true })}
+              style={styles.returnButton}
+            >
+              로그인하기
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/public', { replace: true })}
+              style={styles.secondaryButton}
+            >
+              홈 화면으로 이동
+            </button>
+          </div>
+        )}
+        {isEmailChangeError && (
+          <div className="email-confirmed-actions" style={styles.actions}>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={styles.returnButton}
+            >
+              다시 시도
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/public', { replace: true })}
+              style={styles.secondaryButton}
+            >
+              홈 화면으로 이동
+            </button>
+          </div>
+        )}
+        {isError && !isRegistrationError && !isEmailChangeError && (
+          <div className="email-confirmed-actions" style={styles.actions}>
+            {resendMessage && <p style={styles.successMessage}>{resendMessage}</p>}
+            {resendError && <p style={styles.errorMessage}>{resendError}</p>}
+            <button
+              type="button"
+              disabled={resending || !email.trim() || (isCaptchaEnabled && !captchaToken)}
+              onClick={async () => {
+                setResending(true)
+                setResendMessage('')
+                setResendError('')
+                try {
+                  await resendConfirmationEmail(email, captchaToken)
+                  setResendMessage('인증 이메일을 다시 보냈습니다.')
+                } catch (error) {
+                  setResendError(error.message || '인증 이메일을 다시 보내지 못했습니다.')
+                } finally {
+                  setResending(false)
+                  if (isCaptchaEnabled) {
+                    setCaptchaToken('')
+                    setCaptchaResetKey((key) => key + 1)
+                  }
+                }
+              }}
+              style={{ ...styles.returnButton, opacity: resending || !email.trim() || (isCaptchaEnabled && !captchaToken) ? 0.55 : 1 }}
+            >
+              {resending ? '전송 중...' : '인증 이메일 다시 보내기'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/public', { replace: true })}
+              style={styles.secondaryButton}
+            >
+              홈 화면으로 이동
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -273,7 +311,7 @@ const styles = {
     marginTop: '8px',
     padding: '13px 18px',
     border: 0,
-    borderRadius: '14px',
+    borderRadius: '9999px',
     background: '#f97316',
     color: '#fff',
     fontSize: '15px',
@@ -293,22 +331,33 @@ const styles = {
     fontWeight: 600,
     color: '#374151',
   },
+  emailFieldLabel: {
+    fontSize: '12px',
+    fontWeight: 400,
+    lineHeight: '12px',
+    textAlign: 'left',
+    color: 'var(--reg-muted, #6b7280)',
+  },
   emailInput: {
     width: '100%',
     boxSizing: 'border-box',
-    padding: '13px 14px',
-    border: '1px solid #d1d5db',
-    borderRadius: '12px',
-    fontSize: '15px',
-    color: '#111827',
+    minHeight: '18px',
+    padding: 0,
+    border: 0,
+    borderRadius: 0,
+    outline: 'none',
+    backgroundColor: 'var(--reg-field-bg)',
+    fontSize: '16px',
+    lineHeight: '18px',
+    color: 'var(--reg-text, #111827)',
   },
   secondaryButton: {
     width: '100%',
     padding: '12px 18px',
-    border: '1px solid #e5e7eb',
-    borderRadius: '14px',
-    background: '#fff',
-    color: '#374151',
+    border: 0,
+    borderRadius: '9999px',
+    background: '#f3f4f6',
+    color: '#6b7280',
     fontSize: '14px',
     fontWeight: 600,
     cursor: 'pointer',

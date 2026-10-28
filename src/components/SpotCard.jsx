@@ -751,7 +751,7 @@ export function SpotCard({
       : 'compact'
   const COMPACT_HEIGHT = Math.min(WIN_H * 0.22, 150)
   const FULL_HEIGHT = Math.min(WIN_H * 0.44, 315)
-  const MAX_HEIGHT = Math.max(320, sheetMaxHeight || WIN_H)
+  const MAX_HEIGHT = sheetMaxHeight || WIN_H
   const LANDSCAPE_FULL_COLLAPSED_HEIGHT = Math.min(
     Math.max(WIN_H * 0.68, 240),
     MAX_HEIGHT * 0.84,
@@ -813,7 +813,7 @@ export function SpotCard({
   useEffect(() => {
     if (selectedId) {
       const parentHeight = cardRef.current?.parentElement?.clientHeight
-      const measuredMaxHeight = Math.max(320, parentHeight || WIN_H)
+      const measuredMaxHeight = parentHeight || WIN_H
       if (parentHeight) setSheetMaxHeight(parentHeight)
 
       // Use the measured sheet limit for the first collapsed height. In landscape,
@@ -866,7 +866,7 @@ export function SpotCard({
       if (parentHeight) setSheetMaxHeight(parentHeight)
 
       const viewportHeight = window.innerHeight || 700
-      const nextMaxHeight = Math.max(320, parentHeight || viewportHeight)
+      const nextMaxHeight = parentHeight || viewportHeight
       const landscapeFullMode =
         spotCardHeightMode === 'full' &&
         window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches

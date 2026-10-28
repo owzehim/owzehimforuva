@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react'
+import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -287,7 +287,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
       )}
       <button
         onClick={() => navigate('/settings')}
-        className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 dark:text-gray-400 dark:hover:bg-gray-800"
+        className="app-landscape-top-action member-events-top-right fixed flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 dark:text-gray-400 dark:hover:bg-gray-800"
         aria-label="Settings"
         style={{
           right: '14px',
@@ -306,7 +306,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
       {activeTab === 'qr' && (
         <div
           className={
-            'app-landscape-top-actions fixed flex items-center gap-2 transition-opacity duration-200 ' +
+            'app-landscape-top-actions member-events-top-right fixed flex items-center gap-2 transition-opacity duration-200 ' +
             (qrCardLifted ? 'opacity-0 pointer-events-none' : 'opacity-100')
           }
           style={{
@@ -424,7 +424,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
   )
 }
 
-function WelcomeSlides({ member, onFinish, onBack }) {
+export function WelcomeSlides({ member, onFinish, onBack }) {
   const [index, setIndex] = useState(0)
   const [closing, setClosing] = useState(false)
   const [benefitsAcknowledged, setBenefitsAcknowledged] = useState(false)
@@ -498,7 +498,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
   return (
     <div
       className={
-        'fixed inset-0 z-[120] flex select-none flex-col bg-white text-gray-950 transition-opacity duration-300 dark:bg-[#121212] dark:text-white ' +
+        'welcome-tour-overlay fixed inset-0 z-[120] flex select-none flex-col bg-white text-gray-950 transition-opacity duration-300 dark:bg-[#121212] dark:text-white ' +
         (closing ? 'opacity-0' : 'opacity-100')
       }
       style={{
@@ -530,14 +530,14 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       <div className="welcome-tour-content-region flex min-h-0 flex-1 flex-col justify-center overflow-hidden px-8">
         <div
           key={index}
-          className="mx-auto flex w-full max-w-sm flex-col items-start"
+          className="welcome-tour-slide-layout mx-auto flex w-full max-w-sm flex-col items-start"
           style={{
             animation: 'welcomeSlideIn 220ms ease-out',
             transform: `translateY(${tourLayout.contentTopOffset})`,
           }}
         >
           {slide.demo ? (
-            <div className="welcome-tour-demo-shell" style={{ marginBottom: tourLayout.animationTextGap }}>
+            <div className="welcome-tour-animation welcome-tour-demo-shell" style={{ marginBottom: tourLayout.animationTextGap }}>
               {slide.demo === 'membership-card' ? (
                 <MembershipCardTourDemo member={member} bottomGap="0px" />
               ) : slide.demo === 'events' ? (
@@ -550,7 +550,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
             </div>
           ) : (
             <div
-              className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-orange-500 dark:bg-orange-500/10"
+              className="welcome-tour-animation flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-orange-50 text-orange-500 dark:bg-orange-500/10"
               style={{ marginBottom: tourLayout.animationTextGap }}
             >
               {member?.profile_image_url ? (
@@ -564,38 +564,24 @@ function WelcomeSlides({ member, onFinish, onBack }) {
               )}
             </div>
           )}
-          <p className="mb-3 text-xs font-black tracking-[0.22em] text-orange-500">
-            {slide.eyebrow}
-          </p>
-          <h1 className="welcome-tour-title font-black tracking-normal">
-            {TitleIcon && <TitleIcon size={30} weight="bold" className="mr-2 inline-block align-[-0.1em] text-gray-950 dark:text-white" />}
-            {slide.title}
-          </h1>
-          <p className="welcome-tour-body mt-5 font-medium text-gray-500 dark:text-gray-300">
-            {slide.bodyNode || slide.body}
-          </p>
+          <div className="welcome-tour-copy">
+            <p className="mb-3 text-xs font-black tracking-[0.22em] text-orange-500">
+              {slide.eyebrow}
+            </p>
+            <h1 className="welcome-tour-title font-black tracking-normal">
+              {TitleIcon && <TitleIcon size={30} weight="bold" className="mr-2 inline-block align-[-0.1em] text-gray-950 dark:text-white" />}
+              {slide.title}
+            </h1>
+            <p className="welcome-tour-body mt-5 font-medium text-gray-500 dark:text-gray-300">
+              {slide.bodyNode || slide.body}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="px-8" style={{ paddingBottom: tourLayout.controlsBottomOffset }}>
-        {isLast && (
-          <label
-            className={
-              'mx-auto mb-4 flex max-w-sm items-center justify-center gap-2 text-sm font-bold text-gray-600 transition-opacity duration-500 dark:text-gray-300 ' +
-              (benefitsAcknowledgementVisible ? 'opacity-100' : 'pointer-events-none opacity-0')
-            }
-          >
-            <input
-              type="checkbox"
-              checked={benefitsAcknowledged}
-              onChange={(event) => setBenefitsAcknowledged(event.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 accent-orange-500"
-            />
-            이해했습니다
-          </label>
-        )}
-        <div className="mx-auto flex max-w-sm flex-col gap-5">
-          <div className="flex items-center justify-center gap-1.5">
+      <div className="welcome-tour-controls px-8" style={{ paddingBottom: tourLayout.controlsBottomOffset }}>
+        <div className="welcome-tour-actions-stack mx-auto flex max-w-sm flex-col gap-5">
+          <div className="welcome-tour-dots flex items-center justify-center gap-1.5">
             {slides.map((_, dotIndex) => (
               <span
                 key={dotIndex}
@@ -608,6 +594,22 @@ function WelcomeSlides({ member, onFinish, onBack }) {
               />
             ))}
           </div>
+          {isLast && (
+            <label
+              className={
+                'welcome-tour-ack mx-auto flex max-w-sm items-center justify-center gap-2 text-sm font-bold text-gray-600 transition-opacity duration-500 dark:text-gray-300 ' +
+                (benefitsAcknowledgementVisible ? 'opacity-100' : 'pointer-events-none opacity-0')
+              }
+            >
+              <input
+                type="checkbox"
+                checked={benefitsAcknowledged}
+                onChange={(event) => setBenefitsAcknowledged(event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 accent-orange-500"
+              />
+              이해했습니다
+            </label>
+          )}
           <button
             type="button"
             disabled={isLast && !benefitsAcknowledged}
@@ -620,7 +622,7 @@ function WelcomeSlides({ member, onFinish, onBack }) {
               setIndex((value) => value + 1)
             }}
             className={
-              'flex w-full items-center justify-center gap-2 rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50 ' +
+              'welcome-tour-next flex w-full items-center justify-center gap-2 rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50 ' +
               (isLast && !benefitsAcknowledged
                 ? 'cursor-not-allowed'
                 : 'active:bg-orange-600')
@@ -635,9 +637,33 @@ function WelcomeSlides({ member, onFinish, onBack }) {
       <style>{`
         .welcome-tour-content-region { scrollbar-width: none; }
         .welcome-tour-content-region::-webkit-scrollbar { display: none; }
+        .welcome-tour-copy { min-width: 0; }
         .welcome-tour-demo-shell { height: 360px; width: 100%; flex: 0 0 auto; }
         .welcome-tour-title { font-size: clamp(30px, 8.6vw, 34px); line-height: 1.1; }
         .welcome-tour-body { font-size: clamp(14px, 4vw, 16px); line-height: 1.75; }
+        @media (orientation: portrait) {
+          .welcome-tour-actions-stack { padding-top: 28px; }
+          .welcome-tour-actions-stack { position: relative; }
+          .welcome-tour-ack {
+            position: absolute;
+            right: 0;
+            bottom: 60px;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            margin: 0;
+          }
+          .welcome-tour-dots {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 18px);
+            right: max(24px, calc(env(safe-area-inset-right, 0px) + 16px));
+            bottom: auto;
+            left: auto;
+            z-index: 121;
+            justify-content: flex-end;
+            width: max-content;
+          }
+        }
         @media (max-height: 760px) {
           .welcome-tour-demo-shell { height: 317px; }
           .welcome-tour-demo-shell > div { transform: scale(0.88); transform-origin: top center; }
@@ -663,6 +689,95 @@ function WelcomeSlides({ member, onFinish, onBack }) {
           .welcome-tour-content-region { padding-left: 20px; padding-right: 20px; }
           .welcome-tour-title { font-size: 26px; }
           .welcome-tour-body { margin-top: 10px; line-height: 1.4; }
+        }
+        @media (orientation: landscape) {
+          .welcome-tour-overlay {
+            --welcome-tour-gutter: clamp(20px, 5vw, 56px);
+            padding: 0 !important;
+            overflow: hidden;
+          }
+          .welcome-tour-content-region {
+            position: fixed;
+            inset: calc(env(safe-area-inset-top, 0px) + 8px)
+              env(safe-area-inset-right, 0px)
+              env(safe-area-inset-bottom, 0px)
+              env(safe-area-inset-left, 0px);
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0;
+            overflow: hidden;
+          }
+          .welcome-tour-slide-layout {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            grid-template-rows: minmax(0, 1fr);
+            align-items: center;
+            justify-items: center;
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            margin: 0;
+            transform: none !important;
+          }
+          .welcome-tour-animation,
+          .welcome-tour-copy {
+            grid-row: 1;
+            justify-self: center;
+            align-self: center;
+            margin: 0 !important;
+          }
+          .welcome-tour-animation {
+            grid-column: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .welcome-tour-animation.welcome-tour-demo-shell { width: min(100%, 360px); }
+          .welcome-tour-copy {
+            grid-column: 2;
+            align-self: start;
+            width: min(100%, 360px);
+            margin-top: calc(clamp(48px, 30dvh, 150px) - 36px) !important;
+            margin-bottom: 0 !important;
+          }
+          .welcome-tour-demo-shell { height: min(46dvh, 300px); }
+          .welcome-tour-demo-shell > div { transform: scale(0.72); transform-origin: center center; }
+          .welcome-tour-title { font-size: clamp(22px, 3.3vw, 28px); line-height: 1.08; }
+          .welcome-tour-body { margin-top: 8px; font-size: clamp(13px, 1.7vw, 14px); line-height: 1.4; }
+          .welcome-tour-controls { padding: 0; }
+          .welcome-tour-ack {
+            position: fixed;
+            left: 50%;
+            right: env(safe-area-inset-right, 0px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px + 36px + 12px);
+            width: 180px;
+            height: 20px;
+            margin: 0 auto;
+          }
+          .welcome-tour-dots {
+            position: fixed;
+            left: calc(env(safe-area-inset-left, 0px) + var(--welcome-tour-gutter));
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+            justify-content: flex-start;
+            width: max-content;
+          }
+          .welcome-tour-next {
+            position: fixed;
+            left: 50%;
+            right: env(safe-area-inset-right, 0px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 54px + 38px);
+            width: 180px;
+            max-width: none;
+            height: 36px;
+            min-height: 36px;
+            box-sizing: border-box;
+            margin: 0 auto;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 16px;
+          }
         }
         @keyframes welcomeSlideIn {
           from { opacity: 0; }
@@ -1221,6 +1336,7 @@ function TourBottomTab({ activeIndex, style, lift = 5 }) {
 function MembershipCard({
   member,
   isValid,
+  className = '',
   onQRScanned,
   disabled = false,
   onFlipChange,
@@ -1526,6 +1642,7 @@ function MembershipCard({
   if (!isValid) {
     return (
       <div
+        className={className}
         style={{
           width: cardW,
           aspectRatio: '1 / 1.586',
@@ -1582,6 +1699,7 @@ function MembershipCard({
 
   return (
     <div
+      className={className}
       style={{
         width: cardW,
         aspectRatio: '1 / 1.586',
@@ -1648,9 +1766,11 @@ function MembershipCard({
             }}
           >
             {flipped && (
-              <Suspense fallback={null}>
-                <QRScanner onScan={onQRScanned} darkMode={darkMode} />
-              </Suspense>
+              <div className="membership-card-camera-content">
+                <Suspense fallback={null}>
+                  <QRScanner onScan={onQRScanned} darkMode={darkMode} />
+                </Suspense>
+              </div>
             )}
           </div>
         </div>
@@ -1663,6 +1783,7 @@ function MembershipCard({
 function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const navigate = useNavigate()
   const [lifted, setLifted] = useState(false)
+  const [landscapeCardShifted, setLandscapeCardShifted] = useState(false)
   const [cardLiftOffset, setCardLiftOffset] = useState(0)
   const [isCardDragging, setIsCardDragging] = useState(false)
   const [cardFlipped, setCardFlipped] = useState(false)
@@ -1674,6 +1795,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   )
   const cardLayerRef = useRef(null)
   const activityRef = useRef(null)
+  const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const liftedRef = useRef(false)
   const W =
@@ -1690,13 +1812,30 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const getMaxLift = () =>
     (activityRef.current?.offsetHeight ?? 260) + cardRestingOffsetPx + liftedActivityGapPx
 
+  useEffect(() => {
+    const resetLandscapeShift = () => {
+      if (!window.matchMedia('(orientation: landscape)').matches) {
+        setLandscapeCardShifted(false)
+      }
+    }
+
+    window.addEventListener('resize', resetLandscapeShift)
+    window.addEventListener('orientationchange', resetLandscapeShift)
+    return () => {
+      window.removeEventListener('resize', resetLandscapeShift)
+      window.removeEventListener('orientationchange', resetLandscapeShift)
+    }
+  }, [])
+
   const handleTouchStart = (e) => {
     if (cardFlipped) return
     if (nativeZoomed || e.touches.length !== 1) {
+      touchStartX.current = null
       touchStartY.current = null
       setIsCardDragging(false)
       return
     }
+    touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
     setIsCardDragging(true)
   }
@@ -1704,13 +1843,16 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const handleTouchMove = (e) => {
     if (cardFlipped) return
     if (nativeZoomed || e.touches.length !== 1) {
+      touchStartX.current = null
       touchStartY.current = null
       setIsCardDragging(false)
       return
     }
-    if (touchStartY.current == null) return
+    if (touchStartX.current == null || touchStartY.current == null) return
+    const dx = touchStartX.current - e.touches[0].clientX
     const dy = touchStartY.current - e.touches[0].clientY
-    if (Math.abs(dy) > 10) {
+    const landscape = window.matchMedia('(orientation: landscape)').matches
+    if (Math.abs(dy) > 10 || (landscape && Math.abs(dx) > 10)) {
       e.preventDefault()
     }
   }
@@ -1718,12 +1860,22 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const handleTouchEnd = (e) => {
     if (cardFlipped) return
     if (nativeZoomed || e.touches.length > 0) {
+      touchStartX.current = null
       touchStartY.current = null
       setIsCardDragging(false)
       return
     }
-    if (touchStartY.current == null) return
+    if (touchStartX.current == null || touchStartY.current == null) return
+    const dx = touchStartX.current - e.changedTouches[0].clientX
     const dy = touchStartY.current - e.changedTouches[0].clientY
+    const landscape = window.matchMedia('(orientation: landscape)').matches
+    if (landscape && Math.abs(dx) > Math.max(40, Math.abs(dy) * 1.2)) {
+      setLandscapeCardShifted(dx > 0)
+      setIsCardDragging(false)
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
     const max = getMaxLift()
     const SWIPE_THRESHOLD = 40
     let nextLifted = liftedRef.current
@@ -1738,6 +1890,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
     liftedRef.current = nextLifted
     setLifted(nextLifted)
     setIsCardDragging(false)
+    touchStartX.current = null
     touchStartY.current = null
   }
 
@@ -1789,7 +1942,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
     if (onLiftChange) onLiftChange(false)
     return (
       <div
-        className="no-highlight-zone"
+        className="no-highlight-zone my-qr-tab"
         style={{
           position: 'relative',
           height: '100%',
@@ -1800,6 +1953,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
         }}
       >
         <div
+          className="my-qr-card-stage"
           style={{
             position: 'absolute',
             inset: 0,
@@ -1809,11 +1963,11 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '0 16px',
-            transform: `translate3d(0, ${inactiveCardRestingOffsetY}, 0)`,
+            transform: `translate3d(0, calc(${inactiveCardRestingOffsetY} + var(--my-card-center-offset, 0px)), 0)`,
           }}
         >
-          <div style={{ width: W }}>
-            <MembershipCard member={member} isValid={false} darkMode={darkMode} />
+          <div className="my-membership-card-frame" style={{ width: W }}>
+            <MembershipCard member={member} isValid={false} darkMode={darkMode} className="my-membership-card" />
           </div>
         </div>
       </div>
@@ -1823,7 +1977,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   // Scanning state
   return (
     <div
-      className="no-highlight-zone"
+      className={`no-highlight-zone my-qr-tab${landscapeCardShifted ? ' is-landscape-card-shifted' : ''}`}
       style={{
         position: 'relative',
         height: '100%',
@@ -1837,7 +1991,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
     >
       {/* Recent activity + long fade when lifted */}
       <div
-        ref={activityRef}
+        className="my-qr-activity-panel"
         style={{
           position: 'absolute',
           bottom: 0,
@@ -1848,7 +2002,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
         }}
       >
         {isValid && (
-          <div className="relative">
+          <div ref={activityRef} className="my-qr-activity-stack relative">
             <ActivityStatsCard userId={member?.user_id} />
           </div>
         )}
@@ -1857,6 +2011,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
       {/* Membership card layer */}
       <div
         ref={cardLayerRef}
+        className={`my-qr-card-stage${landscapeCardShifted ? ' is-landscape-card-shifted' : ''}`}
         style={{
           position: 'absolute',
           bottom: 0,
@@ -1870,14 +2025,15 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '0 16px',
-          transform: `translate3d(0, calc(${cardRestingOffsetY} - ${cardLiftOffset}px), 0)`,
+          transform: `translate3d(${landscapeCardShifted ? 'var(--my-card-slide-offset)' : '0px'}, calc(${cardRestingOffsetY} - ${cardLiftOffset}px + var(--my-card-center-offset, 0px)), 0)`,
           transition: isCardDragging
             ? 'none'
             : 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
           willChange: 'transform',
         }}
       >
-        <div
+          <div
+          className="my-membership-card-frame"
           style={{
             position: 'relative',
             width: W,
@@ -1886,6 +2042,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
           <MembershipCard
             member={member}
             isValid={isValid}
+            className="my-membership-card"
             onQRScanned={handleQRScanned}
             disabled={lifted}
             onFlipChange={setCardFlipped}
@@ -1893,6 +2050,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
             scannerOpenSignal={scannerOpenSignal}
           />
           <div
+            className="my-qr-guide-hint"
             style={{
               position: 'absolute',
               top: `calc(100% + ${guideTextGapY})`,
@@ -1906,19 +2064,20 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
             }}
           >
             {!cardFlipped && (
-              <span
-                style={{
-                  fontSize: fs.guide,
-                  lineHeight: 1,
-                  color: darkMode ? '#FAFAFA' : 'rgba(44,42,39,0.35)',
-                  fontWeight: 500,
-                  transition: 'color 0.25s ease',
-                }}
-              >
-                {lifted
-                   ? '내려서 Check-IN 하기'
-                   : '위로 올려서 최근 활동 보기'}
-              </span>
+              <>
+                <span
+                  className="my-qr-guide-portrait"
+                  style={{
+                    fontSize: fs.guide,
+                    lineHeight: 1,
+                    color: darkMode ? '#FAFAFA' : 'rgba(44,42,39,0.35)',
+                    fontWeight: 500,
+                    transition: 'color 0.25s ease',
+                  }}
+                >
+                  {lifted ? '내려서 Check-IN 하기' : '위로 올려서 최근 활동 보기'}
+                </span>
+              </>
             )}
             {cardFlipped && (
               <span
@@ -1935,6 +2094,17 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
           </div>
         </div>
       </div>
+
+      <div className="my-qr-landscape-hint-anchor" aria-hidden="true">
+        <span
+          className="my-qr-landscape-hint"
+          style={{ color: darkMode ? '#FAFAFA' : 'rgba(44,42,39,0.35)' }}
+        >
+          {cardFlipped ? '눌러서 돌아가기' : '왼쪽으로 밀어서 최근 활동 보기'}
+        </span>
+      </div>
+
+      <div className="my-card-left-edge-fade" aria-hidden="true" />
 
       {/* Top fade → soften the safe-area/card line when lifted */}
       {lifted && (
@@ -2374,6 +2544,7 @@ function EventsTab({ events }) {
   const eventListDialogRef = useRef(null)
   const [eventListClosing, setEventListClosing] = useState(false)
   const [eventListNewestFirst, setEventListNewestFirst] = useState(true)
+  const [eventListPreviewId, setEventListPreviewId] = useState(initialEvent?.id ?? null)
   const [eventCardOpen, setEventCardOpen] = useState(false)
   const [eventPhotoZoomScale, setEventPhotoZoomScale] = useState(1)
   const [eventPhotoZoomOffset, setEventPhotoZoomOffset] = useState({ x: 0, y: 0 })
@@ -2396,10 +2567,13 @@ function EventsTab({ events }) {
   })
 
   const containerRef = useRef(null)
+  const eventListScrollRef = useRef(null)
+  const eventListWheelLockedRef = useRef(false)
   const eventSwipeStartX = useRef(null)
   const eventSwipeStartY = useRef(null)
   const eventCardStartY = useRef(null)
   const eventCardScrollRef = useRef(null)
+  const eventLandscapeCopyScrollRef = useRef(null)
   const eventPreviewRef = useRef(null)
   const eventActiveImageRef = useRef(null)
   const eventPreviewTouchStartX = useRef(null)
@@ -3238,7 +3412,10 @@ function EventsTab({ events }) {
       return
     }
 
-    const scrollTop = eventCardScrollRef.current?.scrollTop || 0
+    const scrollTarget = e.target.closest?.('.event-landscape-copy-scroll')
+      ? eventLandscapeCopyScrollRef.current
+      : eventCardScrollRef.current
+    const scrollTop = scrollTarget?.scrollTop || 0
     if (e.deltaY < 0 && (!eventCardOpen || scrollTop <= 0)) {
       e.preventDefault()
       closeEventCard()
@@ -3298,6 +3475,83 @@ function EventsTab({ events }) {
     monthGroup.events.push(ev)
     return years
   }, [])
+
+  const eventListPreviewEvent =
+    sortedListEvents.find((event) => event.id === eventListPreviewId) ||
+    selectedEvent ||
+    initialEvent
+  const eventListPreviewImage = eventListPreviewEvent?.image_urls?.[0]
+
+  const updateEventListPreview = () => {
+    const scrollContainer = eventListScrollRef.current
+    if (!scrollContainer) return
+
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const centerY = containerRect.top + containerRect.height / 2
+    const cards = scrollContainer.querySelectorAll('[data-event-list-id]')
+    let closestCard = null
+    let closestDistance = Number.POSITIVE_INFINITY
+
+    cards.forEach((card) => {
+      const rect = card.getBoundingClientRect()
+      const distance = Math.abs(rect.top + rect.height / 2 - centerY)
+      if (distance < closestDistance) {
+        closestCard = card
+        closestDistance = distance
+      }
+    })
+
+    if (closestCard) {
+      const nextId = closestCard.getAttribute('data-event-list-id')
+      setEventListPreviewId((currentId) => (currentId === nextId ? currentId : nextId))
+    }
+  }
+
+  const handleEventListWheel = (event) => {
+    if (Math.abs(event.deltaY) < 2) return
+    event.preventDefault()
+
+    if (eventListWheelLockedRef.current) return
+    const scrollContainer = eventListScrollRef.current
+    if (!scrollContainer) return
+
+    const cards = [...scrollContainer.querySelectorAll('[data-event-list-id]')]
+    if (cards.length < 2) return
+
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const centerY = containerRect.top + containerRect.height / 2
+    let currentIndex = 0
+    let closestDistance = Number.POSITIVE_INFINITY
+    cards.forEach((card, index) => {
+      const rect = card.getBoundingClientRect()
+      const distance = Math.abs(rect.top + rect.height / 2 - centerY)
+      if (distance < closestDistance) {
+        currentIndex = index
+        closestDistance = distance
+      }
+    })
+
+    const nextIndex = Math.max(
+      0,
+      Math.min(currentIndex + (event.deltaY > 0 ? 1 : -1), cards.length - 1),
+    )
+    if (nextIndex === currentIndex) return
+
+    const targetRect = cards[nextIndex].getBoundingClientRect()
+    const nextScrollTop =
+      scrollContainer.scrollTop + targetRect.top + targetRect.height / 2 - centerY
+    eventListWheelLockedRef.current = true
+    scrollContainer.scrollTo({ top: nextScrollTop, behavior: 'smooth' })
+    window.setTimeout(() => {
+      eventListWheelLockedRef.current = false
+    }, 320)
+  }
+
+  useEffect(() => {
+    if (!eventListOpen) return undefined
+    const frame = window.requestAnimationFrame(updateEventListPreview)
+    return () => window.cancelAnimationFrame(frame)
+  }, [eventListOpen, eventListNewestFirst, allEvents.length])
 
   const renderEvent = (ev) => {
     if (!ev) return null
@@ -3614,7 +3868,7 @@ const effectiveDateColor = isDragging
         document.body,
       )}
       <div
-        className="relative h-full overflow-hidden bg-white text-gray-950 no-highlight-zone dark:bg-[#121212] dark:text-white"
+        className="event-tab-screen relative h-full overflow-hidden bg-white text-gray-950 no-highlight-zone dark:bg-[#121212] dark:text-white"
         onTouchStart={handleFrameworkTouchStart}
         onTouchEnd={handleFrameworkTouchEnd}
       >
@@ -3622,10 +3876,11 @@ const effectiveDateColor = isDragging
           type="button"
           onClick={() => {
             setEventListNewestFirst(true)
+            setEventListPreviewId(selectedEvent?.id ?? initialEvent?.id ?? null)
             window.sessionStorage.setItem(MEMBER_EVENT_LIST_OPEN_KEY, '1')
             setEventListOpen(true)
           }}
-          className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
+          className="app-landscape-top-action member-events-top-left fixed flex h-11 w-11 items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white"
           aria-label="Open event list"
           style={{
             left: '14px',
@@ -3790,6 +4045,65 @@ const effectiveDateColor = isDragging
               </div>
             </div>
 
+            <section className={`event-landscape-copy ${eventCardOpen ? 'is-expanded' : 'is-collapsed'}`}>
+              <div
+                ref={eventLandscapeCopyScrollRef}
+                className="event-landscape-copy-scroll"
+                onWheel={handleEventCardWheel}
+              >
+                {eventDateParts && (
+                  <button
+                    type="button"
+                    className="event-landscape-date"
+                    onClick={() => addToCalendar(displayEvent)}
+                    aria-label="Add event to calendar"
+                  >
+                    <span>{eventDateParts.dateNum}</span>
+                    <span>{eventDateParts.monthName}</span>
+                    <span>{eventDateParts.dayName} · {eventDateParts.year}</span>
+                    <span className={isNextSelected ? 'text-orange-500' : ''}>{getEventStatus(displayEvent)}</span>
+                  </button>
+                )}
+                <h1 className="event-landscape-title">{displayEvent.title || 'Untitled event'}</h1>
+                <div className="event-landscape-metadata">
+                  {getPrimaryEventDate(displayEvent) && (
+                    <div className="flex items-center gap-2">
+                      <Clock size={18} weight="fill" color="#f97316" />
+                      <span>{formatTimeRange(displayEvent)}</span>
+                    </div>
+                  )}
+                  {displayEvent.location && (
+                    <div className="flex items-center gap-2">
+                      <NavigationArrow size={18} weight="fill" color="#f97316" />
+                      <span>{plainText(displayEvent.location)}</span>
+                    </div>
+                  )}
+                  {displayEvent.location_description && (
+                    <div className="flex items-center gap-2">
+                      <Door size={18} weight="fill" color="#f97316" />
+                      <span>{plainText(displayEvent.location_description)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {showParticipationButton && (
+              <button
+                type="button"
+                onClick={() => openParticipationForm(displayEvent)}
+                disabled={!canOpenParticipationForm}
+                className={
+                  'event-landscape-participation-button ' +
+                  (canOpenParticipationForm
+                    ? 'bg-gray-950 text-white active:bg-gray-800 dark:bg-white dark:text-gray-950 dark:active:bg-gray-200'
+                    : 'cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500')
+                }
+              >
+                {participationButtonLabel}
+              </button>
+            )}
+
             <div
               className="event-compact-details absolute left-0 right-0 px-6"
               style={{
@@ -3878,7 +4192,7 @@ const effectiveDateColor = isDragging
             )}
 
             <div
-              className="absolute left-0 right-0 bg-white dark:bg-[#121212]"
+              className={`event-card-sheet absolute left-0 right-0 bg-white dark:bg-[#121212] ${eventCardOpen ? 'is-expanded' : 'is-collapsed'}`}
               onTouchStart={handleEventCardTouchStart}
               onTouchMove={handleEventCardTouchMove}
               onTouchEnd={handleEventCardTouchEnd}
@@ -3899,13 +4213,13 @@ const effectiveDateColor = isDragging
                 backfaceVisibility: 'hidden',
               }}
             >
-              <div className="flex justify-center pb-3 pt-2.5">
+              <div className="event-card-handle flex justify-center pb-3 pt-2.5">
                 <div className="h-1 w-10 rounded-full bg-gray-300" />
               </div>
 
               <div
                 ref={eventCardScrollRef}
-                className="scrollbar-hidden h-full px-5"
+                className={`event-card-scroll scrollbar-hidden h-full px-5 ${eventCardOpen ? 'is-expanded' : 'is-collapsed'}`}
                 style={{
                   overflowY: eventCardOpen ? 'auto' : 'hidden',
                   paddingBottom: 'calc(env(safe-area-inset-bottom) + 116px)',
@@ -3923,7 +4237,7 @@ const effectiveDateColor = isDragging
                   }}
                 >
                   <div
-                    className="overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800"
+                    className="event-card-image-box overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-800"
                     style={{
                       aspectRatio: `${eventImageBoxRatio} / 1`,
                       contain: 'layout paint size',
@@ -4046,6 +4360,7 @@ const effectiveDateColor = isDragging
                   </div>
                   {displayImages.length > 1 && (
                     <div
+                      className="event-image-pagination"
                       style={{
                         display: 'flex',
                         justifyContent: 'center',
@@ -4105,7 +4420,7 @@ const effectiveDateColor = isDragging
                   )}
                   {displayEvent.description && (
                     <div
-                      className="mt-4 rounded-2xl bg-gray-50 px-4 py-4 dark:bg-gray-900"
+                      className="event-card-description-box mt-4 rounded-2xl bg-gray-50 px-4 py-4 dark:bg-gray-900"
                       style={{
                         display: eventCardOpen ? 'block' : 'none',
                       }}
@@ -4135,7 +4450,7 @@ const effectiveDateColor = isDragging
           aria-label="이벤트 목록"
           tabIndex={-1}
           onKeyDown={handleEventListKeyDown}
-          className="fixed inset-0"
+          className="event-list-dialog fixed inset-0"
           style={{
             zIndex: 120,
             backgroundColor: eventListBg,
@@ -4147,6 +4462,29 @@ const effectiveDateColor = isDragging
           }}
           onClick={closeEventList}
         >
+          <div className="event-list-landscape-preview" aria-live="polite">
+            <div className="event-list-landscape-artwork" style={{ backgroundColor: eventListBg }}>
+              {eventListPreviewImage ? (
+                <img
+                  key={`${eventListPreviewEvent?.id}-${eventListPreviewImage}`}
+                  src={eventListPreviewImage}
+                  alt={eventListPreviewEvent?.title || 'Event preview'}
+                  draggable={false}
+                />
+              ) : (
+                <div
+                  className="event-list-landscape-no-image flex flex-col gap-3 bg-white text-gray-400 dark:bg-[#121212] dark:text-gray-500"
+                >
+                  <ImageIcon size={34} weight="regular" />
+                  <span className="text-xs">No images</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="event-list-landscape-right">
+            <div className="event-list-landscape-caret" aria-hidden="true">
+              <CaretLeft size={24} weight="fill" color="#f97316" />
+            </div>
           <div
             className="fixed left-0 right-0 top-0"
             style={{
@@ -4161,7 +4499,7 @@ const effectiveDateColor = isDragging
               e.stopPropagation()
               closeEventList()
             }}
-            className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center"
+            className="app-landscape-top-action member-events-top-left fixed flex h-11 w-11 items-center justify-center"
             aria-label="Close event list"
             style={{
               left: '14px',
@@ -4181,7 +4519,7 @@ const effectiveDateColor = isDragging
               e.stopPropagation()
               setEventListNewestFirst((v) => !v)
             }}
-            className="app-landscape-top-action fixed flex h-11 w-11 items-center justify-center"
+            className="app-landscape-top-action member-events-top-right fixed flex h-11 w-11 items-center justify-center"
             aria-label={eventListNewestFirst ? 'Sort events old to new' : 'Sort events new to old'}
             style={{
               right: '14px',
@@ -4223,6 +4561,7 @@ const effectiveDateColor = isDragging
 
           <div
             className="event-list-scroll h-full overflow-y-auto px-6"
+            ref={eventListScrollRef}
             style={{
               paddingTop: 'calc(env(safe-area-inset-top) + 84px)',
               paddingBottom: 'calc(env(safe-area-inset-bottom) + 116px)',
@@ -4230,6 +4569,8 @@ const effectiveDateColor = isDragging
               msOverflowStyle: 'none',
             }}
             onClick={(e) => e.stopPropagation()}
+            onScroll={updateEventListPreview}
+            onWheel={handleEventListWheel}
           >
             <div className="mx-auto w-full max-w-md">
               <div className="space-y-8">
@@ -4250,6 +4591,7 @@ const effectiveDateColor = isDragging
                         return (
                           <button
                             key={ev.id}
+                            data-event-list-id={ev.id}
                             type="button"
                             onClick={() => selectEventFromList(ev)}
                             className="w-full rounded-2xl border px-3 py-2.5 text-left transition-transform active:scale-[0.99]"
@@ -4314,6 +4656,7 @@ const effectiveDateColor = isDragging
                 )}
               </div>
             </div>
+          </div>
           </div>
         </div>
       )}
@@ -4402,7 +4745,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
     >
       {/* Category slider */}
 <div 
-  className="app-landscape-top-tabs bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
+  className="app-landscape-top-tabs public-spot-category-slider bg-white px-3 py-3 flex gap-2 overflow-x-auto flex-shrink-0 select-none dark:bg-[#121212]"
   style={{ 
     paddingTop: 'calc(env(safe-area-inset-top) + 14px)',
     zIndex: 10,  // Keep category slider above the map
@@ -4418,6 +4761,7 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
               ? CATEGORY_ICONS_BLACK[cat]
               : CATEGORY_ICONS_WHITE[cat]
             : CATEGORY_ICONS_ORANGE[cat]
+          const activeTextClass = darkMode ? 'text-[#121212]' : 'text-white'
           return (
             <button
               key={cat}
@@ -4428,8 +4772,8 @@ function MapTab({ restaurants, member, isValid, isAdmin, authUserId, userEmail, 
               className={
                 'flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 select-none ' +
                 (isActive
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700')
+                  ? `bg-orange-500 ${activeTextClass}`
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200')
               }
               style={{
                 userSelect: 'none',

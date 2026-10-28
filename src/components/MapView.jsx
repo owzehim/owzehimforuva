@@ -102,22 +102,50 @@ export default function MapView({ restaurants, selected, onSelect, active = true
   const focusSelectedMarker = useCallback((spot, duration = 1000) => {
     if (!map.current || !spot) return
 
-    const shouldLiftMarker =
-      spot.spot_card_height === 'full' ||
-      spot.spot_card_height === 'tall'
-    const isLandscapeSpotLayout =
-      window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches
-    const offset = isLandscapeSpotLayout
-      ? [map.current.getContainer().clientWidth / 4, 0]
-      : shouldLiftMarker
-        ? [0, -90]
-        : [0, 0]
+    const mapRect = map.current.getContainer().getBoundingClientRect()
+    const spotCardRect = document.querySelector('.spot-card-sheet')?.getBoundingClientRect()
+    let focusRect = mapRect
+
+    if (spotCardRect) {
+      const overlap = {
+        left: Math.max(mapRect.left, spotCardRect.left),
+        right: Math.min(mapRect.right, spotCardRect.right),
+        top: Math.max(mapRect.top, spotCardRect.top),
+        bottom: Math.min(mapRect.bottom, spotCardRect.bottom),
+      }
+      if (overlap.right > overlap.left && overlap.bottom > overlap.top) {
+        const visibleRegions = [
+          { left: mapRect.left, right: mapRect.right, top: mapRect.top, bottom: overlap.top },
+          { left: mapRect.left, right: mapRect.right, top: overlap.bottom, bottom: mapRect.bottom },
+          { left: mapRect.left, right: overlap.left, top: mapRect.top, bottom: mapRect.bottom },
+          { left: overlap.right, right: mapRect.right, top: mapRect.top, bottom: mapRect.bottom },
+        ].filter((region) => region.right > region.left && region.bottom > region.top)
+
+        if (visibleRegions.length) {
+          focusRect = visibleRegions.reduce((largest, region) => {
+            const area = (region.right - region.left) * (region.bottom - region.top)
+            const largestArea = (largest.right - largest.left) * (largest.bottom - largest.top)
+            return area > largestArea ? region : largest
+          })
+        }
+      }
+    }
 
     map.current.stop()
+    const mapCenter = [mapRect.width / 2, mapRect.height / 2]
+    const focusPoint = [
+      (focusRect.left + focusRect.right) / 2 - mapRect.left,
+      (focusRect.top + focusRect.bottom) / 2 - mapRect.top,
+    ]
+    const spotPoint = map.current.project([spot.longitude, spot.latitude])
+    const cameraCenter = map.current.unproject([
+      mapCenter[0] + spotPoint.x - focusPoint[0],
+      mapCenter[1] + spotPoint.y - focusPoint[1],
+    ])
+
     map.current.flyTo({
-      center: [spot.longitude, spot.latitude],
+      center: cameraCenter,
       zoom: 16,
-      offset,
       duration,
     })
   }, [])
@@ -473,35 +501,44 @@ export default function MapView({ restaurants, selected, onSelect, active = true
   useEffect(() => {
     if (!active || !selected) return undefined
 
-    const orientationQuery = window.matchMedia('(orientation: landscape) and (max-height: 600px)')
-    let previousLandscape = orientationQuery.matches
     let resizeFrame = null
     let focusFrame = null
+    let focusTimer = null
 
-    const refocusAfterOrientationChange = () => {
-      const nextLandscape = orientationQuery.matches
-      if (nextLandscape === previousLandscape) return
-      previousLandscape = nextLandscape
-
+    const refocusAfterViewportResize = () => {
       if (resizeFrame != null) window.cancelAnimationFrame(resizeFrame)
       if (focusFrame != null) window.cancelAnimationFrame(focusFrame)
+      if (focusTimer != null) window.clearTimeout(focusTimer)
+
       resizeFrame = window.requestAnimationFrame(() => {
         map.current?.resize()
-        focusFrame = window.requestAnimationFrame(() => {
-          focusSelectedMarker(selectedRef.current, 650)
-        })
       })
+      // The SpotCard changes from a bottom sheet to a side panel on rotation.
+      // Wait for that layout transition to settle before centering in the newly
+      // uncovered map area, otherwise the card's old bounds are used.
+      focusTimer = window.setTimeout(() => {
+        focusFrame = window.requestAnimationFrame(() => {
+          map.current?.resize()
+          focusSelectedMarker(selectedRef.current, 500)
+        })
+      }, 180)
     }
 
-    window.addEventListener('resize', refocusAfterOrientationChange)
-    window.addEventListener('orientationchange', refocusAfterOrientationChange)
-    orientationQuery.addEventListener?.('change', refocusAfterOrientationChange)
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(refocusAfterViewportResize)
+    if (mapContainer.current) resizeObserver?.observe(mapContainer.current)
+    const spotCard = document.querySelector('.spot-card-sheet')
+    if (spotCard) resizeObserver?.observe(spotCard)
+    window.addEventListener('resize', refocusAfterViewportResize)
+    window.addEventListener('orientationchange', refocusAfterViewportResize)
     return () => {
-      window.removeEventListener('resize', refocusAfterOrientationChange)
-      window.removeEventListener('orientationchange', refocusAfterOrientationChange)
-      orientationQuery.removeEventListener?.('change', refocusAfterOrientationChange)
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', refocusAfterViewportResize)
+      window.removeEventListener('orientationchange', refocusAfterViewportResize)
       if (resizeFrame != null) window.cancelAnimationFrame(resizeFrame)
       if (focusFrame != null) window.cancelAnimationFrame(focusFrame)
+      if (focusTimer != null) window.clearTimeout(focusTimer)
     }
   }, [active, selected, focusSelectedMarker])
 

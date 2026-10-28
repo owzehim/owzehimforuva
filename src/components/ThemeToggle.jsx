@@ -7,7 +7,7 @@ const OPTIONS = [
   { value: 'system', label: 'System', icon: Desktop },
 ]
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ disabled = false }) {
   const { theme, setTheme } = useTheme()
 
   return (
@@ -19,6 +19,7 @@ export default function ThemeToggle() {
             key={value}
             type="button"
             onClick={() => setTheme(value)}
+            disabled={disabled}
             className={
               'flex h-9 items-center justify-center rounded-full text-xs font-semibold transition-colors ' +
               (active
