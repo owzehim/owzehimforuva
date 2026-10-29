@@ -14,6 +14,7 @@ import StampCardMini from '../features/stampCard/components/StampCardMini'
 import StampCardModal from '../features/stampCard/components/StampCardModal'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 import LoadingIndicator from '../components/LoadingIndicator'
+import EventListPreview from '../components/EventListPreview'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { isMembershipActive } from '../domain/member/membershipStatus'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
@@ -3606,7 +3607,6 @@ function EventsTab({ events }) {
     sortedListEvents.find((event) => event.id === eventListPreviewId) ||
     selectedEvent ||
     initialEvent
-  const eventListPreviewImage = eventListPreviewEvent?.image_urls?.[0]
 
   const updateEventListPreview = () => {
     const scrollContainer = eventListScrollRef.current
@@ -4589,25 +4589,12 @@ const effectiveDateColor = isDragging
           }}
           onClick={closeEventList}
         >
-          <div className="event-list-landscape-preview" aria-live="polite">
-            <div className="event-list-landscape-artwork" style={{ backgroundColor: eventListBg }}>
-              {eventListPreviewImage ? (
-                <img
-                  key={`${eventListPreviewEvent?.id}-${eventListPreviewImage}`}
-                  src={eventListPreviewImage}
-                  alt={eventListPreviewEvent?.title || 'Event preview'}
-                  draggable={false}
-                />
-              ) : (
-                <div
-                  className="event-list-landscape-no-image flex flex-col gap-3 bg-white text-gray-400 dark:bg-[#121212] dark:text-gray-500"
-                >
-                  <ImageIcon size={34} weight="regular" />
-                  <span className="text-xs">No images</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <EventListPreview
+            key={eventListPreviewEvent?.id}
+            event={eventListPreviewEvent}
+            backgroundColor={eventListBg}
+            onSelect={selectEventFromList}
+          />
           <div className="event-list-landscape-right">
             <div className="event-list-landscape-caret" aria-hidden="true">
               <CaretLeft size={24} weight="fill" color="#f97316" />
