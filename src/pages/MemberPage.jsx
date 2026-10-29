@@ -2624,6 +2624,20 @@ function EventsTab({ events }) {
   const eventSwipeStartY = useRef(null)
   const eventCardStartY = useRef(null)
   const eventCardScrollRef = useRef(null)
+  const portraitEventScrollTop = useRef(0)
+  useEffect(() => {
+    portraitEventScrollTop.current = 0
+    const landscape = window.matchMedia('(orientation: landscape)')
+    const syncCardOnRotation = () => {
+      // Remember portrait scrolling before the landscape layout can change or
+      // clamp scrollTop. A card still at the top should reveal its photo.
+      if (landscape.matches && portraitEventScrollTop.current <= 1) {
+        setEventCardOpen(false)
+      }
+    }
+    landscape.addEventListener('change', syncCardOnRotation)
+    return () => landscape.removeEventListener('change', syncCardOnRotation)
+  }, [selectedEvent?.id])
   const eventLandscapeCopyScrollRef = useRef(null)
   const eventPreviewRef = useRef(null)
   const eventActiveImageRef = useRef(null)
@@ -4279,6 +4293,11 @@ const effectiveDateColor = isDragging
 
               <div
                 ref={eventCardScrollRef}
+                onScroll={(event) => {
+                  if (window.matchMedia('(orientation: portrait)').matches) {
+                    portraitEventScrollTop.current = event.currentTarget.scrollTop
+                  }
+                }}
                 className={`event-card-scroll scrollbar-hidden h-full px-5 ${eventCardOpen ? 'is-expanded' : 'is-collapsed'}`}
                 style={{
                   overflowY: eventCardOpen ? 'auto' : 'hidden',
