@@ -197,12 +197,29 @@ Deno.serve(async (req) => {
       )
     }
 
+    // The token has been validated by Auth. Read only this user's test marker
+    // so early auth/session failures can be labeled without trusting the client.
+    const { data: testMember } = await admin
+      .from('members')
+      .select('is_test_account')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    testMode = testMember?.is_test_account === true
+
     // Require the server-recorded email OTP login and active device session
-    // before any service-role query or write can grant member functionality.
-    if (!hasVerifiedAppLogin(token, user.id)) return requireVerifiedLoginResponse(corsHeaders)
+    // before any service-role write can grant member functionality.
+    if (!hasVerifiedAppLogin(token, user.id)) {
+      const response = requireVerifiedLoginResponse(corsHeaders)
+      if (!testMode) return response
+      const body = await response.json()
+      return new Response(JSON.stringify({ ...body, testMode: true }), {
+        status: response.status,
+        headers: response.headers,
+      })
+    }
     if (!(await hasActiveDeviceSession(admin, user.id, token))) {
       return new Response(
-        JSON.stringify({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }),
+        JSON.stringify({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.', ...(testMode ? { testMode: true } : {}) }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
