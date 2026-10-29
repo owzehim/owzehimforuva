@@ -17,7 +17,14 @@ export async function logRedemption({ storeId }) {
 
     if (error) {
       console.error('Edge function error:', error)
-      return { success: false, message: '서버 오류가 발생했습니다.' }
+      let testMode = false
+      try {
+        const errorBody = await error.context?.clone?.().json()
+        testMode = errorBody?.testMode === true
+      } catch {
+        // Non-JSON and transport errors do not establish test-account status.
+      }
+      return { success: false, testMode, message: '서버 오류가 발생했습니다.' }
     }
 
     return data

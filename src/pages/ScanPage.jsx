@@ -81,7 +81,7 @@ export default function ScanPage() {
 
         setState(STATE.SUCCESS)
       } else {
-        setTestMode(false)
+        setTestMode(result.testMode === true)
         setState(STATE.ERROR)
         setErrorMsg(result.message || 'Check-IN을 기록할 수 없습니다. 다시 시도해주세요.')
       }
@@ -269,7 +269,7 @@ export default function ScanPage() {
               TEST MODE
             </span>
 
-            <h2 className="font-bold text-gray-900 text-xl">Test scan succeeded</h2>
+            <h2 className="font-bold text-gray-900 text-xl">TEST MODE — SCAN SUCCESS</h2>
 
             <p className="text-gray-500 text-sm">@{storeName}</p>
 
@@ -357,7 +357,15 @@ export default function ScanPage() {
               <span className="text-red-500 text-4xl">✕</span>
             </div>
 
-            <h2 className="font-bold text-gray-900 text-xl">Check-IN 실패</h2>
+            <h2 className="font-bold text-gray-900 text-xl">
+              {testMode ? 'TEST MODE — SCAN FAILED' : 'Check-IN 실패'}
+            </h2>
+
+            {testMode && (
+              <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+                TEST MODE — no benefit was redeemed.
+              </p>
+            )}
 
             <p className="text-gray-500 text-sm">{errorMsg}</p>
 
