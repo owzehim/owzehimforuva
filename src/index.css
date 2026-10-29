@@ -155,6 +155,7 @@ html:not(.dark) .text-gray-400 {
 }
 
 .event-landscape-copy,
+.event-card-lightbox-open,
 .event-landscape-participation-button,
 .event-list-landscape-preview,
 .event-list-landscape-caret {
@@ -569,6 +570,19 @@ html:not(.dark) .text-gray-400 {
   .member-events-top-right {
     top: 6px !important;
     right: max(14px, calc(env(safe-area-inset-right, 0px) + 8px)) !important;
+  }
+
+  .lightbox-close-button {
+    top: 6px !important;
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 8px)) !important;
+  }
+
+  .event-card-lightbox-open {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    cursor: zoom-in;
   }
 
   .event-tab-screen .event-date-hero,
