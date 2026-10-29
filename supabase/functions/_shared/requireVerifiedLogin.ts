@@ -27,6 +27,7 @@ export async function hasActiveDeviceSession(
   admin: any,
   userId: string,
   accessToken: string,
+  { allowTestAccountExemption = false }: { allowTestAccountExemption?: boolean } = {},
 ): Promise<boolean> {
   try {
     const { data: adminRole, error: roleError } = await admin
@@ -42,15 +43,27 @@ export async function hasActiveDeviceSession(
     const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
     const claims = JSON.parse(atob(padded))
     const sessionId = claims?.session_id
-    if (claims?.sub !== userId || typeof sessionId !== 'string' || !sessionId) return false
+    if (claims?.sub !== userId || claims?.app_access !== true) return false
 
     const { data: member, error: memberError } = await admin
       .from('members')
-      .select('session_token')
+      .select('session_token, is_test_account')
       .eq('user_id', userId)
       .maybeSingle()
 
-    return !memberError && member?.session_token === sessionId
+    if (memberError || !member) return false
+
+    if (allowTestAccountExemption && member.is_test_account === true) {
+      const { data: exemption, error: exemptionError } = await admin
+        .from('login_otp_exempt_users')
+        .select('user_id')
+        .eq('user_id', userId)
+        .eq('reason', 'test')
+        .maybeSingle()
+      if (!exemptionError && exemption) return true
+    }
+
+    return typeof sessionId === 'string' && Boolean(sessionId) && member.session_token === sessionId
   } catch {
     return false
   }
