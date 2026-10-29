@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, useMemo, useRef } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -1395,9 +1395,7 @@ function MembershipCard({
     if (scannerOpenSignal) setFlipped(true)
   }, [scannerOpenSignal])
 
-  useEffect(() => {
-    if (!flipped) return undefined
-
+  useLayoutEffect(() => {
     const face = cameraFaceRef.current
     if (!face) return undefined
 
@@ -1427,7 +1425,7 @@ function MembershipCard({
       window.removeEventListener('resize', updateCameraFit)
       window.removeEventListener('orientationchange', updateCameraFit)
     }
-  }, [flipped])
+  }, [])
 
   const cardFront = (
     <div
