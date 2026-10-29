@@ -604,13 +604,10 @@ html:not(.dark) .text-gray-400 {
     min-width: 0;
     padding: 8px clamp(16px, 3vw, 32px);
     box-sizing: border-box;
-    transition: padding 320ms ease;
   }
 
   .event-tab-screen .event-landscape-copy.is-expanded {
     align-items: center;
-    padding-top: 0;
-    padding-bottom: 0;
   }
 
   .event-tab-screen .event-landscape-copy-scroll {
@@ -700,21 +697,21 @@ html:not(.dark) .text-gray-400 {
   }
 
   .event-tab-screen .event-card-sheet {
+    /* Keep the sheet and description at their final size while they slide.
+       The photo keeps its own collapsed height instead of stretching. */
+    container-type: size;
     right: auto !important;
-    top: 50% !important;
+    top: 0 !important;
     bottom: auto !important;
     left: env(safe-area-inset-left, 0px) !important;
     width: calc(50% - env(safe-area-inset-left, 0px)) !important;
-    height: min(84%, 68dvh) !important;
-    transform: translateY(calc(-50% - 14px)) !important;
+    height: 100% !important;
+    transform: translateY(calc(50% - min(42%, 34dvh) - 14px)) !important;
     overflow: hidden !important;
     border-radius: 20px 20px 0 0 !important;
     background: transparent !important;
     box-shadow: none !important;
-    transition:
-      top 340ms cubic-bezier(0.22, 1, 0.36, 1),
-      height 340ms cubic-bezier(0.22, 1, 0.36, 1),
-      transform 340ms cubic-bezier(0.22, 1, 0.36, 1) !important;
+    transition: transform 350ms cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
 
   .event-tab-screen .event-card-sheet.is-expanded {
@@ -758,41 +755,57 @@ html:not(.dark) .text-gray-400 {
   }
 
   .event-tab-screen .event-card-scroll.is-expanded > div {
-    display: flex;
     height: 100%;
     min-height: 100%;
-    flex-direction: column;
     padding-bottom: 0;
     box-sizing: border-box;
   }
 
   .event-tab-screen .event-card-image-box {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 100% !important;
+    height: calc(min(84cqh, 68dvh) - 28px) !important;
     aspect-ratio: auto !important;
     border-radius: 20px !important;
-    transition: opacity 300ms ease;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 300ms ease-out, visibility 0s;
   }
 
   .event-tab-screen .event-card-sheet.is-expanded .event-card-image-box {
-    position: absolute;
-    inset: 0;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
+    transition-delay: 0s, 300ms;
   }
 
   .event-tab-screen .event-image-pagination {
     display: none !important;
   }
 
-  .event-tab-screen .event-card-sheet.is-expanded .event-card-description-box {
+  .event-tab-screen .event-card-description-box {
+    display: block !important;
     position: relative;
     z-index: 1;
     width: 100%;
-    min-height: 0;
-    flex: 1 0 auto;
+    min-height: 100%;
     margin-top: 0 !important;
     box-sizing: border-box;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 60ms ease-out, transform 60ms ease-out, visibility 0s linear 60ms;
+  }
+
+  .event-tab-screen .event-card-sheet.is-expanded .event-card-description-box {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+    transition: opacity 300ms ease-out, transform 300ms ease-out, visibility 0s;
   }
 
   .event-tab-screen .event-landscape-participation-button {

@@ -2454,13 +2454,11 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
                   }}
                   aria-label={`사진 ${i + 1} 보기`}
                   aria-current={i === index ? 'true' : undefined}
-                  className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
+                  className="flex items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-white"
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: 8,
+                    height: 8,
                     padding: 0,
-                    display: 'grid',
-                    placeItems: 'center',
                     border: 0,
                     background: 'transparent',
                     borderRadius: '999px',
@@ -2586,6 +2584,19 @@ function EventsTab({ events }) {
   const [eventCardOpen, setEventCardOpen] = useState(false)
   const [eventLightboxId, setEventLightboxId] = useState(null)
   const eventImageTap = useRef(null)
+  useEffect(() => {
+    if (!eventLightboxId) return undefined
+    const portrait = window.matchMedia('(orientation: portrait)')
+    const showExpandedCard = () => {
+      if (!portrait.matches) return
+      // Keep slideIndexes intact: the expanded card takes over the image that
+      // was being viewed in the landscape lightbox.
+      setEventLightboxId(null)
+      setEventCardOpen(true)
+    }
+    portrait.addEventListener('change', showExpandedCard)
+    return () => portrait.removeEventListener('change', showExpandedCard)
+  }, [eventLightboxId])
   const [eventPhotoZoomScale, setEventPhotoZoomScale] = useState(1)
   const [eventPhotoZoomOffset, setEventPhotoZoomOffset] = useState({ x: 0, y: 0 })
   const [eventPhotoIsPinching, setEventPhotoIsPinching] = useState(false)
