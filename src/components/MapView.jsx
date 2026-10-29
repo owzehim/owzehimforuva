@@ -62,6 +62,46 @@ if (typeof window !== 'undefined' && !document.getElementById('map-view-performa
       outline: 3px solid #2563eb;
       outline-offset: 2px;
     }
+    .custom-marker .marker-identity {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .custom-marker.has-commercial-label .marker-identity {
+      transform: translateY(0);
+      transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .custom-marker.has-commercial-label .marker-commercial-label {
+      position: absolute;
+      top: calc(100% + 2px);
+      z-index: 0;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(calc(-100% - 2px));
+      transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 180ms ease-out, visibility 0s linear 300ms;
+    }
+    .custom-marker.has-commercial-label[data-selected="true"] .marker-identity {
+      /* Half the tag's 13px height plus its 2px gap preserves the existing
+         selected marker position without changing MapLibre's anchor box. */
+      transform: translateY(-7.5px);
+    }
+    .custom-marker.has-commercial-label[data-selected="true"] .marker-commercial-label {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(-7.5px);
+      transition-delay: 0s;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .custom-marker.has-commercial-label .marker-identity,
+      .custom-marker.has-commercial-label .marker-commercial-label {
+        transition: none;
+      }
+    }
   `
   document.head.appendChild(style)
 }
@@ -260,6 +300,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     markerCircle.appendChild(iconContainer)
 
     const label = document.createElement('div')
+    label.className = 'marker-name'
     label.style.cssText = `
       background: ${dark ? '#121212' : 'white'};
       color: ${dark ? '#ffffff' : '#374151'};
@@ -276,15 +317,19 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     `
     label.textContent = displayName
 
-    el.appendChild(markerCircle)
-    el.appendChild(label)
+    const identity = document.createElement('div')
+    identity.className = 'marker-identity'
+    identity.appendChild(markerCircle)
+    identity.appendChild(label)
+    el.appendChild(identity)
 
     if (commercialLabel) {
+      el.classList.add('has-commercial-label')
       const disclosure = document.createElement('div')
       disclosure.className = 'marker-commercial-label'
       disclosure.textContent = commercialLabel
+      disclosure.setAttribute('aria-hidden', isSelected ? 'false' : 'true')
       disclosure.style.cssText = `
-        display: ${isSelected ? 'block' : 'none'};
         background: ${isPaidAd ? PAID_AD_MARKER_COLOR : '#f97316'};
         color: #ffffff;
         font-size: 8px;
@@ -474,7 +519,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       const { element, isSponsored, isPaidAd } = markerData
       element.setAttribute('data-selected', isSelected ? 'true' : 'false')
       const disclosure = element.querySelector('.marker-commercial-label')
-      if (disclosure) disclosure.style.display = isSelected ? 'block' : 'none'
+      if (disclosure) disclosure.setAttribute('aria-hidden', isSelected ? 'false' : 'true')
       const circle = element.querySelector('.marker-circle')
       if (!circle) return
 
