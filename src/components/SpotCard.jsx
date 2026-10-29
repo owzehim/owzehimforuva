@@ -713,7 +713,6 @@ export function SpotCard({
   const [isVisible, setIsVisible] = useState(false)
   const [darkMode, setDarkMode] = useState(() => isDarkMode())
   const [sheetMaxHeight, setSheetMaxHeight] = useState(0)
-  const [keepLandscapeExpandedLayout, setKeepLandscapeExpandedLayout] = useState(false)
   const [googleMapsButtonCenterY, setGoogleMapsButtonCenterY] = useState(null)
   const selectedId = selected?.id
   const [reviewBoxPanelState, setReviewBoxPanelState] = useState(() => ({ selectedId, value: 'guide' }))
@@ -1022,25 +1021,9 @@ export function SpotCard({
     typeof window !== 'undefined' &&
     window.matchMedia('(orientation: landscape) and (max-height: 600px)').matches
 
-  useEffect(() => {
-    if (isLandscapeExpandedSpotCard) {
-      setKeepLandscapeExpandedLayout(true)
-      return undefined
-    }
-
-    if (!isLandscapeFullMode) {
-      setKeepLandscapeExpandedLayout(false)
-      return undefined
-    }
-
-    if (!keepLandscapeExpandedLayout) return undefined
-
-    const timeoutId = window.setTimeout(() => setKeepLandscapeExpandedLayout(false), 320)
-    return () => window.clearTimeout(timeoutId)
-  }, [isLandscapeExpandedSpotCard, isLandscapeFullMode, keepLandscapeExpandedLayout])
-
-  const shouldUseLandscapeExpandedLayout =
-    isLandscapeExpandedSpotCard || keepLandscapeExpandedLayout
+  // Keep the review panel's landscape geometry stable throughout the sheet
+  // transition. Reflowing it as the place info collapsed animated its top half.
+  const shouldUseLandscapeExpandedLayout = isLandscapeFullMode
 
   const isTallCollapsed = isTallSpotCard && isCollapsed
   const showFixedGoogleMapsButton =
@@ -1336,13 +1319,13 @@ export function SpotCard({
               ? 'spot-card-expanded-content'
               : '') +
             (isLandscapeFullMode
-              ? ' spot-card-landscape-expanded-content'
+              ? ` spot-card-landscape-expanded-content${isLandscapeExpandedSpotCard ? ' is-expanded' : ''}`
               : '')
           }
           style={{ overflowY: 'hidden' }}
         >
           {/* ?? Place info ?? */}
-          <div className={`spot-card-place-info pt-1 pb-3 ${isLandscapeExpandedSpotCard ? 'spot-card-landscape-place-info-hidden' : ''}`}>
+          <div className="spot-card-place-info pt-1 pb-3">
             {/* Store name */}
             <div className="flex items-center gap-2">
               <p className="spot-card-title font-semibold text-gray-900">
@@ -1390,9 +1373,9 @@ export function SpotCard({
             )}
           </div>
 
-          <div className={shouldUseLandscapeExpandedLayout ? 'spot-card-landscape-expanded-grid' : ''}>
-            {/* Images */}
-            {spotCardHeightMode === 'full' && !shouldUseLandscapeExpandedLayout && (hasImages ? (
+          {/* Keep photos mounted so expansion only changes opacity, not layout. */}
+          {spotCardHeightMode === 'full' && <div className="spot-card-photos">
+            {hasImages ? (
               <div className="spot-card-short-photo-strip mb-2">
                 <ImageThumbnails
                   imgs={imgs}
@@ -1409,8 +1392,10 @@ export function SpotCard({
                 <ImageIcon size={30} weight="regular" className="text-gray-400" />
                 <span className="text-xs text-gray-400">No images</span>
               </div>
-            ))}
+            )}
+          </div>}
 
+          <div className={shouldUseLandscapeExpandedLayout ? 'spot-card-landscape-expanded-grid' : ''}>
             {/* Review box: swipe left for member notes. */}
             {spotCardHeightMode === 'full' && !isTallCollapsed && (
               <section
