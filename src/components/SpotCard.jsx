@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Image as ImageIcon, MapPin, Ticket, Star, StarFour, X } from '@phosphor-icons/react'
+import { Image as ImageIcon, MapPin, Ticket, Star, StarFour } from '@phosphor-icons/react'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, formatAverageRating } from '../domain/reviewDomain'
@@ -8,6 +8,7 @@ import { REVIEW_TAGS } from '../domain/reviewTypes'
 import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 import { sanitizeRichText } from '../lib/sanitizeHtml'
 import { useModalFocus } from '../hooks/useModalFocus'
+import LightboxCloseButton from './LightboxCloseButton'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -403,7 +404,7 @@ function Lightbox({ imgs, startIndex, onClose }) {
     touchStartY.current = null
   }
 
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes lightboxZoomIn {
@@ -460,15 +461,16 @@ function Lightbox({ imgs, startIndex, onClose }) {
             else goToIndex(index - 1)
           }
         }}
-        onClick={handleClose}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
+        onClick={(event) => { event.stopPropagation(); handleClose() }}
+        onPointerDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => { event.stopPropagation(); handleTouchStart(event) }}
+        onTouchMove={(event) => { event.stopPropagation(); handleTouchMove(event) }}
+        onTouchEnd={(event) => { event.stopPropagation(); handleTouchEnd(event) }}
+        onTouchCancel={(event) => { event.stopPropagation(); handleTouchEnd(event) }}
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 2000,
+          zIndex: 2147483647,
           background: 'rgba(0, 0, 0, 0.75)',
           display: 'flex',
           alignItems: 'center',
@@ -478,18 +480,7 @@ function Lightbox({ imgs, startIndex, onClose }) {
           touchAction: 'none',
         }}
       >
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            handleClose()
-          }}
-          aria-label="매장 사진 보기 닫기"
-          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          style={{ zIndex: 2002 }}
-        >
-          <X size={22} weight="bold" aria-hidden="true" />
-        </button>
+        <LightboxCloseButton label="매장 사진 보기 닫기" onClose={handleClose} />
         <div
           onClick={(e) => e.stopPropagation()}
           className={visible ? 'lightbox-zoom-enter' : ''}
@@ -602,7 +593,8 @@ function Lightbox({ imgs, startIndex, onClose }) {
         )}
       </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
 

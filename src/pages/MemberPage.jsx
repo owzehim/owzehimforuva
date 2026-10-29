@@ -15,6 +15,7 @@ import StampCardModal from '../features/stampCard/components/StampCardModal'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 import LoadingIndicator from '../components/LoadingIndicator'
 import EventListPreview from '../components/EventListPreview'
+import LightboxCloseButton from '../components/LightboxCloseButton'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { isMembershipActive } from '../domain/member/membershipStatus'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
@@ -2309,7 +2310,7 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
 
   if (!imgs || imgs.length === 0) return null
 
-  return (
+  return createPortal(
     <>
       <style>{`
         @keyframes lightboxZoomIn {
@@ -2338,13 +2339,14 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
           }
         }}
         className="no-highlight-zone"
-        onClick={handleClose}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        onClick={(event) => { event.stopPropagation(); handleClose() }}
+        onPointerDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => { event.stopPropagation(); handleTouchStart(event) }}
+        onTouchEnd={(event) => { event.stopPropagation(); handleTouchEnd(event) }}
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 9999,
+          zIndex: 2147483647,
           background: 'rgba(0, 0, 0, 0.75)',
           display: 'flex',
           alignItems: 'center',
@@ -2357,14 +2359,7 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
           WebkitTapHighlightColor: 'transparent',
         }}
       >
-        <button
-          type="button"
-          onClick={(event) => { event.stopPropagation(); handleClose() }}
-          aria-label="이벤트 사진 보기 닫기"
-          className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-        >
-          <X size={22} weight="bold" aria-hidden="true" />
-        </button>
+        <LightboxCloseButton label="이벤트 사진 보기 닫기" onClose={handleClose} />
         <div
           onClick={(e) => e.stopPropagation()}
           className={visible ? 'lightbox-zoom-enter' : ''}
@@ -2488,7 +2483,8 @@ function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
           )}
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
 
@@ -2588,6 +2584,8 @@ function EventsTab({ events }) {
   const [eventListNewestFirst, setEventListNewestFirst] = useState(true)
   const [eventListPreviewId, setEventListPreviewId] = useState(initialEvent?.id ?? null)
   const [eventCardOpen, setEventCardOpen] = useState(false)
+  const [eventLightboxId, setEventLightboxId] = useState(null)
+  const eventImageTap = useRef(null)
   const [eventPhotoZoomScale, setEventPhotoZoomScale] = useState(1)
   const [eventPhotoZoomOffset, setEventPhotoZoomOffset] = useState({ x: 0, y: 0 })
   const [eventPhotoIsPinching, setEventPhotoIsPinching] = useState(false)
@@ -3867,6 +3865,15 @@ const effectiveDateColor = isDragging
           50% { opacity: 0.88; }
         }
       `}</style>
+      {eventLightboxId === displayEvent?.id && hasImages && (
+        <EventLightbox
+          key={displayEvent.id}
+          imgs={displayImages}
+          startIndex={displayImageSlide}
+          onIndexChange={(index) => setSlide(displayEvent.id, index)}
+          onClose={() => setEventLightboxId(null)}
+        />
+      )}
       {eventPhotoZoomBounds && typeof document !== 'undefined' && createPortal(
         <>
           <div
@@ -4304,6 +4311,25 @@ const effectiveDateColor = isDragging
                           backfaceVisibility: 'hidden',
                         }}
                       >
+                        <button
+                          type="button"
+                          className="event-card-lightbox-open"
+                          aria-label="Open event photos"
+                          onPointerDown={(event) => {
+                            eventImageTap.current = { x: event.clientX, y: event.clientY, moved: false }
+                          }}
+                          onPointerMove={(event) => {
+                            const start = eventImageTap.current
+                            if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 8) start.moved = true
+                          }}
+                          onPointerCancel={() => { eventImageTap.current = { moved: true } }}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            if (event.detail !== 0 && eventImageTap.current?.moved) return
+                            resetEventPhotoZoom()
+                            setEventLightboxId(displayEvent.id)
+                          }}
+                        />
                         {isCurrentEventImageLoading && (
                           <div
                             className="pointer-events-none absolute inset-0 overflow-hidden"
