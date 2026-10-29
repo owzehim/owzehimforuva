@@ -22,6 +22,7 @@ export default function ScanPage() {
       document.documentElement.classList.contains('dark'),
   )
   const [storeName, setStoreName] = useState('')
+  const [testMode, setTestMode] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [member, setMember] = useState(null)
   const [scanTime, setScanTime] = useState(null)
@@ -61,6 +62,7 @@ export default function ScanPage() {
       const result = await logRedemption({ storeId })
 
       if (result.success) {
+        setTestMode(result.testMode === true)
         setStoreName(result.storeName || '매장')
         setMember(result.member || null)
         setScanTime(new Date())
@@ -79,11 +81,13 @@ export default function ScanPage() {
 
         setState(STATE.SUCCESS)
       } else {
+        setTestMode(false)
         setState(STATE.ERROR)
         setErrorMsg(result.message || 'Check-IN을 기록할 수 없습니다. 다시 시도해주세요.')
       }
     } catch (err) {
       console.error('handleScan error:', err)
+      setTestMode(false)
       setState(STATE.ERROR)
       setErrorMsg('오류가 발생했습니다: ' + (err?.message || '알 수 없는 오류'))
     }
@@ -127,6 +131,7 @@ export default function ScanPage() {
 
     setState(STATE.SCANNING)
     setStoreName('')
+    setTestMode(false)
     setErrorMsg('')
     setMember(null)
     setScanTime(null)
@@ -207,7 +212,7 @@ export default function ScanPage() {
         }}
       >
         {/* Blinking orange dot – only on success */}
-        {state === STATE.SUCCESS && (
+        {state === STATE.SUCCESS && !testMode && (
           <>
             <style>{`
               @keyframes recordingDot {
@@ -254,7 +259,30 @@ export default function ScanPage() {
           </div>
         )}
 
-        {state === STATE.SUCCESS && (
+        {state === STATE.SUCCESS && testMode && (
+          <div className="flex flex-col items-center gap-4 mt-8 text-center max-w-sm w-full">
+            <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center">
+              <span className="text-amber-700 text-4xl">✓</span>
+            </div>
+
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold tracking-wide text-amber-800">
+              TEST MODE
+            </span>
+
+            <h2 className="font-bold text-gray-900 text-xl">Test scan succeeded</h2>
+
+            <p className="text-gray-500 text-sm">@{storeName}</p>
+
+            <div className="w-full rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-left">
+              <p className="font-bold text-amber-900">No benefit was redeemed.</p>
+              <p className="mt-2 text-sm text-amber-900">
+                This test account is checking the scan flow. This screen is not a valid check-in or approval for a member benefit. Please do not present it to claim an offer.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {state === STATE.SUCCESS && !testMode && (
           <div className="flex flex-col items-center gap-4 mt-2 text-center max-w-sm w-full">
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
               <span className="text-green-600 text-4xl">✓</span>
