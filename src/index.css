@@ -1002,28 +1002,15 @@ html:not(.dark) .text-gray-400 {
 
   .spot-card-landscape-review-box .spot-card-landscape-usullang,
   .spot-card-landscape-review-box .spot-card-landscape-speech-bubble {
-    clip-path: inset(0 0 0 0);
-    transition: clip-path 500ms cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: clip-path;
-  }
-
-  .spot-card-landscape-review-box.is-expanded .spot-card-landscape-usullang,
-  .spot-card-landscape-review-box.is-expanded .spot-card-landscape-speech-bubble {
-    animation: spotLandscapeReviewReveal 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    transform: scaleX(1);
+    transform-origin: left center;
+    transition: transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
   }
 
   .spot-card-landscape-review-box.is-collapsed .spot-card-landscape-usullang,
   .spot-card-landscape-review-box.is-collapsed .spot-card-landscape-speech-bubble {
-    clip-path: inset(0 100% 0 0);
-  }
-
-  @keyframes spotLandscapeReviewReveal {
-    from {
-      clip-path: inset(0 100% 0 0);
-    }
-    to {
-      clip-path: inset(0 0 0 0);
-    }
+    transform: scaleX(0);
   }
 
   .spot-card-landscape-review-box .spot-card-landscape-usullang .spot-card-compact-stars {
