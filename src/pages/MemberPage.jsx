@@ -1407,7 +1407,7 @@ function MembershipCard({
 
       // The card is rotated in landscape. Its short inner edge becomes the
       // camera square's available height after the camera is rotated back.
-      const nextSize = Math.max(0, face.clientWidth - 12)
+      const nextSize = Math.max(0, face.clientWidth - 24)
       setCameraFrameSize((current) => current === nextSize ? current : nextSize)
     }
 
