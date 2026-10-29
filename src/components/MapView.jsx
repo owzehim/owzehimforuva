@@ -137,14 +137,12 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       (focusRect.left + focusRect.right) / 2 - mapRect.left,
       (focusRect.top + focusRect.bottom) / 2 - mapRect.top,
     ]
-    const spotPoint = map.current.project([spot.longitude, spot.latitude])
-    const cameraCenter = map.current.unproject([
-      mapCenter[0] + spotPoint.x - focusPoint[0],
-      mapCenter[1] + spotPoint.y - focusPoint[1],
-    ])
-
     map.current.flyTo({
-      center: cameraCenter,
+      center: [spot.longitude, spot.latitude],
+      // Let MapLibre apply the screen offset at the destination zoom. Computing
+      // a geographic center at the old zoom shifts the marker when zooming in.
+      offset: [focusPoint[0] - mapCenter[0], focusPoint[1] - mapCenter[1]],
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
       zoom: 16,
       duration,
     })
@@ -521,7 +519,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
           map.current?.resize()
           focusSelectedMarker(selectedRef.current, 500)
         })
-      }, 180)
+      }, 400)
     }
 
     const resizeObserver = typeof ResizeObserver === 'undefined'
@@ -530,10 +528,23 @@ export default function MapView({ restaurants, selected, onSelect, active = true
     if (mapContainer.current) resizeObserver?.observe(mapContainer.current)
     const spotCard = document.querySelector('.spot-card-sheet')
     if (spotCard) resizeObserver?.observe(spotCard)
+    // Sheet movement uses transforms, which ResizeObserver does not observe.
+    // Measure its final bounds on open, expand, and collapse as well as resize.
+    const refocusAfterSheetTransition = (event) => {
+      if (event.target !== spotCard || event.propertyName !== 'transform') return
+      if (focusTimer != null) window.clearTimeout(focusTimer)
+      if (focusFrame != null) window.cancelAnimationFrame(focusFrame)
+      focusFrame = window.requestAnimationFrame(() => {
+        focusSelectedMarker(selectedRef.current, 500)
+      })
+    }
+    spotCard?.addEventListener('transitionend', refocusAfterSheetTransition)
+    refocusAfterViewportResize()
     window.addEventListener('resize', refocusAfterViewportResize)
     window.addEventListener('orientationchange', refocusAfterViewportResize)
     return () => {
       resizeObserver?.disconnect()
+      spotCard?.removeEventListener('transitionend', refocusAfterSheetTransition)
       window.removeEventListener('resize', refocusAfterViewportResize)
       window.removeEventListener('orientationchange', refocusAfterViewportResize)
       if (resizeFrame != null) window.cancelAnimationFrame(resizeFrame)
