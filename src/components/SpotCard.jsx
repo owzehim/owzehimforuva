@@ -1421,7 +1421,9 @@ export function SpotCard({
                 onTouchEnd={handleReviewBoxTouchEnd}
                 style={{
                   opacity: isCollapsed ? 0 : 1,
-                  transform: isCollapsed ? 'translateY(8px)' : 'translateY(0)',
+                  transform: isCollapsed && !shouldUseLandscapeExpandedLayout
+                    ? 'translateY(8px)'
+                    : 'translateY(0)',
                   visibility: isCollapsed ? 'hidden' : 'visible',
                   pointerEvents: isCollapsed ? 'none' : 'auto',
                   transitionProperty: 'opacity, transform, visibility',
