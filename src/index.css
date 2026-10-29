@@ -2475,6 +2475,12 @@ select {
     max-width: 100% !important;
   }
 
+  .my-qr-tab .membership-card-camera-content #qr-scanner-container video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+  }
+
   .my-qr-tab .membership-card-camera-content .qr-scanner-instructions {
     display: none !important;
   }

@@ -33,13 +33,12 @@ export default function QRScanner({ onScan, darkMode = false }) {
           {
             fps: 10,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const landscapeCard = window.matchMedia(
-                '(orientation: landscape) and (pointer: coarse)',
-              ).matches
-              const size = Math.round(Math.min(
-                Math.min(viewfinderWidth, viewfinderHeight) * QR_BOX_SCAN_RATIO,
-                landscapeCard ? Number.POSITIVE_INFINITY : QR_BOX_SIZE,
-              ))
+              const size = Math.round(
+                Math.min(
+                  Math.min(viewfinderWidth, viewfinderHeight) * QR_BOX_SCAN_RATIO,
+                  QR_BOX_SIZE,
+                ),
+              )
               if (isMounted) setQrBoxSize(size)
               return { width: size, height: size }
             },
