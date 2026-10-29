@@ -1344,6 +1344,9 @@ function MembershipCard({
   scannerOpenSignal = 0,
 }) {
   const [flipped, setFlipped] = useState(false)
+  const [cameraFitScale, setCameraFitScale] = useState(0.72)
+  const cameraFaceRef = useRef(null)
+  const cameraContentRef = useRef(null)
 
   const W =
     'min(var(--membership-card-width, min(calc(100vw - 48px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
@@ -1392,6 +1395,50 @@ function MembershipCard({
   useEffect(() => {
     if (scannerOpenSignal) setFlipped(true)
   }, [scannerOpenSignal])
+
+  useEffect(() => {
+    if (!flipped) return undefined
+
+    const face = cameraFaceRef.current
+    const content = cameraContentRef.current
+    if (!face || !content) return undefined
+
+    const updateCameraFit = () => {
+      if (!window.matchMedia('(orientation: landscape) and (pointer: coarse)').matches) {
+        setCameraFitScale(1)
+        return
+      }
+
+      const availableWidth = face.clientWidth - 16
+      const availableHeight = face.clientHeight - 16
+      const contentWidth = content.offsetWidth
+      const contentHeight = content.offsetHeight
+      if (!availableWidth || !availableHeight || !contentWidth || !contentHeight) return
+
+      const nextScale = Math.min(
+        1,
+        availableWidth / contentWidth,
+        availableHeight / contentHeight,
+      )
+      setCameraFitScale(Math.round(nextScale * 1000) / 1000)
+    }
+
+    const observer = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(updateCameraFit)
+    observer?.observe(face)
+    observer?.observe(content)
+    window.addEventListener('resize', updateCameraFit)
+    window.addEventListener('orientationchange', updateCameraFit)
+    const frameId = requestAnimationFrame(updateCameraFit)
+
+    return () => {
+      cancelAnimationFrame(frameId)
+      observer?.disconnect()
+      window.removeEventListener('resize', updateCameraFit)
+      window.removeEventListener('orientationchange', updateCameraFit)
+    }
+  }, [flipped])
 
   const cardFront = (
     <div
@@ -1753,6 +1800,7 @@ function MembershipCard({
           }}
         >
           <div
+            ref={cameraFaceRef}
             style={{
               width: '100%',
               height: '100%',
@@ -1766,7 +1814,11 @@ function MembershipCard({
             }}
           >
             {flipped && (
-              <div className="membership-card-camera-content">
+              <div
+                ref={cameraContentRef}
+                className="membership-card-camera-content"
+                style={{ '--membership-camera-fit-scale': cameraFitScale }}
+              >
                 <Suspense fallback={null}>
                   <QRScanner onScan={onQRScanned} darkMode={darkMode} />
                 </Suspense>
@@ -3955,8 +4007,9 @@ const effectiveDateColor = isDragging
                 href={displayEvent.instagram_url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
                 className={
-                  'app-landscape-top-action fixed flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition-opacity duration-200 active:bg-orange-600 ' +
+                  'app-landscape-top-action member-events-top-right fixed flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition-opacity duration-200 active:bg-orange-600 ' +
                   (eventCardOpen ? 'opacity-100' : 'pointer-events-none opacity-0')
                 }
                 aria-label="Open on Instagram"
