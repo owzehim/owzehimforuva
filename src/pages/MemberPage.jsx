@@ -1429,9 +1429,8 @@ function MembershipCard({
   scannerOpenSignal = 0,
 }) {
   const [flipped, setFlipped] = useState(false)
-  const [cameraFitScale, setCameraFitScale] = useState(0.72)
+  const [cameraFrameSize, setCameraFrameSize] = useState(null)
   const cameraFaceRef = useRef(null)
-  const cameraContentRef = useRef(null)
 
   const W =
     'min(var(--membership-card-width, min(calc(100vw - 48px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
@@ -1485,34 +1484,24 @@ function MembershipCard({
     if (!flipped) return undefined
 
     const face = cameraFaceRef.current
-    const content = cameraContentRef.current
-    if (!face || !content) return undefined
+    if (!face) return undefined
 
     const updateCameraFit = () => {
       if (!window.matchMedia('(orientation: landscape) and (pointer: coarse)').matches) {
-        setCameraFitScale(1)
+        setCameraFrameSize(null)
         return
       }
 
-      const availableWidth = face.clientWidth - 16
-      const availableHeight = face.clientHeight - 16
-      const contentWidth = content.offsetWidth
-      const contentHeight = content.offsetHeight
-      if (!availableWidth || !availableHeight || !contentWidth || !contentHeight) return
-
-      const nextScale = Math.min(
-        1,
-        availableWidth / contentWidth,
-        availableHeight / contentHeight,
-      )
-      setCameraFitScale(Math.round(nextScale * 1000) / 1000)
+      // The card is rotated in landscape. Its short inner edge becomes the
+      // camera square's available height after the camera is rotated back.
+      const nextSize = Math.max(0, face.clientWidth - 12)
+      setCameraFrameSize((current) => current === nextSize ? current : nextSize)
     }
 
     const observer = typeof ResizeObserver === 'undefined'
       ? null
       : new ResizeObserver(updateCameraFit)
     observer?.observe(face)
-    observer?.observe(content)
     window.addEventListener('resize', updateCameraFit)
     window.addEventListener('orientationchange', updateCameraFit)
     const frameId = requestAnimationFrame(updateCameraFit)
@@ -1552,6 +1541,7 @@ function MembershipCard({
         }}
       >
         <div
+          className="membership-card-back-face"
           style={{
             width: avatarSize,
             height: avatarSize,
@@ -1900,9 +1890,10 @@ function MembershipCard({
           >
             {flipped && (
               <div
-                ref={cameraContentRef}
                 className="membership-card-camera-content"
-                style={{ '--membership-camera-fit-scale': cameraFitScale }}
+                style={cameraFrameSize
+                  ? { width: `${cameraFrameSize}px` }
+                  : undefined}
               >
                 <Suspense fallback={null}>
                   <QRScanner onScan={onQRScanned} darkMode={darkMode} />

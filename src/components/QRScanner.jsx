@@ -33,12 +33,13 @@ export default function QRScanner({ onScan, darkMode = false }) {
           {
             fps: 10,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const size = Math.round(
-                Math.min(
-                  Math.min(viewfinderWidth, viewfinderHeight) * QR_BOX_SCAN_RATIO,
-                  QR_BOX_SIZE,
-                ),
-              )
+              const landscapeCard = window.matchMedia(
+                '(orientation: landscape) and (pointer: coarse)',
+              ).matches
+              const size = Math.round(Math.min(
+                Math.min(viewfinderWidth, viewfinderHeight) * QR_BOX_SCAN_RATIO,
+                landscapeCard ? Number.POSITIVE_INFINITY : QR_BOX_SIZE,
+              ))
               if (isMounted) setQrBoxSize(size)
               return { width: size, height: size }
             },
@@ -113,6 +114,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
 
       <div
         className="relative w-full"
+        data-qr-scanner-frame
         style={{
           aspectRatio: '1',
           maxWidth: `calc(var(--member-screen-width, min(calc(100vw - 32px), 398px)) * ${QR_BOX_FRAME_RATIO})`,
@@ -173,7 +175,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-1 px-4 text-center">
+      <div className="qr-scanner-instructions flex flex-col items-center gap-1 px-4 text-center">
         {cameraPermissionDenied && (
           <p
             style={{
