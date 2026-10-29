@@ -1414,7 +1414,7 @@ export function SpotCard({
             {/* Review box: swipe left for member notes. */}
             {spotCardHeightMode === 'full' && !isTallCollapsed && (
               <section
-                className={`mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out ${shouldUseLandscapeExpandedLayout ? 'spot-card-landscape-review-box' : ''}`}
+                className={`mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out ${shouldUseLandscapeExpandedLayout ? `spot-card-landscape-review-box ${isCollapsed ? 'is-collapsed' : 'is-expanded'}` : ''}`}
                 aria-label="리뷰 박스"
                 onTouchStart={handleReviewBoxTouchStart}
                 onTouchMove={handleReviewBoxTouchMove}
