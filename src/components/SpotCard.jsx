@@ -1262,6 +1262,7 @@ export function SpotCard({
       <div
         ref={cardRef}
         className="spot-card-sheet absolute bottom-0 left-0 right-0 bg-white"
+        data-resting-offset={sheetRestingOffset}
         style={{
           ...sheetStyle,
           zIndex: 1000,
@@ -1412,7 +1413,12 @@ export function SpotCard({
                   visibility: isCollapsed ? 'hidden' : 'visible',
                   pointerEvents: isCollapsed ? 'none' : 'auto',
                   transitionProperty: 'opacity, transform, visibility',
-                  transitionDelay: isCollapsed ? '0s, 0s, 0.3s' : '0s',
+                  transitionDuration: isLandscapeFullMode && isCollapsed
+                    ? '60ms, 60ms, 0s'
+                    : '300ms, 300ms, 0s',
+                  transitionDelay: isCollapsed
+                    ? `0s, 0s, ${isLandscapeFullMode ? '60ms' : '300ms'}`
+                    : '0s',
                 }}
               >
               <div

@@ -90,6 +90,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
   const activeStyleRef = useRef(null)
   const selectedMarkerIdRef = useRef(null)
   const selectedRef = useRef(selected)
+  const lastFocusTargetRef = useRef(null)
   const restaurantsRef = useRef(restaurants)
   const movingClassTimeoutRef = useRef(null)
   const [isTrackingLocation, setIsTrackingLocation] = useState(false)
@@ -97,13 +98,27 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
   useEffect(() => {
     selectedRef.current = selected
+    if (!selected) lastFocusTargetRef.current = null
   }, [selected])
 
   const focusSelectedMarker = useCallback((spot, duration = 1000) => {
     if (!map.current || !spot) return
 
     const mapRect = map.current.getContainer().getBoundingClientRect()
-    const spotCardRect = document.querySelector('.spot-card-sheet')?.getBoundingClientRect()
+    const spotCard = document.querySelector('.spot-card-sheet')
+    let spotCardRect = spotCard?.getBoundingClientRect()
+    if (spotCardRect && spotCard.dataset.restingOffset != null) {
+      // Aim at the sheet's destination from the first frame, including while
+      // its entrance/expand/collapse transform is still running.
+      const transform = new DOMMatrixReadOnly(getComputedStyle(spotCard).transform)
+      const remainingY = Number(spotCard.dataset.restingOffset) - transform.m42
+      spotCardRect = {
+        left: spotCardRect.left,
+        right: spotCardRect.right,
+        top: spotCardRect.top + remainingY,
+        bottom: spotCardRect.bottom + remainingY,
+      }
+    }
     let focusRect = mapRect
 
     if (spotCardRect) {
@@ -131,12 +146,19 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       }
     }
 
-    map.current.stop()
     const mapCenter = [mapRect.width / 2, mapRect.height / 2]
     const focusPoint = [
       (focusRect.left + focusRect.right) / 2 - mapRect.left,
       (focusRect.top + focusRect.bottom) / 2 - mapRect.top,
     ]
+    const target = [spot.id, spot.longitude, spot.latitude, mapRect.width,
+      mapRect.height, ...focusPoint].map((value) =>
+      typeof value === 'number' ? value.toFixed(3) : value).join(':')
+    // Resize and transition completion can report the same destination again.
+    // Keep the original flight running instead of starting a second movement.
+    if (lastFocusTargetRef.current === target) return
+    lastFocusTargetRef.current = target
+    map.current.stop()
     map.current.flyTo({
       center: [spot.longitude, spot.latitude],
       // Let MapLibre apply the screen offset at the destination zoom. Computing
@@ -377,7 +399,10 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       }, 120)
     }
 
-    map.current.on('movestart', () => setMapMovingClass(true))
+    map.current.on('movestart', (event) => {
+      if (event.originalEvent) lastFocusTargetRef.current = null
+      setMapMovingClass(true)
+    })
     map.current.on('moveend', () => setMapMovingClass(false))
 
     map.current.on('load', () => {
@@ -493,7 +518,10 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
   useEffect(() => {
     if (!map.current || !selected) return
-    focusSelectedMarker(selected)
+    // SpotCard measures its parent on mount. Let that render finish before
+    // reading its resting geometry, then start one flight to the final target.
+    const frame = window.requestAnimationFrame(() => focusSelectedMarker(selected))
+    return () => window.cancelAnimationFrame(frame)
   }, [selected, focusSelectedMarker])
 
   useEffect(() => {
