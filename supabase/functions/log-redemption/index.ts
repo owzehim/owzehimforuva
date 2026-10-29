@@ -157,6 +157,7 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  let testMode = false
   try {
     const authHeader = req.headers.get('Authorization') || ''
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
@@ -236,18 +237,23 @@ Deno.serve(async (req) => {
       )
     }
 
+    // This flag is derived from the member row on the server. The client never
+    // supplies it, and it is only used to label the result screen.
+    testMode = member.is_test_account === true
+    const failedResult = (message: string) => ({ success: false, message, ...(testMode ? { testMode: true } : {}) })
+
     // ── Membership validity check ──────────────────────────────────────────
     const now = new Date()
     if (!member.is_member) {
       return new Response(
-        JSON.stringify({ success: false, message: '멤버십이 활성화되어 있지 않습니다.' }),
+        JSON.stringify(failedResult('멤버십이 활성화되어 있지 않습니다.')),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
     if (!isMembershipActive(member, now)) {
       return new Response(
-        JSON.stringify({ success: false, message: '멤버십이 만료되었습니다.' }),
+        JSON.stringify(failedResult('멤버십이 만료되었습니다.')),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -265,13 +271,13 @@ Deno.serve(async (req) => {
       if (restaurantStatusError) {
         console.error('Partner status lookup failed')
         return new Response(
-          JSON.stringify({ success: false, message: '매장 제휴 상태를 확인하지 못했습니다.' }),
+          JSON.stringify(failedResult('매장 제휴 상태를 확인하지 못했습니다.')),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
       }
       if (restaurantStatus?.is_archived) {
         return new Response(
-          JSON.stringify({ success: false, message: '제휴가 종료된 매장입니다.' }),
+          JSON.stringify(failedResult('제휴가 종료된 매장입니다.')),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
       }
@@ -292,7 +298,7 @@ Deno.serve(async (req) => {
           },
           storeName: partnership.name,
           redemptionId: '',
-          testMode: true,
+          testMode,
           stampResult: { enabled: false, testMode: true },
           sheetSync: 'not logged (test mode)',
         }),
@@ -303,7 +309,7 @@ Deno.serve(async (req) => {
     if (partnershipError || !partnership) {
       console.error('Partnership error:', partnershipError)
       return new Response(
-        JSON.stringify({ success: false, message: '유효하지 않은 제휴 매장입니다.' }),
+        JSON.stringify(failedResult('유효하지 않은 제휴 매장입니다.')),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -312,7 +318,7 @@ Deno.serve(async (req) => {
     if (integrationsError) {
       console.error('Partnership integration lookup failed')
       return new Response(
-        JSON.stringify({ success: false, message: '매장 연동 설정을 확인하지 못했습니다.' }),
+        JSON.stringify(failedResult('매장 연동 설정을 확인하지 못했습니다.')),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -326,7 +332,7 @@ Deno.serve(async (req) => {
     } catch (stampError) {
       console.error('Stamp card record error:', stampError)
       return new Response(
-        JSON.stringify({ success: false, message: '스탬프 기록을 처리하지 못했습니다. 다시 시도해 주세요.' }),
+        JSON.stringify(failedResult('스탬프 기록을 처리하지 못했습니다. 다시 시도해 주세요.')),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -340,7 +346,7 @@ Deno.serve(async (req) => {
     if (claimError) {
       console.error('Redemption window claim failed:', claimError)
       return new Response(
-        JSON.stringify({ success: false, message: '매장 이용 기록을 처리하지 못했습니다.' }),
+        JSON.stringify(failedResult('매장 이용 기록을 처리하지 못했습니다.')),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -349,7 +355,7 @@ Deno.serve(async (req) => {
     if (!redemptionClaim?.redemption_id) {
       console.error('Redemption window claim returned no record')
       return new Response(
-        JSON.stringify({ success: false, message: '매장 이용 기록을 처리하지 못했습니다.' }),
+        JSON.stringify(failedResult('매장 이용 기록을 처리하지 못했습니다.')),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -372,7 +378,7 @@ Deno.serve(async (req) => {
       if (existingRedemptionError || !existingRedemption?.redeemed_at) {
         console.error('Existing redemption lookup failed during Sheets retry')
         return new Response(
-          JSON.stringify({ success: false, message: '매장 이용 기록을 다시 불러오지 못했습니다.' }),
+          JSON.stringify(failedResult('매장 이용 기록을 다시 불러오지 못했습니다.')),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
       }
@@ -440,7 +446,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error('log-redemption fatal error:', err)
     return new Response(
-      JSON.stringify({ success: false, message: '서버 오류가 발생했습니다.' }),
+      JSON.stringify({ success: false, message: '서버 오류가 발생했습니다.', ...(testMode ? { testMode: true } : {}) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   }
