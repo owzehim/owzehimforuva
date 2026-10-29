@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
         headers: response.headers,
       })
     }
-    if (!(await hasActiveDeviceSession(admin, user.id, token))) {
+    if (!(await hasActiveDeviceSession(admin, user.id, token, { allowTestAccountExemption: true }))) {
       return new Response(
         JSON.stringify({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.', ...(testMode ? { testMode: true } : {}) }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
