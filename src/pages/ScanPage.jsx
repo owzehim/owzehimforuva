@@ -1,8 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft } from '@phosphor-icons/react'
+import { ArrowLeft, ClockCounterClockwise } from '@phosphor-icons/react'
 import { logRedemption } from '../lib/redemption'
-import LoadingIndicator from '../components/LoadingIndicator'
 import ScanPageStampBox from '../features/stampCard/components/ScanPageStampBox'
 
 const QRScanner = lazy(() => import('../components/QRScanner'))
@@ -11,6 +10,7 @@ const STATE = {
   SCANNING: 'scanning',
   LOADING: 'loading',
   SUCCESS: 'success',
+  ALREADY_CHECKED_IN: 'already-checked-in',
   ERROR: 'error',
 }
 
@@ -65,7 +65,7 @@ export default function ScanPage() {
         setTestMode(result.testMode === true)
         setStoreName(result.storeName || '매장')
         setMember(result.member || null)
-        setScanTime(new Date())
+        setScanTime(result.checkedInAt || (result.checkinAlreadyRecorded ? null : new Date()))
         setScannedUserId(result.userId || null)
 
         // Stamp card logic — runs after logRedemption succeeds
@@ -79,7 +79,9 @@ export default function ScanPage() {
           })
         }
 
-        setState(STATE.SUCCESS)
+        setState(result.checkinAlreadyRecorded === true && result.testMode !== true
+          ? STATE.ALREADY_CHECKED_IN
+          : STATE.SUCCESS)
       } else {
         setTestMode(result.testMode === true)
         setState(STATE.ERROR)
@@ -161,6 +163,16 @@ export default function ScanPage() {
     return `${y}-${m}-${day}`
   }
 
+  const formatLastCheckinTime = (date) => {
+    const checkedInAt = date ? new Date(date) : null
+    if (!checkedInAt || Number.isNaN(checkedInAt.getTime())) return 'Unavailable'
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/Amsterdam',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(checkedInAt)
+  }
+
   const fullName = member
     ? `${member.first_name || ''} ${member.last_name || ''}`.trim()
     : ''
@@ -204,7 +216,7 @@ export default function ScanPage() {
           paddingBottom:
             state === STATE.ERROR
               ? '218px'
-              : state === STATE.SUCCESS
+              : state === STATE.SUCCESS || state === STATE.ALREADY_CHECKED_IN
                 ? '158px'
                 : undefined,
           justifyContent: isLoading ? 'center' : 'flex-start',
@@ -282,6 +294,25 @@ export default function ScanPage() {
           </div>
         )}
 
+        {state === STATE.ALREADY_CHECKED_IN && (
+          <section
+            className="flex flex-col items-center gap-4 mt-8 text-center max-w-sm w-full"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="w-20 h-20 rounded-full bg-orange-50 flex items-center justify-center" aria-hidden="true">
+              <ClockCounterClockwise size={40} weight="duotone" className="text-orange-500" />
+            </div>
+            <h2 className="font-bold text-gray-900 text-xl">Already Checked-IN</h2>
+            <p className="text-gray-500 text-sm leading-6">
+              You can only check in once per day.
+              <br />
+              (Last checked in: {formatLastCheckinTime(scanTime)})
+            </p>
+            <p className="text-gray-500 text-sm">@{storeName}</p>
+          </section>
+        )}
+
         {state === STATE.SUCCESS && !testMode && (
           <div className="flex flex-col items-center gap-4 mt-2 text-center max-w-sm w-full">
             <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
@@ -294,6 +325,10 @@ export default function ScanPage() {
               @{storeName}
             </p>
 
+            <div className="w-full rounded-2xl bg-orange-50 p-4 text-sm text-gray-700" role="status">
+              <p className="font-semibold">One check-in per place per day.</p>
+            </div>
+
             <p className="text-base font-bold text-orange-500">
               이 <span className="text-orange-600 font-extrabold">화면과 학생증</span>을 함께 직원에게 제시해 주세요
             </p>
@@ -301,7 +336,7 @@ export default function ScanPage() {
             {/* Member info card */}
             <div className="w-full mt-4 p-4 bg-white rounded-2xl border-2 border-orange-500 shadow-sm text-left space-y-3">
               <div className="flex justify-between items-center pb-3 border-b border-gray-100">
-                <span className="text-xs font-medium text-gray-500">Scan Time</span>
+                <span className="text-xs font-medium text-gray-500">Check-in Time</span>
                 <span className="text-sm font-semibold text-gray-900">
                   {formatScanTime(scanTime)}
                 </span>
@@ -373,7 +408,7 @@ export default function ScanPage() {
         )}
       </div>
 
-      {(state === STATE.SUCCESS || state === STATE.ERROR) && (
+      {(state === STATE.SUCCESS || state === STATE.ALREADY_CHECKED_IN || state === STATE.ERROR) && (
         <div
           className="fixed left-4 right-4 z-20 flex flex-col gap-4"
           // Match the onboarding screen's "다음" button placement.

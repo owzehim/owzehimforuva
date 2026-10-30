@@ -353,8 +353,8 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
-    // Atomically claim this user's 15-minute window. The database lock
-    // ensures only one scan creates a redemption/Sheets event in that window.
+    // Reuse the existing check-in according to the RPC's daily limit.
+    // Repeated scans confirm that visit without creating another visit log.
     const { data: redemptionClaims, error: claimError } = await admin.rpc(
       'claim_redemption_window',
       { p_user_id: user.id, p_store_id: storeId },
@@ -377,11 +377,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    const reuseRecent = redemptionClaim.created !== true
+    const checkinAlreadyRecorded = redemptionClaim.created !== true
     const redemptionId = String(redemptionClaim.redemption_id)
     let redemptionTimestamp = now
 
-    if (reuseRecent) {
+    if (checkinAlreadyRecorded) {
       // Retry the idempotent Sheets upsert for the existing event. Preserve
       // its original timestamp so a retry cannot make an old scan look new.
       const { data: existingRedemption, error: existingRedemptionError } = await admin
@@ -453,6 +453,8 @@ Deno.serve(async (req) => {
         },
         storeName: partnership.name,
         redemptionId,
+        checkedInAt: redemptionTimestamp.toISOString(),
+        checkinAlreadyRecorded,
         stampResult,
         sheetResults: sheetResults.map(({ ok, skipped, label, errorCode, scriptVersion }) => ({
           ok, skipped, label, errorCode, scriptVersion,
