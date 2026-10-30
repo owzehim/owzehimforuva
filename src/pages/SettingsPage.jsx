@@ -802,9 +802,9 @@ export default function SettingsPage({ userId, isAdmin }) {
                   className="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-500 dark:border-gray-700 dark:text-white"
                 />
               </label>
-              <CaptchaChallenge onVerify={setDeleteCaptchaToken} resetKey={deleteCaptchaResetKey} />
+              <CaptchaChallenge onVerify={setDeleteCaptchaToken} resetKey={deleteCaptchaResetKey} reserveSpace={false} />
               {deleteAccountError && <p role="alert" className="mt-3 text-sm text-red-600">{deleteAccountError}</p>}
-              <div className="mt-5 flex gap-2">
+              <div className="mt-3 flex gap-2">
                 <button
                   type="button"
                   onClick={closeDeleteAccountDialog}
