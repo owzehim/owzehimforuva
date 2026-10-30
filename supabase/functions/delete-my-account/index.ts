@@ -6,6 +6,7 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 import { getMasterPrivacyEndpoint } from '../_shared/masterPrivacyEndpoint.ts'
+import { hasFreshDeletionPasswordProof } from '../_shared/deletionPasswordProof.js'
 
 async function anonymizeMasterSheet(admin: any, userId: string) {
   const url = await getMasterPrivacyEndpoint(admin)
@@ -80,8 +81,9 @@ Deno.serve(async (req) => {
   try {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
     const body = await req.json().catch(() => null)
-    if (!token || body?.confirmation !== 'DELETE') {
-      return json({ success: false, message: '계정 삭제 확인이 필요합니다.' }, 400)
+    const passwordToken = body?.passwordAccessToken
+    if (!token || typeof passwordToken !== 'string' || !passwordToken || passwordToken.length > 8192) {
+      return json({ success: false, message: '확인을 위해 비밀번호를 입력하세요.' }, 400)
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -106,6 +108,15 @@ Deno.serve(async (req) => {
     if (!hasVerifiedAppLogin(token, user.id)) return requireVerifiedLoginResponse(corsHeaders)
     if (!(await hasActiveDeviceSession(admin, user.id, token))) {
       return json({ success: false, message: '현재 로그인 기기가 더 이상 활성 상태가 아닙니다.' }, 403)
+    }
+
+    stage = 'password_verification'
+    // Validate the separate password proof against Auth, not client-supplied
+    // claims, before any anonymization, deletion, or session revocation.
+    const { data: passwordUserData, error: passwordUserError } = await admin.auth.getUser(passwordToken)
+    if (passwordUserError || passwordUserData?.user?.id !== user.id ||
+        !hasFreshDeletionPasswordProof(decodeClaims(passwordToken), user.id)) {
+      return json({ success: false, message: '비밀번호 확인에 실패했습니다. 다시 입력해 주세요.' }, 403)
     }
 
     stage = 'administrator_guard'

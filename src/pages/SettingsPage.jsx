@@ -11,6 +11,9 @@ import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { legalDocuments } from '../content/legalDocuments'
 import AdminBadge from '../components/AdminBadge'
 import { useModalFocus } from '../hooks/useModalFocus'
+import { deleteAccountWithPassword } from '../api/authRepository'
+import CaptchaChallenge from '../components/CaptchaChallenge'
+import { isCaptchaEnabled } from '../lib/captcha'
 
 function isValidUsername(value) {
   const normalized = value.trim().normalize('NFKC').toLowerCase()
@@ -79,7 +82,9 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
   const [error, setError] = useState('')
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false)
-  const [deleteAccountConfirmation, setDeleteAccountConfirmation] = useState('')
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState('')
+  const [deleteCaptchaToken, setDeleteCaptchaToken] = useState('')
+  const [deleteCaptchaResetKey, setDeleteCaptchaResetKey] = useState(0)
   const [deleteAccountLoading, setDeleteAccountLoading] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState('')
   const [usernameEditing, setUsernameEditing] = useState(false)
@@ -96,9 +101,14 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
   const deleteDialogRef = useRef(null)
   const privacyDialogRef = useRef(null)
   const cropDialogRef = useRef(null)
+  const closeDeleteAccountDialog = () => {
+    setDeleteAccountOpen(false)
+    setDeleteAccountPassword('')
+    setDeleteCaptchaToken('')
+  }
   const handleDeleteDialogKeyDown = useModalFocus(
     deleteDialogRef,
-    () => setDeleteAccountOpen(false),
+    closeDeleteAccountDialog,
     { enabled: deleteAccountOpen, closeOnEscape: !deleteAccountLoading },
   )
   const handlePrivacyDialogKeyDown = useModalFocus(
@@ -212,19 +222,18 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
     await supabase.auth.signOut({ scope: 'local' })
   }
 
-  const handleDeleteAccount = async () => {
+  const handleDeleteAccount = async (event) => {
+    event.preventDefault()
     if (previewOnly) return
     setDeleteAccountError('')
-    if (deleteAccountConfirmation !== 'DELETE') {
-      setDeleteAccountError('계속하려면 DELETE를 입력해 주세요.')
+    if (!deleteAccountPassword) {
+      setDeleteAccountError('확인을 위해 비밀번호를 입력하세요.')
       return
     }
 
     setDeleteAccountLoading(true)
     try {
-      const { data, error: deleteError } = await supabase.functions.invoke('delete-my-account', {
-        body: { confirmation: 'DELETE' },
-      })
+      const { data, error: deleteError } = await deleteAccountWithPassword(deleteAccountPassword, deleteCaptchaToken)
 
       if (deleteError || !data?.success) {
         let message = data?.message || deleteError?.message || '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'
@@ -240,11 +249,15 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
         throw new Error(message)
       }
 
+      setDeleteAccountPassword('')
       await supabase.auth.signOut({ scope: 'local' })
       navigate('/login', { replace: true })
     } catch (deleteError) {
       setDeleteAccountError(deleteError.message || '계정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.')
       setDeleteAccountLoading(false)
+    } finally {
+      setDeleteCaptchaToken('')
+      setDeleteCaptchaResetKey((key) => key + 1)
     }
   }
 
@@ -761,7 +774,8 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
               onClick={() => {
                 if (previewOnly) return
                 setDeleteAccountError('')
-                setDeleteAccountConfirmation('')
+                setDeleteAccountPassword('')
+                setDeleteCaptchaToken('')
                 setDeleteAccountOpen(true)
               }}
               className="flex w-full items-center justify-center gap-2 rounded-full border border-red-300 px-5 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:text-red-300"
@@ -782,7 +796,7 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
             aria-labelledby="delete-account-title"
             tabIndex={-1}
             onKeyDown={handleDeleteDialogKeyDown}
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl dark:bg-[#161616]"
+            className="max-h-[85dvh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-xl dark:bg-[#161616]"
           >
             <h2 id="delete-account-title" className="text-base font-bold text-gray-900 dark:text-white">
               계정을 영구 삭제할까요?
@@ -797,36 +811,40 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
             >
               개인정보처리방침 보기
             </button>
-            <label className="mt-4 block text-xs font-medium text-gray-700 dark:text-gray-300">
-              확인을 위해 DELETE를 입력하세요.
-              <input
-                type="text"
-                value={deleteAccountConfirmation}
-                onChange={(event) => setDeleteAccountConfirmation(event.target.value)}
-                autoComplete="off"
-                disabled={deleteAccountLoading}
-                className="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-500 dark:border-gray-700 dark:text-white"
-              />
-            </label>
-            {deleteAccountError && <p role="alert" className="mt-3 text-sm text-red-600">{deleteAccountError}</p>}
-            <div className="mt-5 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setDeleteAccountOpen(false)}
-                disabled={deleteAccountLoading}
-                className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                disabled={deleteAccountLoading || deleteAccountConfirmation !== 'DELETE'}
-                className="flex-1 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {deleteAccountLoading ? '삭제 중...' : '계정 영구 삭제'}
-              </button>
-            </div>
+            <form onSubmit={handleDeleteAccount}>
+              <label className="mt-4 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                확인을 위해 비밀번호를 입력하세요.
+                <input
+                  type="password"
+                  name="current-password"
+                  value={deleteAccountPassword}
+                  onChange={(event) => setDeleteAccountPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                  disabled={deleteAccountLoading}
+                  className="mt-2 w-full rounded-lg border border-gray-300 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none focus:border-red-500 dark:border-gray-700 dark:text-white"
+                />
+              </label>
+              <CaptchaChallenge onVerify={setDeleteCaptchaToken} resetKey={deleteCaptchaResetKey} />
+              {deleteAccountError && <p role="alert" className="mt-3 text-sm text-red-600">{deleteAccountError}</p>}
+              <div className="mt-5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeDeleteAccountDialog}
+                  disabled={deleteAccountLoading}
+                  className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={deleteAccountLoading || !deleteAccountPassword || (isCaptchaEnabled && !deleteCaptchaToken)}
+                  className="flex-1 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {deleteAccountLoading ? '삭제 중...' : '계정 영구 삭제'}
+                </button>
+              </div>
+            </form>
           </section>
         </div>
       )}
