@@ -118,7 +118,10 @@ async function signalHandler({ rateLimited = false } = {}) {
   let handler
   const admin = {
     // Any accidental Auth access fails this test instead of authenticating.
-    rpc: async () => ({ data: !rateLimited, error: null }),
+    rpc: async (_, args) => {
+      assert.ok(args.p_limit >= 1 && args.p_limit <= 100, 'server rate limiter accepts limits up to 100')
+      return { data: !rateLimited, error: null }
+    },
     from: table => {
       assert.equal(table, 'email_confirmation_return_signals')
       let key, after

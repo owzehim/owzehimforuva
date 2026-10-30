@@ -37,7 +37,7 @@ Deno.serve(async req => {
     const tokenHash = await hash(token)
     const ip = req.headers.get('cf-connecting-ip') || 'unknown-client'
     const limits = await Promise.all([
-      admin.rpc('consume_edge_rate_limit', { p_key_hash: await hash(`email-return:${action}:ip:${ip}`), p_limit: action === 'check' ? 600 : 30, p_window_seconds: 60 }),
+      admin.rpc('consume_edge_rate_limit', { p_key_hash: await hash(`email-return:${action}:ip:${ip}`), p_limit: action === 'check' ? 100 : 30, p_window_seconds: action === 'check' ? 10 : 60 }),
       admin.rpc('consume_edge_rate_limit', { p_key_hash: await hash(`email-return:${tokenHash}`), p_limit: 60, p_window_seconds: 60 }),
     ])
     if (limits.some(result => result.error)) return json({ error: 'Service unavailable' }, 503)
