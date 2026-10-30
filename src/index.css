@@ -395,6 +395,46 @@ html:not(.dark) .text-gray-400 {
   margin-top: 1rem;
 }
 
+/* Center the credential fields in the portrait safe area, independently of
+   the logo and actions. Intrinsic row minimums allow short screens to scroll. */
+@media (orientation: portrait) {
+  .login-landscape-credentials .login-content-shell {
+    --login-safe-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    display: grid;
+    height: 100dvh;
+    grid-template-rows: minmax(min-content, 1fr) auto minmax(0, 1fr);
+    align-items: stretch;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .login-landscape-credentials .login-content-panel,
+  .login-landscape-credentials .login-credentials-form {
+    display: contents;
+  }
+
+  .login-landscape-credentials .login-brand {
+    grid-row: 1;
+    align-self: end;
+    padding-top: clamp(12px, calc(var(--login-safe-height) - 600px), 56px);
+  }
+
+  .login-landscape-credentials .login-credentials-form > * {
+    margin-block: 0;
+  }
+
+  .login-landscape-credentials .login-credential-fields {
+    grid-row: 2;
+  }
+
+  .login-landscape-credentials .login-credential-actions {
+    grid-row: 3;
+    align-self: start;
+    padding-top: 12px;
+    padding-bottom: 72px;
+  }
+}
+
 @media (orientation: landscape) and (max-height: 600px) {
   :root {
     --landscape-content-gutter: clamp(40px, 6vw, 56px);
