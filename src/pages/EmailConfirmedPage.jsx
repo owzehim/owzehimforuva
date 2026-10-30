@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, XCircle, SpinnerGap } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
-import { resendConfirmationEmail } from '../api/authRepository'
+import { resendConfirmationEmail, sendEmailConfirmationReturnSignal } from '../api/authRepository'
+import { CONFIRMATION_EVENT_KEY } from '../domain/auth/emailConfirmationReturn'
 import CaptchaChallenge from '../components/CaptchaChallenge'
 import DevelopmentCaptchaPreview from '../components/DevelopmentCaptchaPreview'
 import { isCaptchaEnabled } from '../lib/captcha'
@@ -19,7 +20,6 @@ const copy = {
   errorMessage: '\uC778\uC99D \uB9C1\uD06C\uAC00 \uB9CC\uB8CC\uB418\uC5C8\uAC70\uB098 \uC774\uBBF8 \uC0AC\uC6A9\uB418\uC5C8\uC2B5\uB2C8\uB2E4.\n\uC0C8 \uC778\uC99D \uB9C1\uD06C\uB97C \uC694\uCCAD\uD55C \uB4A4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.',
 }
 
-const CONFIRMATION_EVENT_KEY = 'uvain-email-confirmation-result'
 const PREVIEW_STATUSES = new Set([
   'verifying',
   'success',
@@ -30,14 +30,28 @@ const PREVIEW_STATUSES = new Set([
   'resend_error',
 ])
 
-function announceConfirmationFinished(status) {
+function announceConfirmationFinished(status, returnToken) {
   try {
     window.localStorage.setItem(
       CONFIRMATION_EVENT_KEY,
-      JSON.stringify({ status, at: Date.now() }),
+      JSON.stringify({ status, returnToken, at: Date.now() }),
     )
   } catch {
     // The callback page still redirects itself if browser storage is disabled.
+  }
+  if (returnToken) {
+    // Retry a transient handoff failure; showing the result never depends on it.
+    const publish = async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await sendEmailConfirmationReturnSignal('complete', returnToken, status)
+          return
+        } catch {
+          if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
+        }
+      }
+    }
+    void publish()
   }
 }
 
@@ -48,6 +62,7 @@ export default function EmailConfirmedPage() {
   const previewStatus = PREVIEW_STATUSES.has(requestedPreview) ? requestedPreview : null
   const isPreviewMode = previewStatus !== null
   const [status, setStatus] = useState('verifying')
+  const [returnToken] = useState(() => new URLSearchParams(window.location.search).get('returnToken') || '')
   const [email, setEmail] = useState(() => isPreviewMode ? 'preview@uva.example' : '')
   const [captchaToken, setCaptchaToken] = useState('')
   const [captchaResetKey, setCaptchaResetKey] = useState(0)
@@ -56,9 +71,9 @@ export default function EmailConfirmedPage() {
   const [resendError, setResendError] = useState('')
 
   const finish = useCallback((nextStatus) => {
-    announceConfirmationFinished(nextStatus)
+    announceConfirmationFinished(nextStatus, returnToken)
     setStatus(nextStatus)
-  }, [])
+  }, [returnToken])
 
   useEffect(() => {
     if (isPreviewMode) return undefined
@@ -267,7 +282,7 @@ export default function EmailConfirmedPage() {
                 setResendMessage('')
                 setResendError('')
                 try {
-                  await resendConfirmationEmail(email, captchaToken)
+                  await resendConfirmationEmail(email, captchaToken, returnToken)
                   setResendMessage('인증 이메일을 다시 보냈습니다.')
                 } catch (error) {
                   setResendError(error.message || '인증 이메일을 다시 보내지 못했습니다.')

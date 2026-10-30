@@ -15,7 +15,8 @@ import { getPastelColor } from '../lib/avatarColor';
 import CaptchaChallenge from '../components/CaptchaChallenge';
 import DevelopmentCaptchaPreview from '../components/DevelopmentCaptchaPreview';
 import { isCaptchaEnabled } from '../lib/captcha';
-import { checkSignupEmailConfirmation, resendConfirmationEmail } from '../api/authRepository';
+import { checkSignupEmailConfirmation, resendConfirmationEmail, sendEmailConfirmationReturnSignal } from '../api/authRepository';
+import { watchEmailConfirmation } from '../domain/auth/emailConfirmationReturn';
 import { useModalFocus } from '../hooks/useModalFocus';
 
 const isMobileChromeBrowser = typeof navigator !== 'undefined'
@@ -718,6 +719,8 @@ export default function RegistrationPage() {
   const {
     step,
     formData,
+    confirmationReturnToken,
+    setConfirmationReturnToken,
     loading,
     error,
     handleChange,
@@ -857,7 +860,10 @@ export default function RegistrationPage() {
     setResendConfirmationMessage('');
     setResendConfirmationError('');
     try {
-      await resendConfirmationEmail(retryEmail, retryCaptchaToken);
+      const returnToken = crypto.randomUUID();
+      await resendConfirmationEmail(retryEmail, retryCaptchaToken, returnToken);
+      setConfirmationReturnToken(returnToken);
+      setConfirmationResult('');
       setResendConfirmationMessage(language === 'ko' ? '인증 이메일을 다시 보냈습니다.' : 'The confirmation email has been sent again.');
     } catch (resendError) {
       setResendConfirmationError(resendError.message || (language === 'ko' ? '인증 이메일을 다시 보내지 못했습니다.' : 'Could not resend the confirmation email.'));
@@ -916,6 +922,17 @@ export default function RegistrationPage() {
 
   useEffect(() => {
     if (step !== 'email') return undefined;
+    if (confirmationReturnToken) {
+      if (confirmationResult === 'success') return undefined;
+      return watchEmailConfirmation({
+        token: confirmationReturnToken,
+        check: token => sendEmailConfirmationReturnSignal('check', token),
+        onResult: status => {
+          setConfirmationResult(status);
+          setRetryEmail(formData.email || '');
+        },
+      });
+    }
 
     const readConfirmationResult = (event) => {
       if (event && event.key !== CONFIRMATION_EVENT_KEY) return;
@@ -953,7 +970,7 @@ export default function RegistrationPage() {
       window.removeEventListener('pageshow', handleResume);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [step, formData.email, handleCheckConfirmation]);
+  }, [step, formData.email, handleCheckConfirmation, confirmationReturnToken, confirmationResult]);
 
   const profileHeroProps = {
     fileInputRef,

@@ -6,7 +6,6 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { getSupabasePublishableKey } from '../_shared/publishableKey.ts'
 import { readJsonBody, RequestBodyTooLargeError } from '../_shared/readJsonBody.js'
 
-const confirmationRedirect = 'https://app.uva-in.nl/email-confirmed'
 const genericFailure = 'Unable to change the email address. Check your details and try again later.'
 
 function normalizeEmail(value: unknown) {
@@ -56,6 +55,15 @@ Deno.serve(async (req) => {
     const oldEmail = normalizeEmail(body?.currentEmail)
     const newEmail = normalizeEmail(body?.newEmail)
     const password = typeof body?.password === 'string' ? body.password : ''
+    // The request origin has already passed the project-specific CORS allowlist.
+    const confirmationUrl = new URL('/email-confirmed', origin || 'https://app.uva-in.nl')
+    if (body?.returnToken !== undefined) {
+      if (typeof body.returnToken !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.returnToken)) {
+        return json({ success: false, message: genericFailure }, 400)
+      }
+      confirmationUrl.searchParams.set('returnToken', body.returnToken)
+    }
+    const confirmationRedirect = confirmationUrl.toString()
 
     if (!validEmail(oldEmail) || !validEmail(newEmail) || oldEmail === newEmail || !password || password.length > 256) {
       return json({ success: false, message: genericFailure }, 400)

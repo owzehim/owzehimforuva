@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
 import { apiKeyOnlyFetch } from '../lib/apiKeyOnlyFetch'
 import { getCaptchaOptions } from '../lib/captcha'
+import { confirmationRedirectUrl } from '../domain/auth/emailConfirmationReturn'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
@@ -214,17 +215,26 @@ export async function resendLoginOtp(email, captchaToken) {
 }
 
 /** Resend the email confirmation link for an unconfirmed account. */
-export async function resendConfirmationEmail(email, captchaToken) {
+export async function resendConfirmationEmail(email, captchaToken, returnToken) {
   const { error } = await supabase.auth.resend({
     type: 'signup',
     email: email.trim().toLowerCase(),
     options: {
-      emailRedirectTo: 'https://app.uva-in.nl/email-confirmed',
+      emailRedirectTo: confirmationRedirectUrl(returnToken),
       ...getCaptchaOptions(captchaToken),
     },
   })
 
   if (error) throw new Error(error.message)
+}
+
+/** Relay only the confirmation screen outcome; this never installs a login session. */
+export async function sendEmailConfirmationReturnSignal(action, token, status) {
+  const { data, error } = await supabase.functions.invoke('email-confirmation-return-signal', {
+    body: { action, token, ...(status ? { status } : {}) },
+  })
+  if (error) throw new Error('Could not synchronize email confirmation status')
+  return data
 }
 
 /** Send a password reset link. */
