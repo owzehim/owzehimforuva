@@ -1078,9 +1078,6 @@ export default function RegistrationPage() {
             </p>
           </div>
           <div className="registration-email-actions">
-          <button type="button" onClick={() => navigate('/public')} className="registration-email-return-button" style={s.submitBtn}>
-            {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
-          </button>
           {confirmationCheckNeedsCaptcha && (
             <div style={{ marginTop: '10px' }}>
               <CaptchaChallenge
@@ -1090,6 +1087,7 @@ export default function RegistrationPage() {
                 }}
                 resetKey={confirmationCheckCaptchaResetKey}
                 language={language}
+                reserveSpace={false}
               />
             </div>
           )}
@@ -1098,11 +1096,14 @@ export default function RegistrationPage() {
               {confirmationCheckError}
             </p>
           )}
+          <button type="button" onClick={() => navigate('/public')} className="registration-email-return-button" style={s.submitBtn}>
+            {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
+          </button>
           <button
             type="button"
             onClick={handleEditEmail}
             className="registration-email-change-button"
-            style={{ ...s.ghostBtn, width: '100%', marginTop: '10px' }}
+            style={{ ...s.ghostBtn, width: '100%', marginTop: '6px' }}
           >
             {language === 'ko' ? '\uC774\uBA54\uC77C \uC8FC\uC18C \uBCC0\uACBD' : 'Change email address'}
           </button>
