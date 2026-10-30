@@ -31,7 +31,7 @@ function loadTurnstile() {
   return turnstileLoader
 }
 
-export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'ko', appearance = 'interaction-only' }) {
+export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'ko', appearance = 'interaction-only', reserveSpace = true }) {
   const containerRef = useRef(null)
   const widgetIdRef = useRef(null)
   const onVerifyRef = useRef(onVerify)
@@ -91,8 +91,8 @@ export default function CaptchaChallenge({ onVerify, resetKey = 0, language = 'k
   if (!siteKey) return null
 
   return (
-    <div className="flex min-h-[73px] flex-col items-center justify-center gap-2 py-1">
-      <div ref={containerRef} className="min-h-[65px] w-[300px] max-w-full shrink-0" />
+    <div className={`flex flex-col items-center justify-center gap-2 ${reserveSpace ? 'min-h-[73px] py-1' : ''}`}>
+      <div ref={containerRef} className={`w-[300px] max-w-full shrink-0 ${reserveSpace ? 'min-h-[65px]' : ''}`} />
       {loadFailed && (
         <p className="text-center text-xs text-red-500">
           {language === 'ko'
