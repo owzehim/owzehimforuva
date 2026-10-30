@@ -151,6 +151,12 @@ export default function ScanPageStampBox({
           )}
         </div>
       </button>
+      {isBenefitReady && (
+        <p className="text-center text-xs leading-5 text-gray-500">
+          Ask staff to apply your reward within 15 minutes of your first check-in
+          at this place today. Scanning again does not restart this window.
+        </p>
+      )}
     </div>
   )
 }

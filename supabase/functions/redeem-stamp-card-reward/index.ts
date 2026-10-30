@@ -35,9 +35,14 @@ async function syncClaimToAppsScript(url: string | null | undefined, label: stri
     }
     try {
       const result = text ? JSON.parse(text) : null
-      if (result && typeof result === 'object' && result.success === false) return { ok: false, label }
+      if (!result || typeof result !== 'object' || Array.isArray(result) || result.success !== true) {
+        console.error(`${label} reward claim sync was not acknowledged`)
+        return { ok: false, errorCode: 'script_rejected', label }
+      }
     } catch {
-      // Apps Script may return plain text on deployment errors.
+      // HTTP 200 alone does not prove Apps Script applied the Sheet update.
+      console.error(`${label} reward claim sync returned an invalid response`)
+      return { ok: false, errorCode: 'invalid_response', label }
     }
     return { ok: true, label }
   } catch (error) {
