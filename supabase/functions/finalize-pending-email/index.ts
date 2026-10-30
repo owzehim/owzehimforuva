@@ -3,6 +3,7 @@ import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
+import { finalizePendingEmail } from '../_shared/finalizePendingEmail.js'
 
 const failureMessage = 'Email confirmation completed, but the account update could not be finished. Please contact support.'
 
@@ -38,32 +39,15 @@ Deno.serve(async (req) => {
       return json({ success: false, message: failureMessage }, 401)
     }
 
-    const { data: changes, error: changeError } = await admin.rpc('complete_pending_email_change', {
-      p_new_user_id: user.id,
-      p_confirmed_email: user.email,
-    })
-    if (changeError) {
-      console.error('Pending email change finalization lookup failed')
+    let changed = false
+    try {
+      const result = await finalizePendingEmail(admin, user)
+      changed = result.changed
+    } catch {
+      console.error('Pending email finalization failed; mapping retained for retry')
       return json({ success: false, message: failureMessage }, 503)
     }
-    const change = Array.isArray(changes) ? changes[0] : null
-    if (!change?.old_user_id) return json({ success: true, changed: false })
-
-    const oldUserId = String(change.old_user_id)
-    if (oldUserId !== user.id) {
-      const { data: oldUserResult, error: oldUserLookupError } = await admin.auth.admin.getUserById(oldUserId)
-      if (oldUserLookupError && oldUserLookupError.status !== 404) {
-        console.error('Previous pending account could not be checked')
-        return json({ success: false, message: failureMessage }, 503)
-      }
-      if (oldUserResult?.user) {
-        const { error: deleteError } = await admin.auth.admin.deleteUser(oldUserId)
-        if (deleteError && deleteError.status !== 404) {
-          console.error('Previous pending account could not be removed')
-          return json({ success: false, message: failureMessage }, 503)
-        }
-      }
-    }
+    if (!changed) return json({ success: true, changed: false })
 
     if (!user.user_metadata?.registration) {
       const { error: cleanupError } = await admin

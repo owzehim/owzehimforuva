@@ -5,6 +5,7 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 import { constantTimeSecretEquals } from '../_shared/constantTimeSecret.js'
 import { getMasterPrivacyEndpoint } from '../_shared/masterPrivacyEndpoint.ts'
+import { retryPendingEmailCleanup } from '../_shared/finalizePendingEmail.js'
 
 async function anonymizeMasterSheet(url: string, userId: string) {
   const response = await fetch(url, {
@@ -92,6 +93,14 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
       global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
+
+    let pendingEmailCleanup = { completed: 0, failed: 0 }
+    try {
+      pendingEmailCleanup = await retryPendingEmailCleanup(admin)
+    } catch {
+      console.error('Pending email cleanup retry lookup failed')
+      pendingEmailCleanup.failed = 1
+    }
 
     const { data: expiredSignups, error: expiredSignupsError } = await admin.rpc(
       'find_expired_signup_auth_users',
@@ -279,7 +288,7 @@ Deno.serve(async (req) => {
 
     const overdueRecordCount = Number(overdueData) || 0
     const remainingQueueCount = Number(pendingQueueCount) || 0
-    const success = failedCount === 0 && expiredSignupFailedCount === 0 &&
+    const success = failedCount === 0 && expiredSignupFailedCount === 0 && pendingEmailCleanup.failed === 0 &&
       retentionFailedCount === 0 && overdueRecordCount === 0 && remainingQueueCount === 0
 
     return new Response(
@@ -287,6 +296,8 @@ Deno.serve(async (req) => {
         success,
         newly_queued_count: Number(newlyQueued) || 0,
         attempted_count: users.length,
+        pending_email_cleanup_completed_count: pendingEmailCleanup.completed,
+        pending_email_cleanup_failed_count: pendingEmailCleanup.failed,
         expired_signup_accounts_deleted_count: expiredSignupDeletedCount,
         expired_signup_accounts_failed_count: expiredSignupFailedCount,
         orphaned_pending_email_mappings_deleted_count: Number(cleanedPendingEmailMappings) || 0,
