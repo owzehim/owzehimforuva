@@ -291,6 +291,43 @@ export async function updatePassword(password, currentPassword, captchaToken) {
   }
 }
 
+/** Verify a password without replacing the persisted app session, then request deletion. */
+export async function deleteAccountWithPassword(currentPassword, captchaToken) {
+  if (typeof currentPassword !== 'string' || !currentPassword) {
+    throw new Error('확인을 위해 비밀번호를 입력하세요.')
+  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user?.email) {
+    throw new Error('계정 정보를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.')
+  }
+
+  const verifier = createEphemeralAuthClient()
+  try {
+    const { data, error } = await verifier.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+      options: getCaptchaOptions(captchaToken),
+    })
+    if (error) {
+      throw new Error(error.code === 'invalid_credentials'
+        ? '비밀번호가 올바르지 않습니다.'
+        : '비밀번호를 확인하지 못했습니다. 자동 확인을 완료한 뒤 다시 시도해주세요.')
+    }
+    if (data.user?.id !== user.id || !data.session?.access_token) {
+      throw new Error('비밀번호 확인에 실패했습니다. 다시 시도해주세요.')
+    }
+    return await supabase.functions.invoke('delete-my-account', {
+      body: { passwordAccessToken: data.session.access_token },
+    })
+  } finally {
+    // Revoke only the temporary password proof, including when deletion fails.
+    // The member's existing app session remains installed until deletion succeeds.
+    try { await verifier.auth.signOut({ scope: 'local' }) } catch {
+      // The Auth account may already have been deleted by the request above.
+    }
+  }
+}
+
 /** Sign the current persisted app session out. */
 export async function signOut() {
   const { error } = await supabase.auth.signOut({ scope: 'local' })
