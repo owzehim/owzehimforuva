@@ -8,6 +8,7 @@ import {
   getConsentReceiptRows,
 } from '../_shared/legalConsent.js'
 import { getStudentNumberRegistrationFields } from '../_shared/memberStudentNumber.js'
+import { finalizePendingEmail } from '../_shared/finalizePendingEmail.js'
 
 function text(value: unknown, maxLength = 200) {
   return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maxLength
@@ -126,6 +127,18 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}))
     if (Object.keys(body || {}).length > 0) {
       return json({ success: false, message: '요청에 허용되지 않은 프로필 데이터가 포함되어 있습니다.' }, 400)
+    }
+
+    // Both email confirmation and OTP login recovery finish registration here.
+    // Do not discard metadata/mapping until superseded-account cleanup succeeds.
+    try {
+      const finalized = await finalizePendingEmail(admin, user)
+      if (pendingEmailChange && !finalized.changed) {
+        throw new Error('Pending email association could not be finalized')
+      }
+    } catch {
+      console.error('Pending signup email cleanup failed; mapping retained for retry')
+      return json({ success: false, message: '회원가입 정리를 완료하지 못했습니다. 잠시 후 다시 시도해주세요.' }, 503)
     }
 
     const registration = user.user_metadata?.registration
