@@ -163,72 +163,76 @@ export default function LoginPage() {
 
           {step === 'credentials' && (
             <form onSubmit={submitCredentials} className="login-credentials-form space-y-3">
-              <LoginField label="이메일">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputClass}
-                  placeholder=""
-                  autoComplete="email"
-                  required
-                />
-              </LoginField>
-
-              <div className="relative">
-                <LoginField label="비밀번호">
+              <div className="login-credential-fields space-y-3">
+                <LoginField label="이메일">
                   <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className={`${inputClass} pr-9`}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className={inputClass}
                     placeholder=""
-                    autoComplete="current-password"
+                    autoComplete="email"
                     required
                   />
                 </LoginField>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
-                  className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-gray-500 dark:text-gray-400"
-                >
-                  {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
-                </button>
+
+                <div className="relative">
+                  <LoginField label="비밀번호">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={`${inputClass} pr-9`}
+                      placeholder=""
+                      autoComplete="current-password"
+                      required
+                    />
+                  </LoginField>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 표시'}
+                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-gray-500 dark:text-gray-400"
+                  >
+                    {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
-              <div className="login-forgot-password flex w-full justify-end">
+              <div className="login-credential-actions space-y-3">
+                <div className="login-forgot-password flex w-full justify-end">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-xs font-medium text-gray-400 hover:text-orange-500 dark:text-gray-500 dark:hover:text-orange-400"
+                  >
+                    비밀번호를 잊으셨나요?
+                  </button>
+                </div>
+
+                {error && <p className="text-sm text-red-500">{error}</p>}
+
+                <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
+
                 <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-xs font-medium text-gray-400 hover:text-orange-500 dark:text-gray-500 dark:hover:text-orange-400"
+                  type="submit"
+                  disabled={loading || (isCaptchaEnabled && !captchaToken)}
+                  className="login-credentials-submit mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
                 >
-                  비밀번호를 잊으셨나요?
+                  {loading ? '확인 중...' : '로그인'}
                 </button>
+
+                <p className="login-signup-prompt pt-2 text-center text-xs text-gray-400 dark:text-gray-500">
+                  계정이 없으신가요?{' '}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/register')}
+                    className="font-medium text-orange-500 hover:underline"
+                  >
+                    회원가입
+                  </button>
+                </p>
               </div>
-
-              {error && <p className="text-sm text-red-500">{error}</p>}
-
-              <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
-
-              <button
-                type="submit"
-                disabled={loading || (isCaptchaEnabled && !captchaToken)}
-                className="login-credentials-submit mt-5 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
-              >
-                {loading ? '확인 중...' : '로그인'}
-              </button>
-
-              <p className="login-signup-prompt pt-2 text-center text-xs text-gray-400 dark:text-gray-500">
-                계정이 없으신가요?{' '}
-                <button
-                  type="button"
-                  onClick={() => navigate('/register')}
-                  className="font-medium text-orange-500 hover:underline"
-                >
-                  회원가입
-                </button>
-              </p>
             </form>
           )}
 
