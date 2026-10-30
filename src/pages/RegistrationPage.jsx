@@ -1109,14 +1109,6 @@ export default function RegistrationPage() {
             </p>
           </div>
           <div className="registration-email-actions">
-            <button
-              type="button"
-              onClick={() => navigate('/public')}
-              className="registration-email-return-button"
-              style={s.submitBtn}
-            >
-              {language === 'ko' ? '\uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30' : 'Return to public page'}
-            </button>
             {confirmationCheckNeedsCaptcha && (
               <div>
                 {isPreviewMode ? (
@@ -1129,6 +1121,7 @@ export default function RegistrationPage() {
                     }}
                     resetKey={confirmationCheckCaptchaResetKey}
                     language={language}
+                    reserveSpace={false}
                   />
                 )}
               </div>
@@ -1140,9 +1133,17 @@ export default function RegistrationPage() {
             )}
             <button
               type="button"
+              onClick={() => navigate('/public')}
+              className="registration-email-return-button"
+              style={s.submitBtn}
+            >
+              {language === 'ko' ? '\uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30' : 'Return to public page'}
+            </button>
+            <button
+              type="button"
               onClick={handleEditEmail}
               className="registration-email-change-button"
-              style={{ ...s.ghostBtn, width: '100%', marginTop: '10px' }}
+              style={{ ...s.ghostBtn, width: '100%', marginTop: '6px' }}
             >
               {language === 'ko' ? '\uC774\uBA54\uC77C \uC8FC\uC18C \uBCC0\uACBD' : 'Change email address'}
             </button>

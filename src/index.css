@@ -1778,7 +1778,7 @@ html:not(.dark) .text-gray-400 {
     max-width: none !important;
     flex-direction: column !important;
     align-items: center !important;
-    gap: 10px !important;
+    gap: 6px !important;
     margin: 0 !important;
     padding: 0 !important;
     background: transparent !important;
