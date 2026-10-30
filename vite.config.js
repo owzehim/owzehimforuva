@@ -8,11 +8,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // "prompt" keeps the worker waiting; the app deliberately shows no prompt
+      // and never requests skipWaiting, so updates apply after all clients close.
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       workbox: {
-        skipWaiting: true,
-        clientsClaim: true,
+        skipWaiting: false,
+        clientsClaim: false,
       },
       manifest: {
         name: 'UvA-IN 멤버십',

@@ -5,34 +5,26 @@ import './index.css'
 import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 
-let refreshing = false
-
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (refreshing) return
-    refreshing = true
-    window.location.reload()
-  })
-
-  const updateSW = registerSW({
+  // Download updates quietly. The waiting worker activates naturally after
+  // every tab/app window using the old worker closes; never reload active work.
+  registerSW({
     immediate: true,
-    onNeedRefresh() {
-      updateSW(true)
-    },
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return
 
-      registration.update()
+      const checkForUpdates = () => registration.update().catch((error) => {
+        console.warn('Service worker update check failed:', error)
+      })
+      checkForUpdates()
 
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-          registration.update()
+          checkForUpdates()
         }
       })
 
-      setInterval(() => {
-        registration.update()
-      }, 60 * 60 * 1000)
+      setInterval(checkForUpdates, 60 * 60 * 1000)
     },
     onRegisterError(error) {
       console.error('Service worker registration failed:', error)
