@@ -31,6 +31,7 @@ export function useRegisterMember() {
   const [step, setStep] = useState('about');
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState('');
+  const [confirmationReturnToken, setConfirmationReturnToken] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -117,6 +118,7 @@ export function useRegisterMember() {
     setLoading(true);
     try {
       const normalizedEmail = formData.email.trim().toLowerCase();
+      const returnToken = crypto.randomUUID();
 
       if (pendingConfirmationEmail && normalizedEmail !== pendingConfirmationEmail) {
         await changeUnconfirmedRegistrationEmail({
@@ -124,8 +126,10 @@ export function useRegisterMember() {
           newEmail: normalizedEmail,
           password: formData.password,
           captchaToken: options.captchaToken,
+          returnToken,
         });
         setPendingConfirmationEmail(normalizedEmail);
+        setConfirmationReturnToken(returnToken);
         setStep('email');
         return;
       }
@@ -154,10 +158,12 @@ export function useRegisterMember() {
         legalDocumentsVersion: options.legalDocumentsVersion,
         ageConfirmed: options.ageConfirmed,
         captchaToken: options.captchaToken,
+        returnToken,
       });
 
       // Account created — now tell user to check their email.
       setPendingConfirmationEmail(normalizedEmail);
+      setConfirmationReturnToken(returnToken);
       setStep('email');
     } catch (err) {
       setError(
@@ -171,6 +177,8 @@ export function useRegisterMember() {
   return {
     step,
     formData,
+    confirmationReturnToken,
+    setConfirmationReturnToken,
     loading,
     error,
     handleChange,

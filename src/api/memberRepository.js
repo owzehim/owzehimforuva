@@ -8,13 +8,14 @@
 
 import { supabase } from '../lib/supabase';
 import { getCaptchaOptions } from '../lib/captcha';
+import { confirmationRedirectUrl } from '../domain/auth/emailConfirmationReturn';
 
 export const ALREADY_REGISTERED_MESSAGE =
   '\uC774\uBBF8 \uAC00\uC785\uB41C \uD68C\uC6D0\uC785\uB2C8\uB2E4. \uB85C\uADF8\uC778\uD558\uAC70\uB098 \uC774\uBA54\uC77C \uC778\uC99D\uC744 \uD655\uC778\uD574\uC8FC\uC138\uC694.';
 
-export async function changeUnconfirmedRegistrationEmail({ currentEmail, newEmail, password, captchaToken }) {
+export async function changeUnconfirmedRegistrationEmail({ currentEmail, newEmail, password, captchaToken, returnToken }) {
   const { data, error } = await supabase.functions.invoke('change-pending-email', {
-    body: { currentEmail, newEmail, password, captchaToken },
+    body: { currentEmail, newEmail, password, captchaToken, returnToken },
   });
 
   if (error) {
@@ -102,8 +103,7 @@ export async function registerMember(payload) {
     email: normalizedEmail,
     password,
     options: {
-      emailRedirectTo:
-        'https://app.uva-in.nl/email-confirmed',
+      emailRedirectTo: confirmationRedirectUrl(payload.returnToken),
       ...getCaptchaOptions(payload.captchaToken),
       // You can pass extra metadata here if needed
       data: {
