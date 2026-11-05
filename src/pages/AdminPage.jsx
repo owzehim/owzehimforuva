@@ -5,7 +5,7 @@ import { sanitizeRichText } from '../lib/sanitizeHtml'
 import LoadingIndicator from '../components/LoadingIndicator'
 import { useNavigate } from 'react-router-dom'
 import { ImageCropper } from '../components/ImageCropper'
-import { Plus, MapPin, Ticket, StarFour, UserCircle } from '@phosphor-icons/react'
+import { Plus, MapPin, Ticket, StarFour, UserCircle, CaretDown } from '@phosphor-icons/react'
 import StampCardEditPanel from '../features/stampCard/components/StampCardEditPanel'
 import StampCardMemberPanel from '../features/stampCard/components/StampCardMemberPanel'
 import { fetchConfigBySpot } from '../features/stampCard/api/config'
@@ -319,6 +319,8 @@ function ReportsTab() {
   const [noticeSendError, setNoticeSendError] = useState('')
   const [savingReportId, setSavingReportId] = useState(null)
   const [decisionSelections, setDecisionSelections] = useState({})
+  const [reportView, setReportView] = useState('open')
+  const [expandedReports, setExpandedReports] = useState({})
 
   const loadReports = useCallback(async () => {
     setLoading(true)
@@ -606,16 +608,46 @@ function ReportsTab() {
 
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center"><LoadingIndicator /></div>
 
+  // 한마디 reports are done once resolved; 리뷰 reports once marked reviewed.
+  const isReportDone = (item) => (item.kind === '한마디' ? item.status === 'resolved' : Boolean(item.reviewed_at))
+  const openItems = items.filter((item) => !isReportDone(item))
+  const doneItems = items.filter(isReportDone)
+  const visibleItems = reportView === 'open' ? openItems : doneItems
+  const reportKey = (item) => `${item.kind}-${item.id}`
+  const isExpanded = (item) => expandedReports[reportKey(item)] ?? !isReportDone(item)
+  const toggleExpanded = (item) => setExpandedReports((current) => ({ ...current, [reportKey(item)]: !isExpanded(item) }))
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-gray-900">리뷰·한마디 신고</h2>
         <button onClick={loadReports} className="text-sm text-blue-600">새로고침</button>
       </div>
+      <div className="flex gap-2" role="tablist" aria-label="신고 상태">
+        {[
+          { key: 'open', label: '검토 필요', count: openItems.length },
+          { key: 'done', label: '완료', count: doneItems.length },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={reportView === tab.key}
+            onClick={() => setReportView(tab.key)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${reportView === tab.key ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600'}`}
+          >
+            {tab.label} {tab.count}
+          </button>
+        ))}
+      </div>
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {items.length === 0 ? (
-        <p className="rounded-xl bg-white p-5 text-sm text-gray-500">접수된 신고가 없습니다.</p>
-      ) : items.map((item) => {
+      {visibleItems.length === 0 ? (
+        <p className="rounded-xl bg-white p-5 text-sm text-gray-500">
+          {reportView === 'open' ? '검토가 필요한 신고가 없습니다.' : '완료된 신고가 없습니다.'}
+        </p>
+      ) : visibleItems.map((item) => {
+        const expanded = isExpanded(item)
+        const preview = (item.target?.body || item.note_snapshot || '').replace(/\s+/g, ' ').trim()
         const selectedDecision = decisionSelections[item.id] ?? item.decision
         const isResolved = item.kind === '한마디' && item.status === 'resolved'
         const decisionChanged = isResolved && selectedDecision && selectedDecision !== item.decision
@@ -627,12 +659,28 @@ function ReportsTab() {
             : '신고 확인'
 
         return (
-        <article key={`${item.kind}-${item.id}`} className="rounded-xl border border-gray-100 bg-white p-4 space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-xs text-gray-500">
-              {item.kind} · {new Date(item.created_at).toLocaleString('nl-NL')}
-              {item.reviewed_at && <span className="ml-2 text-green-700">검토 완료</span>}
+        <article key={reportKey(item)} className="rounded-xl border border-gray-100 bg-white p-4 space-y-2">
+          <button
+            type="button"
+            onClick={() => toggleExpanded(item)}
+            aria-expanded={expanded}
+            className="flex w-full items-start justify-between gap-3 text-left"
+          >
+            <div className="min-w-0">
+              <div className="text-xs text-gray-500">
+                {item.kind} · {new Date(item.created_at).toLocaleString('nl-NL')}
+                {item.reviewed_at && <span className="ml-2 text-green-700">검토 완료</span>}
+              </div>
+              {!expanded && (
+                <p className="mt-1 truncate text-sm text-gray-700">
+                  {item.kind === '한마디' && `${reportReasonLabel(item.reason)} · `}{preview || '원문이 이미 삭제되었습니다.'}
+                </p>
+              )}
             </div>
+            <CaretDown size={16} className={`mt-0.5 shrink-0 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </button>
+          {expanded && (<>
+          <div className="flex items-center justify-end gap-3">
             {item.kind === '한마디' ? (
               <div className="flex shrink-0 gap-2">
                 {item.kind === '한마디' && item.note_id && (
@@ -718,6 +766,7 @@ function ReportsTab() {
               </button>
             </div>
           )}
+          </>)}
         </article>
         )
       })}
