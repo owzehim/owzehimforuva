@@ -81,6 +81,7 @@ to `main`; `verify_jwt` unchanged):
 | send-content-report-notice | v6 | OPS-12: email logo from the project's own storage |
 | sync-to-sheets | v37 | Current shared login check (was out of date) |
 | verify-member-qr | deleted | OPS-14 (unused); now returns 404 |
+| admin-add-stamp | v27 | Reward restore removed (`restoreReward` action rejected as an invalid request) |
 
 Smoke test: browser preflight from `https://app.uva-in.nl` → `ok` with that origin allowed for all six;
 `verify-member-qr` → `NOT_FOUND`.
