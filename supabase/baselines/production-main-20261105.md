@@ -44,7 +44,27 @@ Supersedes `production-main-20261006.md`.
 |---|---|---|---|---|
 | after frontend `bd775e2` (main) / `7cfcab8` (dev) was live | `20261105160000_sec55_sec56_note_author_integrity` | DEV, then production | That single file run in one transaction with its ledger row (same version); **not** `db push` | Members' UPDATE limited to `body, is_anonymous, hidden_at`; trigger on every INSERT/UPDATE; `refresh_member_note_authors` on members; policy `SEC56 read visible note author avatars` replaces `SEC52 …`; a rolled-back "rename author to 운영진" attempt was denied and a normal body edit kept the author. All 8 production notes kept the same author, anonymity and photo path (no forged data existed). |
 
-Fresh pre-change backup taken just before the production apply (kept outside the repository).
+| after frontend `e6dd993` (main) / `816f4cd` (dev) was live | `20261105180000_func01_func08_database_first_privacy_sync` | DEV, then production | Same single-file + ledger-row method | `finish_privacy_retention_database(uuid)` exists, EXECUTE only for service_role; ledger row present; Master Sheet link unchanged (1 URL); queue empty. |
+
+Edge Functions deployed the same day (DEV from `dev`, then production from `main`; `verify_jwt`
+unchanged; downloaded code identical to the branch):
+
+| Function | Production version | Change |
+|---|---|---|
+| manage-legal-consent | v3 | Legal version 2026-11-05-01 |
+| complete-member-registration | v23 | Legal version 2026-11-05-01 |
+| redeem-stamp-card-reward | v18 | FUNC-09, GDPR-20 |
+| password-reset-return-signal | v6 | SEC-61 (rate limit, email-link session for `complete`) |
+| send-content-report-notice | v5 | SEC-62; also brings it up to date with `_shared/requireVerifiedLogin.ts` |
+| delete-my-account | v23 | FUNC-01 |
+| privacy-retention-sync | v36 | FUNC-08 |
+
+Smoke tests on production: reset signal `check` → 200, `complete` with a password-login token → 401,
+consent status without login → 401. Live app bundle uses version 2026-11-05-01 and the server's
+`requiredVersion`. Still on the pre-`8e575f8` shared login check: `admin-add-stamp`,
+`admin-create-member`, `admin-update-member`, `sync-to-sheets`.
+
+Fresh pre-change backups were taken just before each production apply (kept outside the repository).
 The SEC-55 and SEC-56 sections below describe the state **before** this change.
 
 ## Open findings confirmed in production
