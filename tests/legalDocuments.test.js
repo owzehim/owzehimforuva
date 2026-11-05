@@ -24,7 +24,11 @@ test('Korean privacy text includes the app privacy sections and contact informat
   for (const section of ['1. 개인정보 처리자', '4. 제휴 사업자와 정보 공유', '7. 정보 보유 기간', '10. 회원의 권리', '13. 문의']) {
     assert.ok(body.includes(section), `Missing Korean privacy section: ${section}`)
   }
-  assert.ok(body.includes('+31 6 4271 4078'))
+  // GDPR-18: privacy requests go to the association mailbox, not a personal phone.
+  for (const privacy of [legalDocuments.privacy.body, body]) {
+    assert.ok(privacy.includes('uvaksa16@gmail.com'))
+    assert.ok(!privacy.includes('+31 6 4271 4078'))
+  }
 })
 
 test('partner ending policy matches between English and Korean documents', () => {

@@ -51,6 +51,10 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      # SEC-57: fail on high/critical advisories (e.g. the HTML sanitizer).
+      - name: Audit dependencies for high and critical advisories
+        run: npm audit --audit-level=high
+
       - name: Run automated tests
         run: npm test
 
