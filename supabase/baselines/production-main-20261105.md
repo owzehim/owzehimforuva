@@ -50,6 +50,8 @@ Supersedes `production-main-20261006.md`.
 
 | with the admin 관리자 / 일반 member tabs | `20261105220000_admin_list_admin_user_ids` | DEV, then production | Same single-file + ledger-row method | `admin_list_admin_user_ids()` is SECURITY DEFINER, EXECUTE for authenticated only (not anon); returns rows only when `is_admin()`; non-admin call returns 0 rows; `admin_roles` RLS unchanged; ledger row present. |
 
+| OPS-11 (merged in PR #13; backup `uvain-backups/2026-11-05-pre-ops11` first) | `20261105230000_ops11_archive_stamp_progress_reset` | DEV, then production | Same single-file + ledger-row method; applied before the two functions | `stamp_card_visits_archive` / `stamp_card_rewards_archive`: RLS on, no anon/authenticated access, `user_id` → `auth.users` ON DELETE CASCADE, `delete_after` = 12 months. `admin_reset_stamp_progress(uuid, uuid)` EXECUTE for service_role only; non-admin actor refused. Live stamp data unchanged (16 visits, 3 rewards); ledger row present. |
+
 Edge Functions deployed the same day (DEV from `dev`, then production from `main`; `verify_jwt`
 unchanged; downloaded code identical to the branch):
 
@@ -82,6 +84,8 @@ to `main`; `verify_jwt` unchanged):
 | sync-to-sheets | v37 | Current shared login check (was out of date) |
 | verify-member-qr | deleted | OPS-14 (unused); now returns 404 |
 | admin-add-stamp | v27 | Reward restore removed (`restoreReward` action rejected as an invalid request) |
+| admin-add-stamp | v28 | OPS-11: reset calls `admin_reset_stamp_progress` (archives instead of deleting) |
+| privacy-retention-sync | v37 | OPS-11: deletes archive rows past `delete_after` (12 months) |
 
 Smoke test: browser preflight from `https://app.uva-in.nl` → `ok` with that origin allowed for all six;
 `verify-member-qr` → `NOT_FOUND`.
