@@ -1211,6 +1211,9 @@ async function getFunctionErrorMessage(error) {
 function MembersTab() {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [adminUserIds, setAdminUserIds] = useState(() => new Set())
+  const [adminListError, setAdminListError] = useState(false)
+  const [memberView, setMemberView] = useState('admin')
   const [showForm, setShowForm] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
 
@@ -1244,6 +1247,11 @@ function MembersTab() {
     if (error) {
       console.error('fetchMembers error:', error)
     }
+
+    const { data: adminIds, error: adminIdsError } = await supabase.rpc('admin_list_admin_user_ids')
+    if (adminIdsError) console.error('admin list error:', adminIdsError)
+    setAdminListError(Boolean(adminIdsError))
+    setAdminUserIds(new Set((adminIds || []).map((row) => (typeof row === 'string' ? row : row?.admin_list_admin_user_ids)).filter(Boolean)))
 
     setMembers(data || [])
     setLoading(false)
@@ -1322,7 +1330,10 @@ function MembersTab() {
     setShowForm(true)
   }
 
-  const sorted = koreanSort(members, 'last_name')
+  const adminMembers = members.filter((member) => adminUserIds.has(member.user_id))
+  const regularMembers = members.filter((member) => !adminUserIds.has(member.user_id))
+  const visibleMembers = memberView === 'admin' ? adminMembers : regularMembers
+  const sorted = koreanSort(visibleMembers, 'last_name')
 
   return (
     <div className="space-y-4">
@@ -1332,10 +1343,31 @@ function MembersTab() {
         </h2>
       </div>
 
+      <div className="flex gap-2" role="tablist" aria-label="멤버 구분">
+        {[
+          { key: 'admin', label: '관리자', count: adminMembers.length },
+          { key: 'regular', label: '일반', count: regularMembers.length },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={memberView === tab.key}
+            onClick={() => setMemberView(tab.key)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium ${memberView === tab.key ? 'bg-blue-600 text-white' : 'border border-gray-200 bg-white text-gray-600'}`}
+          >
+            {tab.label} {tab.count}
+          </button>
+        ))}
+      </div>
+      {adminListError && (
+        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">관리자 목록을 불러오지 못했습니다.</p>
+      )}
+
       {loading ? (
         <div className="flex min-h-[40vh] items-center justify-center"><LoadingIndicator /></div>
-      ) : members.length === 0 ? (
-        <p className="text-gray-500 text-sm">멤버가 없어요.</p>
+      ) : visibleMembers.length === 0 ? (
+        <p className="text-gray-500 text-sm">{memberView === 'admin' ? '관리자가 없어요.' : '멤버가 없어요.'}</p>
       ) : (
         <div className="space-y-2">
           {sorted.map((member) => (
