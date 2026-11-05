@@ -1205,13 +1205,6 @@ function MembersTab() {
   }, [])
 
   const handleEdit = async () => {
-    const todayAmsterdam = getAmsterdamCalendarDate()
-    const membershipValidUntil = normalizeMemberEditValue('membership_valid_until', form.membership_valid_until)
-    if (form.is_member && (!membershipValidUntil || (todayAmsterdam && membershipValidUntil < todayAmsterdam))) {
-      alert('멤버십을 활성화하려면 오늘 이후의 유효기간을 먼저 설정해 주세요.')
-      return
-    }
-
     const updates = Object.fromEntries(
       memberEditFields
         .map((field) => [
@@ -1225,6 +1218,17 @@ function MembersTab() {
 
     if (Object.keys(updates).length === 0) {
       alert('변경한 내용이 없습니다.')
+      return
+    }
+
+    // FUNC-10: only check the expiry date when this edit touches membership,
+    // so an expired member's name or other details can still be corrected.
+    const touchesMembership = 'is_member' in updates || 'membership_valid_until' in updates
+    const todayAmsterdam = getAmsterdamCalendarDate()
+    const membershipValidUntil = normalizeMemberEditValue('membership_valid_until', form.membership_valid_until)
+    if (touchesMembership && form.is_member &&
+        (!membershipValidUntil || (todayAmsterdam && membershipValidUntil < todayAmsterdam))) {
+      alert('멤버십을 활성화하려면 오늘 이후의 유효기간을 먼저 설정해 주세요.')
       return
     }
 
