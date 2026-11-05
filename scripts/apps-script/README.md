@@ -10,6 +10,17 @@ The Edge Functions use separate `MASTER_APPS_SCRIPT_SECRET` and `PARTNER_APPS_SC
 4. Deploy a new Web App version. Keep access settings compatible with the existing webhook deployment.
 5. Save the deployed Web App URL to `partnership_integrations.partner_apps_script_url` for that partnership.
 
+## Per-partner secrets (SEC-58)
+
+Each partnership has its own secret in `public.partnership_apps_script_secrets` (server only; created automatically for every partnership). To switch a partner from the shared secret to its own:
+
+1. Supabase dashboard → Table Editor → `partnership_apps_script_secrets` → copy that partner's `secret`. Never paste it into chat or the repo.
+2. In that partner's Apps Script → **Project Settings → Script Properties**, replace the value of `PARTNER_APPS_SCRIPT_SECRET` with it. The script code does not change.
+3. Back in the table, set `enabled` to `true` for that partner.
+4. Check with one test check-in that the partner sheet still updates.
+
+While `enabled` is false the Edge Functions keep sending the shared `PARTNER_APPS_SCRIPT_SECRET`. When every partner is switched, remove that shared Supabase secret. Give partners view-only access to their sheet (no edit or script access), so they cannot read the Script Properties at all.
+
 ## Master script
 
 Update the Master Apps Script authorization guard to read the `__uvain_shared_secret` request field and compare it with the `MASTER_APPS_SCRIPT_SECRET` Script Property. Configure the distinct master secret in that script and deploy a new Web App version. Keep the existing `privacy_anonymize` handler working; account deletion and retention cleanup depend on it.

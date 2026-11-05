@@ -6,12 +6,14 @@ import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { sheetText } from '../_shared/sheetText.js'
 import { getAllowedAppsScriptUrl, withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
+import { getPartnerAppsScriptSecret } from '../_shared/partnerAppsScriptSecret.js'
 import { isMembershipActive } from '../_shared/membershipStatus.js'
 
 async function postJsonToAppsScript(
   url: string | null | undefined,
   payload: Record<string, unknown>,
   label: string,
+  secret?: string | null,
 ): Promise<{
   ok: boolean
   skipped?: boolean
@@ -35,7 +37,7 @@ async function postJsonToAppsScript(
       signal: controller.signal,
       body: JSON.stringify(withAppsScriptSecret(
         payload,
-        Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
+        secret ?? Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
       )),
     })
     const text = await response.text().catch(() => '')
@@ -436,7 +438,12 @@ Deno.serve(async (req) => {
     }
     const sheetResults = await Promise.all([
       postJsonToAppsScript(integrations?.master_apps_script_url, masterPayload, 'master'),
-      postJsonToAppsScript(integrations?.partner_apps_script_url, partnerPayload, 'partner'),
+      postJsonToAppsScript(
+        integrations?.partner_apps_script_url,
+        partnerPayload,
+        'partner',
+        await getPartnerAppsScriptSecret(admin, storeId, Deno.env.get('PARTNER_APPS_SCRIPT_SECRET')),
+      ),
     ])
 
     return new Response(

@@ -6,10 +6,16 @@ import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginRespon
 import { sheetText } from '../_shared/sheetText.js'
 import { isMembershipActive } from '../_shared/membershipStatus.js'
 import { getAllowedAppsScriptUrl, withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
+import { getPartnerAppsScriptSecret } from '../_shared/partnerAppsScriptSecret.js'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-async function syncClaimToAppsScript(url: string | null | undefined, label: string, payload: Record<string, unknown>) {
+async function syncClaimToAppsScript(
+  url: string | null | undefined,
+  label: string,
+  payload: Record<string, unknown>,
+  secret?: string | null,
+) {
   if (!url) return { ok: false, skipped: true, label }
   const endpoint = getAllowedAppsScriptUrl(url)
   if (!endpoint) {
@@ -25,7 +31,7 @@ async function syncClaimToAppsScript(url: string | null | undefined, label: stri
       signal: controller.signal,
       body: JSON.stringify(withAppsScriptSecret(
         payload,
-        Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
+        secret ?? Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
       )),
     })
     const text = await response.text().catch(() => '')
@@ -263,7 +269,12 @@ Deno.serve(async (req) => {
     const { claimed_at_time: _masterOnlyTime, ...partnerPayload } = payload
     const sheetResults = await Promise.all([
       syncClaimToAppsScript(integrations?.master_apps_script_url, 'master', payload),
-      syncClaimToAppsScript(integrations?.partner_apps_script_url, 'partner', partnerPayload),
+      syncClaimToAppsScript(
+        integrations?.partner_apps_script_url,
+        'partner',
+        partnerPayload,
+        await getPartnerAppsScriptSecret(admin, storeId, Deno.env.get('PARTNER_APPS_SCRIPT_SECRET')),
+      ),
     ])
 
     // FUNC-09: a Sheet that is intentionally not connected (no URL) is not a
