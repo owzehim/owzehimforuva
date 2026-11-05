@@ -6,8 +6,9 @@
 // emails, student numbers or tokens. No session replay, no performance tracing.
 import { errorReportingEnvironment, scrubBreadcrumb, scrubEvent } from './errorReportScrub.js'
 
-// Flip to true only together with the privacy-policy update that names Sentry.
-const PRODUCTION_REPORTING_APPROVED = false
+// Production reporting is allowed because the Privacy Policy (legal version
+// 2026-11-06-01) names Sentry; tests/errorReportScrub.test.js keeps them in step.
+export const PRODUCTION_REPORTING_APPROVED = true
 
 /* global __APP_DEPLOY_ENV__, __APP_RELEASE__ */
 const deployEnv = typeof __APP_DEPLOY_ENV__ === 'string' ? __APP_DEPLOY_ENV__ : ''
