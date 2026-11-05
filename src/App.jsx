@@ -63,13 +63,20 @@ function App() {
     }
 
     let cancelled = false
-    setLegalConsentState({ userId, status: 'loading' })
+    // PERF-12: when re-checking for the same user, keep the previous result
+    // on screen instead of switching to the loading state (which remounts
+    // the member, scanner and admin screens).
+    const keepPrevious = (current) => current?.userId === userId &&
+      (current.status === 'accepted' || current.status === 'required')
+    setLegalConsentState((current) => keepPrevious(current) ? current : { userId, status: 'loading' })
+
+    const failed = () => setLegalConsentState((current) => keepPrevious(current) ? current : { userId, status: 'error' })
 
     supabase.functions.invoke('manage-legal-consent', { body: { action: 'status' } })
       .then(({ data, error }) => {
         if (cancelled) return
         if (error || data?.success !== true) {
-          setLegalConsentState({ userId, status: 'error' })
+          failed()
           return
         }
         // GDPR-19: the server decides which version is current, so app and
@@ -81,11 +88,13 @@ function App() {
         setLegalConsentState({ userId, status: accepted ? 'accepted' : 'required' })
       })
       .catch(() => {
-        if (!cancelled) setLegalConsentState({ userId, status: 'error' })
+        if (!cancelled) failed()
       })
 
     return () => { cancelled = true }
-  }, [userId, isOtpPending, sessionClaimed, appSession?.access_token, legalConsentCheckKey])
+    // PERF-12: not keyed on access_token — a routine token refresh (hourly,
+    // or when the app returns to the foreground) must not re-run the gate.
+  }, [userId, isOtpPending, sessionClaimed, legalConsentCheckKey])
 
   useEffect(() => {
     let cancelled = false
