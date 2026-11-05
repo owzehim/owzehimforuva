@@ -72,7 +72,7 @@ the same commit to `dev`.
 - After each production change, re-run the read-only checks (CITS report v2.0 appendix B) and add
   the result to `supabase/baselines/`.
 - Edge Function secrets set by us: `CORS_ALLOWED_ORIGINS`, `RETENTION_JOB_SECRET`,
-  `MASTER_APPS_SCRIPT_SECRET`, `PARTNER_APPS_SCRIPT_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+  `MASTER_APPS_SCRIPT_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
   (Supabase provides `SUPABASE_URL`, `SUPABASE_SECRET_KEYS`, `SUPABASE_PUBLISHABLE_KEYS`). GitHub
   Actions secrets: `RETENTION_JOB_SECRET`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
   `SUPABASE_PROD_DB_URL`. Values live only in those settings, never in the repository.

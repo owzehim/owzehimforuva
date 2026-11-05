@@ -26,7 +26,7 @@ async function postJsonToAppsScript(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(withAppsScriptSecret(
         payload,
-        secret ?? Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
+        label === 'master' ? Deno.env.get('MASTER_APPS_SCRIPT_SECRET') : secret,
       )),
     })
     const text = await response.text().catch(() => '')
@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
           review_submitted_at_date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' }),
         },
         'partner',
-        await getPartnerAppsScriptSecret(admin, redemption.store_id, Deno.env.get('PARTNER_APPS_SCRIPT_SECRET')),
+        await getPartnerAppsScriptSecret(admin, redemption.store_id),
       )
     }
     if (!masterSync.ok || !partnerSync.ok) {
