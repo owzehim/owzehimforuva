@@ -30,6 +30,14 @@ test('privacy policy tells members that non-anonymous notes show their profile p
   assert.ok(legalDocuments.privacy.ko.body.includes('익명이 아닌 노트에는 로그인한 다른 앱 회원에게 프로필 사진도 함께 표시됩니다'))
 })
 
+test('documents say live rating summaries are public and may reveal a single rating (SEC-60)', () => {
+  assert.ok(legalDocuments.privacy.body.includes('including visitors who are not signed in'))
+  assert.ok(legalDocuments.terms.body.includes('including visitors who are not signed in'))
+  assert.ok(legalDocuments.privacy.ko.body.includes('로그인하지 않은 방문자를 포함해'))
+  assert.ok(legalDocuments.terms.ko.body.includes('로그인하지 않은 방문자도'))
+  assert.ok(!legalDocuments.privacy.body.includes('visible to signed-in active App members'))
+})
+
 test('Korean privacy text includes the app privacy sections and contact information', () => {
   const body = legalDocuments.privacy.ko.body
   for (const section of ['1. 개인정보 처리자', '4. 제휴 사업자와 정보 공유', '7. 정보 보유 기간', '10. 회원의 권리', '13. 문의']) {
