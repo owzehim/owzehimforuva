@@ -69,3 +69,15 @@ test('only Vercel previews report until production is approved', () => {
   assert.equal(errorReportingEnvironment('', { productionApproved: true }), null)
   assert.equal(errorReportingEnvironment('development', { productionApproved: true }), null)
 })
+
+test('production reporting is only on while both policy languages name Sentry', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { legalDocuments } = await import('../src/content/legalDocuments.js')
+  const approved = /export const PRODUCTION_REPORTING_APPROVED = true/.test(
+    readFileSync('src/lib/errorMonitoring.js', 'utf8'),
+  )
+  if (!approved) return
+  assert.match(legalDocuments.privacy.body, /Sentry \(EU region\)/)
+  assert.match(legalDocuments.privacy.ko.body, /Sentry\(EU 지역\)/)
+  assert.match(legalDocuments.privacy.body, /deleted after 30 days/)
+})

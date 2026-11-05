@@ -1,6 +1,6 @@
 import { legalDocumentsKo } from './legalDocumentsKo.js'
 
-export const LEGAL_DOCUMENT_VERSION = '2026-11-05-01';
+export const LEGAL_DOCUMENT_VERSION = '2026-11-06-01';
 
 export const legalDocuments = {
   terms: {
@@ -113,10 +113,10 @@ By creating an account, you confirm that you have read, understood, and agree to
   },
   privacy: {
     title: 'Privacy Policy',
-    effectiveDate: '5 November 2026',
+    effectiveDate: '6 November 2026',
     body: `UvA-IN Privacy Policy
 
-Effective Date: 5 November 2026
+Effective Date: 6 November 2026
 
 This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
@@ -166,7 +166,7 @@ The App calculates location-level star-rating and selected-tag summaries from su
 
 6. Information Sharing
 
-We share information with participating partner businesses for reward administration, transaction verification, and the visit-level review feedback described in Section 4; with service providers that support the App; and with competent public authorities where required by law. Current service providers include Supabase for account authentication, database and file storage; Vercel for hosting and delivery of the App; Resend for account and email-verification messages; Cloudflare for Turnstile security checks; Google services for internal administrative records and partner-specific transaction and review records; and MapTiler for map display. The internal administrative records sent through Google services can include the member identity and profile fields listed in Section 2, together with visit, reward, and review records. Access to internal records is limited to authorised UvA-IN administrators. Partner-specific files are shared with the relevant business as view-only access; each business must only have access to its own file, not another partner's or the internal Master records. Partner files do not include member names, student numbers, account identifiers, or the full profile fields listed in Section 2. MapTiler receives map requests when you use a map feature. Fonts are served with the App and are not loaded from Google Fonts. We do not currently use the retired translation or comment-moderation features to send member content to Google Cloud Translation or OpenAI.
+We share information with participating partner businesses for reward administration, transaction verification, and the visit-level review feedback described in Section 4; with service providers that support the App; and with competent public authorities where required by law. Current service providers include Supabase for account authentication, database and file storage; Vercel for hosting and delivery of the App; Resend for account and email-verification messages; Cloudflare for Turnstile security checks; Google services for internal administrative records and partner-specific transaction and review records; and MapTiler for map display. We also use Sentry (EU region) to find and fix app errors. When an error occurs, the error message, the address of the screen where it happened (without search parameters or tokens), the browser and device type, and the app version are sent to Sentry. Names, email addresses, student numbers and account identifiers are not sent, Sentry is set not to store IP addresses, and error reports are deleted after 30 days. The internal administrative records sent through Google services can include the member identity and profile fields listed in Section 2, together with visit, reward, and review records. Access to internal records is limited to authorised UvA-IN administrators. Partner-specific files are shared with the relevant business as view-only access; each business must only have access to its own file, not another partner's or the internal Master records. Partner files do not include member names, student numbers, account identifiers, or the full profile fields listed in Section 2. MapTiler receives map requests when you use a map feature. Fonts are served with the App and are not loaded from Google Fonts. We do not currently use the retired translation or comment-moderation features to send member content to Google Cloud Translation or OpenAI.
 
 The role of each provider depends on the service: a provider may process data on our instructions, or may independently process technical request information under its own privacy notice. The production Supabase project is hosted in the EU. Resend stores service data in the United States. Other providers or their subprocessors may process information outside the European Economic Area. Where the GDPR requires a transfer mechanism, we rely on the mechanism applicable to that provider and processing, such as an adequacy decision or appropriate contractual safeguards. You can contact us for information about the safeguards relevant to a specific provider.
 
