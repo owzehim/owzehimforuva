@@ -1,0 +1,98 @@
+name: Encrypted production database backup
+
+# OPS-02 (CITS report): daily off-platform backup of the production database.
+# Runs before the 03:15 UTC privacy retention job, which deletes data
+# irreversibly.
+#
+# This repository is public: only the age-ENCRYPTED archive leaves the runner,
+# nothing from the database is printed to the log, and plaintext dumps are
+# shredded before upload. Decrypting needs the private key, which is kept by
+# the association outside GitHub (see README "Backups").
+#
+# Required secret: SUPABASE_PROD_DB_URL — the Session pooler connection string
+# (Supabase dashboard > Connect > Session pooler, port 5432) with the database
+# password filled in. GitHub runners have no IPv6, so the direct
+# db.<ref>.supabase.co address does not work here.
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # age public key (safe to publish). Private key: association key vault.
+      AGE_RECIPIENT: age1y4p445h2vgdzcqd78xytzy2wz5s8pj96vg0rpqft4fg45zragalse38x8s
+      SUPABASE_CLI_VERSION: 2.122.0
+    steps:
+      - name: Install age
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: Dump, verify and encrypt
+        env:
+          DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          if [[ -z "$DB_URL" ]]; then
+            echo "Set SUPABASE_PROD_DB_URL in GitHub Actions secrets (Session pooler URL with password)."
+            exit 1
+          fi
+
+          work="$RUNNER_TEMP/db-backup"
+          mkdir -p "$work"
+          cd "$work"
+
+          supabase db dump --db-url "$DB_URL" --role-only -f roles.sql
+          supabase db dump --db-url "$DB_URL" -f schema.sql
+          supabase db dump --db-url "$DB_URL" --data-only --use-copy -f data.sql
+          supabase db dump --db-url "$DB_URL" --data-only --schema supabase_migrations -f migration_history.sql
+
+          # Completeness checks (counts only; no data is printed).
+          for f in roles.sql data.sql migration_history.sql; do
+            grep -v '^[[:space:]]*$' "$f" | tail -n 1 | grep -qx 'RESET ALL;' || { echo "::error::$f is incomplete"; exit 1; }
+          done
+          grep -q 'CREATE TABLE IF NOT EXISTS "public"."members"' schema.sql || { echo "::error::schema.sql is incomplete"; exit 1; }
+          for table in '"auth"."users"' '"public"."members"' '"storage"."objects"'; do
+            grep -q "^COPY $table " data.sql || { echo "::error::data.sql has no $table"; exit 1; }
+          done
+          echo "tables in dump: $(grep -c '^COPY ' data.sql)"
+          echo "auth users: $(awk '/^COPY "auth"."users" /{t=1;next} t&&/^\\\.$/{print n+0; exit} t{n++}' data.sql)"
+          echo "members: $(awk '/^COPY "public"."members" /{t=1;next} t&&/^\\\.$/{print n+0; exit} t{n++}' data.sql)"
+
+          sha256sum roles.sql schema.sql data.sql migration_history.sql > SHA256SUMS.txt
+          stamp="$(date -u +%Y%m%dT%H%MZ)"
+          archive="uvain-prod-db-$stamp.tar.gz.age"
+          tar -czf - roles.sql schema.sql data.sql migration_history.sql SHA256SUMS.txt \
+            | age --encrypt --recipient "$AGE_RECIPIENT" --output "$archive"
+
+          shred -u roles.sql schema.sql data.sql migration_history.sql
+          head -c 21 "$archive" | grep -q '^age-encryption.org/v1' || { echo "::error::archive is not age-encrypted"; exit 1; }
+          echo "archive: $archive ($(stat -c %s "$archive") bytes)"
+          echo "BACKUP_DIR=$work" >> "$GITHUB_ENV"
+          echo "BACKUP_NAME=${archive%.tar.gz.age}" >> "$GITHUB_ENV"
+
+      - name: Keep encrypted archive for 30 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_NAME }}
+          path: ${{ env.BACKUP_DIR }}/*.age
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 0

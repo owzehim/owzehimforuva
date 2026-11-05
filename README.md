@@ -44,8 +44,61 @@ Create a production build with `npm run build`.
 
 - `src/` — React application
 - `supabase/functions/` — Supabase Edge Functions
-- `supabase/migrations/` — database migrations
+- `supabase/migrations/` — database migrations (mirrors the production migration ledger)
+- `supabase/migrations_archive/` — migrations that must never be applied (see its README)
+- `supabase/baselines/` — dated records of what was checked and applied in production
 - `vercel.json` — Vercel routing and deployment configuration
+
+## Database changes and deployment
+
+Projects: production `npvcghdzrtqrlliprtnw` (Vercel Production, branch `main`) and DEV
+`smesebnighdcwqcgokhg` (Vercel Preview, branch `dev`). Commit to `main` first, then cherry-pick
+the same commit to `dev`.
+
+- **Never run `supabase db push` or `supabase migration repair` against production.** The
+  production ledger and `supabase/migrations/` are not fully aligned (see the latest file in
+  `supabase/baselines/`), so a push would try to apply many old files.
+- Change the database only with a **new** migration file; never edit a file that has been applied.
+  Do not change production directly in the SQL Editor or through an AI tool.
+- Apply one migration to **DEV first**, then production, each time as that single file plus its
+  ledger row under the **same version**, in one transaction. Never create a second copy of the same
+  change with a new timestamp.
+- **Order:** take a backup → apply the migration → deploy the Edge Functions and frontend that use
+  it. Exception: when a migration removes something the current frontend still sends, deploy the
+  frontend first (the migration header says so).
+- After each production change, re-run the read-only checks (CITS report v2.0 appendix B) and add
+  the result to `supabase/baselines/`.
+- Edge Function secrets set by us: `CORS_ALLOWED_ORIGINS`, `RETENTION_JOB_SECRET`,
+  `MASTER_APPS_SCRIPT_SECRET`, `PARTNER_APPS_SCRIPT_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
+  (Supabase provides `SUPABASE_URL`, `SUPABASE_SECRET_KEYS`, `SUPABASE_PUBLISHABLE_KEYS`). GitHub
+  Actions secrets: `RETENTION_JOB_SECRET`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`,
+  `SUPABASE_PROD_DB_URL`. Values live only in those settings, never in the repository.
+
+## Backups
+
+`.github/workflows/backup-production-db.yml` runs daily at 02:30 UTC (before the 03:15 retention
+job) and on demand. It dumps roles, schema, data and the migration ledger, checks them, encrypts
+them with [age](https://age-encryption.org) and keeps the encrypted archive as a workflow artifact
+for 30 days. Only the encrypted file leaves the runner; this repository is public.
+
+- Required GitHub Actions secret: `SUPABASE_PROD_DB_URL` — the **Session pooler** connection
+  string (dashboard → Connect → Session pooler) with the database password.
+- The private decryption key is **not** in GitHub. Keep it in the association's password manager or
+  key vault, with at least two board members having access. Without it the backups cannot be read.
+- Storage files (photos) are not included; copy them manually with
+  `supabase storage cp -r ss:///<bucket> <dir> --experimental` before risky changes.
+- Restore (into a new or reset project, never over live data):
+
+  ```sh
+  age --decrypt -i uvain-backup-key.txt uvain-prod-db-<stamp>.tar.gz.age | tar -xz
+  sha256sum -c SHA256SUMS.txt
+  psql "$DB_URL" -f roles.sql
+  psql "$DB_URL" -v ON_ERROR_STOP=1 -f schema.sql
+  psql "$DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f data.sql
+  ```
+
+  Tested 2026-11-05: a workflow-format archive decrypted, passed its checksums and restored into an
+  empty local Supabase stack in about 2 seconds with all row counts matching production.
 
 ## Security
 

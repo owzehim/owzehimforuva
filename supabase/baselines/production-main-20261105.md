@@ -108,6 +108,18 @@ Site URL / redirect allow-list (OPS-12), Edge Function secrets.
   migrations before the functions/screens that use them (OPS-16).
 - Long term: squash the current production schema into one baseline migration and archive the old files.
 
+## Repository cleanup (2026-11-05, OPS-08 rec. 3–4, OPS-02)
+
+- Moved to `supabase/migrations_archive/` (not read by the CLI; neither ledger records them):
+  the AAL2 / grant-revoking files `20261005030000`, `20261005080000`, `20261005081000`,
+  `20261005110000`, `20261005130000`, and the DEV copies of five identical duplicate pairs
+  (`20261013234422`, `20261015023955`, `20261015024505`, `20261015025146`, `20261016093831`).
+  Each kept duplicate is the version in the production ledger.
+- `supabase/migrations/` now holds 94 files; the remaining name/version differences against the
+  production ledger are listed above. Policy: the production ledger wins; new changes are applied
+  as one file under one version to DEV and production (README "Database changes and deployment").
+- Daily encrypted backup workflow added (README "Backups"); format restore-tested locally.
+
 ## Migration ledger (production) vs repository
 
 Unmatched repo files (no ledger entry by version or name): see the list at the end.
