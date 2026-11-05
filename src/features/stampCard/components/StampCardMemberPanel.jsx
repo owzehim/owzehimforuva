@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Plus, ClockCounterClockwise } from '@phosphor-icons/react'
-import { fetchAllMemberStampData, restoreReward } from '../api/rewards'
+import { ArrowLeft, Plus } from '@phosphor-icons/react'
+import { fetchAllMemberStampData } from '../api/rewards'
 import { adminInsertVisit } from '../api/visits'
 import { isPendingRewardAvailable } from '../rewardAvailability'
 import { supabase } from '../../../lib/supabase'
@@ -142,7 +142,6 @@ function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, res
   const [date, setDate] = useState(todayString())
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [restoring, setRestoring] = useState(false)
 
   const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || '(이름 없음)'
   const { currentCycle, stampsInCurrentCycle } = stampState
@@ -176,27 +175,9 @@ function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, res
     }
   }
 
-  const handleRestoreReward = async () => {
-    if (!latestReward) return
-    if (!window.confirm('이 멤버의 리워드를 복원할까요?')) return
-    setRestoring(true)
-    try {
-      const result = await restoreReward(latestReward.id)
-      if (result?.auditLogged === false) {
-        alert('리워드는 복원됐지만 관리자 작업 기록 저장에 실패했습니다. 작업 기록을 확인해 주세요.')
-      }
-      await onRefresh()
-    } catch (e) {
-      console.error('restoreReward error:', e)
-    } finally {
-      setRestoring(false)
-    }
-  }
-
   const rewardExpired = Boolean(
     latestReward?.expires_at && !isPendingRewardAvailable(latestReward),
   )
-  const showRestore = latestReward?.redeemed === true && !latestReward.expires_at
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
@@ -230,17 +211,6 @@ function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, res
             <Plus size={13} weight="bold" />
             스탬프 추가
           </button>
-
-          {showRestore && (
-            <button
-              onClick={handleRestoreReward}
-              disabled={restoring}
-              className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-gray-600"
-            >
-              <ClockCounterClockwise size={13} weight="bold" />
-              {restoring ? '복원 중...' : '리워드 복원'}
-            </button>
-          )}
         </div>
       </div>
 

@@ -22,6 +22,11 @@ jobs:
         with:
           deno-version: v2.1.13
 
+      # OPS-09: lint the Edge Functions too. no-explicit-any and require-await
+      # are style-only here (async wrappers keep errors as rejected promises).
+      - name: Lint Supabase Edge Functions
+        run: deno lint --rules-exclude=no-explicit-any,require-await supabase/functions
+
       - name: Type check Supabase Edge Functions with locked dependencies
         shell: bash
         run: |
@@ -58,8 +63,9 @@ jobs:
       - name: Run automated tests
         run: npm test
 
+      # OPS-09: no new lint warnings (68 today); lower this as warnings are fixed.
       - name: Run ESLint
-        run: npm run lint
+        run: npm run lint -- --max-warnings=68
 
       - name: Build application
         run: npm run build
