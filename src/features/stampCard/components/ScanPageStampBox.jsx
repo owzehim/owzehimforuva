@@ -12,6 +12,7 @@ export default function ScanPageStampBox({
   userId,
   scanResult,
   onRewardRedeemed,
+  onlyWhenBenefitReady = false,
 }) {
   const { config } = useStampCardConfig(restaurantId, { useDefault: true })
   const { stampState, pendingReward: hookPendingReward, refetch } = useUserStampVisits({
@@ -48,6 +49,8 @@ export default function ScanPageStampBox({
     ? total
     : stampState.stampsInCurrentCycle
   const remaining = Math.max(total - count, 0)
+  // On the "Already Checked-IN" screen the box only appears to apply a reward.
+  if (onlyWhenBenefitReady && !isBenefitReady && !redeemedThisSession && !claimFailedThisSession) return null
   const cardColor = redeemedThisSession
     ? '#16a34a'
     : claimFailedThisSession

@@ -145,16 +145,15 @@ Deno.serve(async (req) => {
     }
     if (!reward) return json({ success: false, message: '사용 가능 리워드를 찾을 수 없습니다.' }, 404)
 
-    // A reward can only be consumed in the context of a recent server-recorded
-    // check-in by this same member at the same store.
-    const recentCutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+    // A reward can only be consumed in the context of this member's
+    // server-recorded check-in at the same store today (Europe/Amsterdam), so
+    // it can also be applied from the "Already Checked-IN" screen.
     const { data: redemption, error: redemptionError } = await admin
       .from('redemptions')
       .select('id, store_id, redeemed_at')
       .eq('id', String(redemptionId))
       .eq('user_id', user.id)
       .eq('store_id', storeId)
-      .gte('redeemed_at', recentCutoff)
       .lte('redeemed_at', new Date().toISOString())
       .maybeSingle()
 
@@ -162,7 +161,11 @@ Deno.serve(async (req) => {
       console.error('Check-in validation failed:', redemptionError)
       return json({ success: false, message: '최근 매장 방문을 확인하지 못했습니다.' }, 500)
     }
-    if (!redemption) return json({ success: false, message: '최근 매장 체크인을 확인할 수 없습니다.' }, 403)
+    const amsterdamDay = (value: string | Date) =>
+      new Date(value).toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })
+    if (!redemption || amsterdamDay(redemption.redeemed_at) !== amsterdamDay(new Date())) {
+      return json({ success: false, message: '오늘 이 매장의 체크인을 확인할 수 없습니다.' }, 403)
+    }
 
     let restaurantId: string | null = null
     if (UUID_PATTERN.test(storeId)) {

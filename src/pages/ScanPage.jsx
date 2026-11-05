@@ -287,6 +287,19 @@ export default function ScanPage() {
               (Last checked in: {formatLastCheckinTime(scanTime)})
             </p>
             <p className="text-gray-500 text-sm">@{storeName}</p>
+
+            {/* No second check-in, but a ready reward can still be applied here. */}
+            {stampCardEnabled && scannedUserId && stampRestaurantId && (
+              <div className="w-full pt-2">
+                <ScanPageStampBox
+                  restaurantId={stampRestaurantId}
+                  userId={scannedUserId}
+                  scanResult={stampResult}
+                  onRewardRedeemed={() => {}}
+                  onlyWhenBenefitReady
+                />
+              </div>
+            )}
           </section>
         )}
 
