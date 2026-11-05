@@ -16,12 +16,10 @@ CREATE POLICY "Admins can review note reports"
         AND reviewed_by = (SELECT auth.uid())
         AND reviewed_at IS NOT NULL
         AND decision IS NOT NULL
-        AND decision_reason IS NOT NULL
       )
       OR (
         status = 'pending'
         AND decision IS NULL
-        AND decision_reason IS NULL
         AND reviewed_at IS NULL
         AND reviewed_by IS NULL
       )
@@ -40,13 +38,13 @@ SET search_path = ''
 AS $$
 BEGIN
   IF NEW.status IS DISTINCT FROM OLD.status OR
-     NEW.decision IS DISTINCT FROM OLD.decision OR
-     NEW.decision_reason IS DISTINCT FROM OLD.decision_reason THEN
+     NEW.decision IS DISTINCT FROM OLD.decision THEN
     IF NOT public.is_admin() THEN
       RAISE EXCEPTION 'only an administrator can resolve a report';
     END IF;
 
-    IF NEW.status = 'pending' AND NEW.decision IS NULL AND NEW.decision_reason IS NULL THEN
+    IF NEW.status = 'pending' AND NEW.decision IS NULL THEN
+      NEW.decision_reason := NULL;
       NEW.reviewed_at := NULL;
       NEW.reviewed_by := NULL;
       RETURN NEW;
@@ -56,10 +54,7 @@ BEGIN
       RAISE EXCEPTION 'a resolved decision is required';
     END IF;
 
-    NEW.decision_reason := coalesce(
-      nullif(btrim(NEW.decision_reason), ''),
-      '관리자 확인'
-    );
+    NEW.decision_reason := NULL;
     NEW.reviewed_at := pg_catalog.now();
     NEW.reviewed_by := (SELECT auth.uid());
   END IF;
