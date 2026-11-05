@@ -118,17 +118,27 @@ export function useStoreReviewSummary(storeId, audience = 'public') {
   useEffect(() => {
     if (!storeId) return undefined
 
-    void refreshStoreReviewSummary(storeId, audience).catch((error) => {
-      console.warn('Failed to refresh store review summary:', error?.message)
-    })
-
-    const intervalId = window.setInterval(() => {
+    const refresh = () => {
       void refreshStoreReviewSummary(storeId, audience).catch((error) => {
         console.warn('Failed to refresh store review summary:', error?.message)
       })
-    }, 30_000)
+    }
+    refresh()
 
-    return () => window.clearInterval(intervalId)
+    // PERF-14: same 30 s refresh while visible, none while the app is in the
+    // background; refresh once when it becomes visible again.
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== 'hidden') refresh()
+    }, 30_000)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [storeId, audience])
 
   const stateMatchesStore = state.storeId === storeId && state.audience === audience
