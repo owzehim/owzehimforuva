@@ -50,7 +50,7 @@ Create a production build with `npm run build`.
 - `supabase/migrations/` — database migrations (mirrors the production migration ledger)
 - `supabase/migrations_archive/` — migrations that must never be applied (see its README)
 - `supabase/baselines/` — dated records of what was checked and applied in production
-- `vercel.json` — Vercel routing and deployment configuration
+- `vercel.json` — Vercel routing and deployment configuration. It is identical on `main` and `dev`. The Content-Security-Policy is chosen by host: `app.uva-in.nl` and `uvain-app.vercel.app` get the production Supabase address only; every other host (Preview, `dev.app.uva-in.nl`) gets the DEV Supabase address only. If a production domain is added, add it to the host pattern in both CSP rules.
 
 ## Database changes and deployment
 
