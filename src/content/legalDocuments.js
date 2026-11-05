@@ -162,7 +162,7 @@ Partner copies are limited to that partner's records and follow the 12-month tra
 
 5. Review Summaries in the App
 
-The App calculates location-level star-rating and selected-tag summaries from submitted reviews and updates them as reviews are submitted. These summaries are visible to signed-in active App members, including when fewer than five members have reviewed a location. These in-App summaries are separate from the per-visit review fields shared with the relevant partner described in Section 4.
+The App calculates location-level star-rating and selected-tag summaries from submitted reviews and updates them as reviews are submitted. These summaries are visible to anyone viewing the App, including visitors who are not signed in, also when only a few members have reviewed a location. These in-App summaries are separate from the per-visit review fields shared with the relevant partner described in Section 4.
 
 6. Information Sharing
 
