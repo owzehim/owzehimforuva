@@ -17,7 +17,7 @@ Supersedes `production-main-20261006.md`.
 | Actual schema | Spot checks show the fixes are applied even where the ledger and filenames disagree (e.g. FUNC-03 `#variable_conflict` fix, `restaurants.is_archived`, SEC-28 trigger, OPS-11 audit). The drift is mainly in **bookkeeping**, not in missing fixes. |
 | Dangerous migrations | Not applied: no `aal2` in any policy/function/view (B12); `20261005030000`, `20261005130000`, `20261011110000` absent from ledger. |
 | Edge Functions | 20 deployed. 19 identical to `main`; `export-aggregate-report` differs only by a trailing newline. **5 functions bundle a pre-`8e575f8` (2026-10-30) `_shared/requireVerifiedLogin.ts`** (see below). |
-| SEC-55 / SEC-56 | **Present in production** (see below). |
+| SEC-55 / SEC-56 | Found live; **fixed the same day** by `20261105160000` (see "Changes applied after this check"). |
 
 ## Appendix B checks (report v2.0)
 
@@ -37,6 +37,15 @@ Supersedes `production-main-20261006.md`.
 | 12 | Leftover AAL2 | 0 rows | OK |
 | — | RLS | Enabled on every `public` table | OK |
 | — | OPS-08 #5 grants | a–d `false`, e `true` | OK |
+
+## Changes applied after this check
+
+| When (2026-11-05) | Version | Where | How | Verified |
+|---|---|---|---|---|
+| after frontend `bd775e2` (main) / `7cfcab8` (dev) was live | `20261105160000_sec55_sec56_note_author_integrity` | DEV, then production | That single file run in one transaction with its ledger row (same version); **not** `db push` | Members' UPDATE limited to `body, is_anonymous, hidden_at`; trigger on every INSERT/UPDATE; `refresh_member_note_authors` on members; policy `SEC56 read visible note author avatars` replaces `SEC52 …`; a rolled-back "rename author to 운영진" attempt was denied and a normal body edit kept the author. All 8 production notes kept the same author, anonymity and photo path (no forged data existed). |
+
+Fresh pre-change backup taken just before the production apply (kept outside the repository).
+The SEC-55 and SEC-56 sections below describe the state **before** this change.
 
 ## Open findings confirmed in production
 
