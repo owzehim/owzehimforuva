@@ -2648,32 +2648,6 @@ function RestaurantForm({
   <p className="mt-1 text-xs text-gray-400">켜진 뒤, 채울 별 개수를 선택하세요.</p>
 </div>
 
-{/* 임원 리뷰 */}
-<div className="mt-3 space-y-2">
-  <p className="text-sm font-medium text-gray-900">임원 리뷰</p>
-
-  <input
-    placeholder="리뷰어 이름"
-    value={form.reviewer_name}
-    onChange={(e) =>
-      setForm((f) => ({ ...f, reviewer_name: e.target.value }))
-    }
-    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-  />
-
-  <textarea
-    placeholder="리뷰"
-    value={form.review}
-    onChange={(e) =>
-      setForm((f) => ({ ...f, review: e.target.value }))
-    }
-    rows={3}
-    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none"
-  />
-
-
-
-</div>
       <div>
         <label className="text-sm text-gray-500 block mb-1">사진</label>
         <ImageUploadPanel
@@ -2928,21 +2902,6 @@ function RestaurantsTab() {
     fetchRestaurants()
   }
 
-  const handleArchive = async (id) => {
-    if (!confirm('제휴를 종료할까요? 매장은 앱에서 숨겨지고 미사용 리워드는 즉시 만료되어 12개월 뒤 삭제됩니다. 댓글·노트·스탬프 기록은 보존됩니다.')) return
-    const { data, error } = await supabase
-      .from('restaurants')
-      .update({ is_archived: true })
-      .eq('id', id)
-      .select('id')
-      .maybeSingle()
-    if (error || !data) {
-      alert('제휴 종료 처리 실패: ' + (error?.message || '매장을 찾을 수 없습니다.'))
-      return
-    }
-    fetchRestaurants()
-  }
-
   const handleRestore = async (id) => {
     const { data, error } = await supabase
       .from('restaurants')
@@ -3153,19 +3112,12 @@ function RestaurantsTab() {
                         >
                           수정
                         </button>
-                        {showArchived ? (
+                        {showArchived && (
                           <button
                             onClick={() => handleRestore(r.id)}
                             className="text-xs text-green-600 hover:underline whitespace-nowrap"
                           >
                             복원
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleArchive(r.id)}
-                            className="text-xs text-red-500 hover:underline whitespace-nowrap"
-                          >
-                            제휴 종료
                           </button>
                         )}
                       </div>
