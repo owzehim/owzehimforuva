@@ -252,15 +252,17 @@ async function syncReviewCommentToRestaurantNotes({
 
   if (lookupError) throw lookupError
 
+  // Author fields (username, photo, colour) are set by the server from the
+  // note owner's profile (SEC-55); members may only update body/is_anonymous.
   const notePayload = {
     body: trimmedComment,
     is_anonymous: !username,
-    username: username || '익명',
   }
   const result = existingNote
     ? await supabase.from('restaurant_notes').update(notePayload).eq('id', existingNote.id)
     : await supabase.from('restaurant_notes').insert({
         ...notePayload,
+        username: username || '익명',
         restaurant_id: restaurant.id,
         user_id: userId,
         source_review_id: reviewId,
