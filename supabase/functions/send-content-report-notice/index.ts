@@ -148,12 +148,19 @@ Deno.serve(async (req) => {
       'UvA-IN App 팀 드림',
     ].join('\n')
 
+    // SEC-62: key on the report, recipient and message content (not on
+    // reviewed_at, which changes when a decision is undone and re-made), so
+    // the same notice cannot be sent twice; a different message still sends.
+    const contentDigest = Array.from(
+      new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([recipient, subject, text])))),
+      (byte) => byte.toString(16).padStart(2, '0'),
+    ).join('').slice(0, 32)
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': `content-report/${report.id}/${recipientKind}/${Date.parse(report.reviewed_at)}`,
+        'Idempotency-Key': `content-report/${report.id}/${recipientKind}/${contentDigest}`,
       },
       body: JSON.stringify({ from, to: [recipient], subject, text, html }),
     })
