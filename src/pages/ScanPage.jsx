@@ -287,19 +287,6 @@ export default function ScanPage() {
               (Last checked in: {formatLastCheckinTime(scanTime)})
             </p>
             <p className="text-gray-500 text-sm">@{storeName}</p>
-
-            {/* No second check-in, but a ready reward can still be applied here. */}
-            {stampCardEnabled && scannedUserId && stampRestaurantId && (
-              <div className="w-full pt-2">
-                <ScanPageStampBox
-                  restaurantId={stampRestaurantId}
-                  userId={scannedUserId}
-                  scanResult={stampResult}
-                  onRewardRedeemed={() => {}}
-                  onlyWhenBenefitReady
-                />
-              </div>
-            )}
           </section>
         )}
 
@@ -403,6 +390,19 @@ export default function ScanPage() {
           // Match the onboarding screen's "다음" button placement.
           style={{ bottom: '90px' }}
         >
+          {/* No second check-in, but a ready reward can still be applied here,
+              just above 홈으로 돌아가기. */}
+          {state === STATE.ALREADY_CHECKED_IN && stampCardEnabled && scannedUserId && stampRestaurantId && (
+            <div className="mx-auto w-full max-w-sm">
+              <ScanPageStampBox
+                restaurantId={stampRestaurantId}
+                userId={scannedUserId}
+                scanResult={stampResult}
+                onRewardRedeemed={() => {}}
+                onlyWhenBenefitReady
+              />
+            </div>
+          )}
           {state === STATE.ERROR && (
             <button
               onClick={reset}
