@@ -125,8 +125,7 @@ UvA-IN은 UvA-IN 학생회가 운영하는 회원 앱입니다. 제휴 식당 �
 
 개인정보 처리자: UvA-IN
 웹사이트: www.uva-in.nl
-개인정보 문의: Woojay Lim (임우재)
-전화: +31 6 4271 4078
+개인정보 문의: uvaksa16@gmail.com
 
 2. 수집하는 정보
 
@@ -208,8 +207,7 @@ UvA-IN은 대학생을 대상으로 하며 만 16세 미만 아동을 위해 설
 
 개인정보 처리자: UvA-IN
 웹사이트: www.uva-in.nl
-개인정보 문의: Woojay Lim (임우재)
-전화: +31 6 4271 4078`,
+개인정보 문의: uvaksa16@gmail.com`,
   },
   community: {
     title: '커뮤니티 가이드라인',

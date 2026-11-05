@@ -130,8 +130,7 @@ UvA-IN is the membership app operated by the UvA-IN student association. It conn
 
 Data controller: UvA-IN
 Website: www.uva-in.nl
-Privacy contact: Woojay Lim (임우재)
-Telephone: +31 6 4271 4078
+Privacy contact: uvaksa16@gmail.com
 
 2. Information We Collect
 
@@ -213,8 +212,7 @@ We may update this Privacy Policy from time to time. The latest version will be 
 
 Data controller: UvA-IN
 Website: www.uva-in.nl
-Privacy contact: Woojay Lim (임우재)
-Telephone: +31 6 4271 4078`,
+Privacy contact: uvaksa16@gmail.com`,
     ko: legalDocumentsKo.privacy,
   },
   community: {
