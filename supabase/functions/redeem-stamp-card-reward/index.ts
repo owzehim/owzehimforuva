@@ -253,14 +253,20 @@ Deno.serve(async (req) => {
       claimed_at_date: date,
       claimed_at_time: time,
     }
+    // GDPR-20: partners receive the claim date only (privacy policy); the
+    // time stays in the association's Master Sheet. The partner script never
+    // read claimed_at_time.
+    const { claimed_at_time: _masterOnlyTime, ...partnerPayload } = payload
     const sheetResults = await Promise.all([
       syncClaimToAppsScript(integrations?.master_apps_script_url, 'master', payload),
-      syncClaimToAppsScript(integrations?.partner_apps_script_url, 'partner', payload),
+      syncClaimToAppsScript(integrations?.partner_apps_script_url, 'partner', partnerPayload),
     ])
 
+    // FUNC-09: a Sheet that is intentionally not connected (no URL) is not a
+    // sync failure; only real errors make the scanner show the warning.
     return json({
       success: true,
-      sheetSync: { success: sheetResults.every(result => result.ok) },
+      sheetSync: { success: sheetResults.every(result => result.ok || result.skipped === true) },
     })
   } catch (error) {
     console.error('Unexpected reward redemption error:', error)
