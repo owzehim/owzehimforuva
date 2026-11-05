@@ -52,6 +52,8 @@ Supersedes `production-main-20261006.md`.
 
 | OPS-11 (merged in PR #13; backup `uvain-backups/2026-11-05-pre-ops11` first) | `20261105230000_ops11_archive_stamp_progress_reset` | DEV, then production | Same single-file + ledger-row method; applied before the two functions | `stamp_card_visits_archive` / `stamp_card_rewards_archive`: RLS on, no anon/authenticated access, `user_id` → `auth.users` ON DELETE CASCADE, `delete_after` = 12 months. `admin_reset_stamp_progress(uuid, uuid)` EXECUTE for service_role only; non-admin actor refused. Live stamp data unchanged (16 visits, 3 rewards); ledger row present. |
 
+| OPS-05 (merged in PR #16; backup `uvain-backups/2026-11-06-pre-ops05-audit` first) | `20261105235000_ops05_audit_coverage` | DEV, then production | Same single-file + ledger-row method | `admin_action_audit` gains `db_role`, `db_application`; `log_admin_action` also records changes with no app user (dashboard / SQL / CLI / pg_cron) and still skips members and Edge Function service calls; triggers on 12 tables (added `admin_roles`, `partnership_integrations`, `login_otp_exempt_users`). Rolled-back test: admin edit → actor recorded; SQL edit → `postgres / mgmt-api`; 85 existing rows unchanged; ledger row present. |
+
 Edge Functions deployed the same day (DEV from `dev`, then production from `main`; `verify_jwt`
 unchanged; downloaded code identical to the branch):
 
@@ -86,6 +88,8 @@ to `main`; `verify_jwt` unchanged):
 | admin-add-stamp | v27 | Reward restore removed (`restoreReward` action rejected as an invalid request) |
 | admin-add-stamp | v28 | OPS-11: reset calls `admin_reset_stamp_progress` (archives instead of deleting) |
 | privacy-retention-sync | v37 | OPS-11: deletes archive rows past `delete_after` (12 months) |
+| manage-legal-consent | v4 | Legal version 2026-11-06-01 (Privacy Policy names Sentry), after PR #15 frontend deploy |
+| complete-member-registration | v24 | Legal version 2026-11-06-01 |
 
 Smoke test: browser preflight from `https://app.uva-in.nl` → `ok` with that origin allowed for all six;
 `verify-member-qr` → `NOT_FOUND`.
@@ -275,3 +279,8 @@ Unmatched repo files (no ledger entry by version or name): see the list at the e
 - `20261006174430_sec18_limit_comment_note_reads_to_owner.sql`
 - `20261008015058_sec18_require_active_device_session_for_comments_and_notes.sql`
 - `20261015023458_func03_fix_stamp_card_cycle_ambiguity.sql`
+
+Frontend error monitoring (OPS-05, PR #15): Sentry EU, production reporting on from legal version
+2026-11-06-01; live bundle carries the DSN, deploy environment `production` and the release commit;
+source maps uploaded at build and not served publicly. Reports are scrubbed in
+`src/lib/errorReportScrub.js`.
