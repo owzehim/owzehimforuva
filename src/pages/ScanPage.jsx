@@ -325,10 +325,6 @@ export default function ScanPage() {
               @{storeName}
             </p>
 
-            <div className="w-full rounded-2xl bg-orange-50 p-4 text-sm text-gray-700" role="status">
-              <p className="font-semibold">One check-in per place per day.</p>
-            </div>
-
             <p className="text-base font-bold text-orange-500">
               이 <span className="text-orange-600 font-extrabold">화면과 학생증</span>을 함께 직원에게 제시해 주세요
             </p>
