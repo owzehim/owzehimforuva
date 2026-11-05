@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
+import { initErrorMonitoring } from './lib/errorMonitoring.js'
 
 if ('serviceWorker' in navigator) {
   // Download updates quietly. The waiting worker activates naturally after
@@ -39,3 +40,7 @@ createRoot(document.getElementById('root')).render(
     </AppErrorBoundary>
   </StrictMode>,
 )
+
+// OPS-05: Sentry loads in the background on deployed previews (and on
+// production once approved); it never loads in local development.
+initErrorMonitoring()
