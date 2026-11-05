@@ -30,7 +30,22 @@
       "has": [
         {
           "type": "host",
-          "value": "^(app\\.uva-in\\.nl|uvain-app\\.vercel\\.app)$"
+          "value": "app.uva-in.nl"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://npvcghdzrtqrlliprtnw.supabase.co https://api.maptiler.com; font-src 'self' data:; connect-src 'self' https://npvcghdzrtqrlliprtnw.supabase.co wss://npvcghdzrtqrlliprtnw.supabase.co https://api.maptiler.com; frame-src https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "uvain-app.vercel.app"
         }
       ],
       "headers": [
@@ -45,7 +60,11 @@
       "missing": [
         {
           "type": "host",
-          "value": "^(app\\.uva-in\\.nl|uvain-app\\.vercel\\.app)$"
+          "value": "app.uva-in.nl"
+        },
+        {
+          "type": "host",
+          "value": "uvain-app.vercel.app"
         }
       ],
       "headers": [
