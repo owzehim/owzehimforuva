@@ -72,7 +72,12 @@ function App() {
           setLegalConsentState({ userId, status: 'error' })
           return
         }
-        const accepted = hasCurrentLegalConsent(data.receipts, LEGAL_DOCUMENT_VERSION)
+        // GDPR-19: the server decides which version is current, so app and
+        // server can never disagree (the bundled value is only a fallback).
+        const requiredVersion = typeof data.requiredVersion === 'string' && data.requiredVersion
+          ? data.requiredVersion
+          : LEGAL_DOCUMENT_VERSION
+        const accepted = hasCurrentLegalConsent(data.receipts, requiredVersion)
         setLegalConsentState({ userId, status: accepted ? 'accepted' : 'required' })
       })
       .catch(() => {

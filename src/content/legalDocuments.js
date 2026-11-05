@@ -1,6 +1,6 @@
 import { legalDocumentsKo } from './legalDocumentsKo.js'
 
-export const LEGAL_DOCUMENT_VERSION = '2026-10-24-07';
+export const LEGAL_DOCUMENT_VERSION = '2026-11-05-01';
 
 export const legalDocuments = {
   terms: {
@@ -113,10 +113,10 @@ By creating an account, you confirm that you have read, understood, and agree to
   },
   privacy: {
     title: 'Privacy Policy',
-    effectiveDate: '24 October 2026',
+    effectiveDate: '5 November 2026',
     body: `UvA-IN Privacy Policy
 
-Effective Date: 24 October 2026
+Effective Date: 5 November 2026
 
 This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
@@ -138,7 +138,7 @@ When creating an account, we collect your email address, first and last name, an
 
 To operate your membership, we may collect membership validity period, membership status, student verification status, and membership history.
 
-When you use the App, we may record QR code check-ins, visit date and time, participating partner location, digital stamp progress, reward redemption records, and operational usage records. We also process comments, notes, ratings, selected review tags, and reports you submit through the App. Live store-level rating and tag summaries are visible to signed-in active App members. A one-line review submitted before you set a username is shown as anonymous; setting a username later does not reveal that earlier contribution. Contributions made after you set a username may show that username unless you choose an anonymous option where available.
+When you use the App, we may record QR code check-ins, visit date and time, participating partner location, digital stamp progress, reward redemption records, and operational usage records. We also process comments, notes, ratings, selected review tags, and reports you submit through the App. Live store-level rating and tag summaries are visible to signed-in active App members. A one-line review submitted before you set a username is shown as anonymous; setting a username later does not reveal that earlier contribution. Contributions made after you set a username may show that username unless you choose an anonymous option where available. If you have set a profile photo, it is shown with your non-anonymous notes to other signed-in App members; anonymous notes show neither your username nor your photo.
 
 When you report a note, we collect the reported text as it appeared when reported, the location, your selected reason and explanation, your name and account email, and the report and decision dates. The report and minimal decision record may remain after the note is hidden or deleted.
 
