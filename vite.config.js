@@ -2,8 +2,22 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
+
+// OPS-05: Vercel tells the build whether it is production or preview.
+const deployEnv = process.env.VERCEL_ENV || ''
+const release = process.env.VERCEL_GIT_COMMIT_SHA || ''
+// Source maps go to Sentry only when the build has an auth token, and are then
+// deleted from the output so they are never served publicly.
+const uploadSourceMaps = Boolean(
+  process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT,
+)
 
 export default defineConfig({
+  define: {
+    __APP_DEPLOY_ENV__: JSON.stringify(deployEnv),
+    __APP_RELEASE__: JSON.stringify(release),
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -47,8 +61,22 @@ export default defineConfig({
         ],
       },
     }),
-  ],
+    uploadSourceMaps && sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      url: 'https://de.sentry.io/',
+      release: release ? { name: release } : undefined,
+      sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+      telemetry: false,
+      // A Sentry outage must never block a deploy: warn instead of failing.
+      errorHandler: (error) => {
+        console.warn('Sentry source map upload failed:', error?.message || error)
+      },
+    }),
+  ].filter(Boolean),
   build: {
+    sourcemap: uploadSourceMaps ? 'hidden' : false,
     license: { fileName: 'third-party-licenses.md' },
     chunkSizeWarningLimit: 600,
     rollupOptions: {

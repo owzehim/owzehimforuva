@@ -30,6 +30,12 @@ export default defineConfig([
     },
   },
   {
+    files: ['vite.config.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
     files: ['supabase/functions/**/*.js'],
     languageOptions: {
       globals: { Deno: 'readonly' },

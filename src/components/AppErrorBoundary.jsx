@@ -1,10 +1,15 @@
 import { Component } from 'react'
+import { reportError } from '../lib/errorMonitoring.js'
 
 export default class AppErrorBoundary extends Component {
   state = { hasError: false }
 
   static getDerivedStateFromError() {
     return { hasError: true }
+  }
+
+  componentDidCatch(error, info) {
+    reportError(error, info?.componentStack)
   }
 
   render() {
