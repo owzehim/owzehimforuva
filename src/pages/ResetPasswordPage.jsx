@@ -4,6 +4,7 @@ import { CheckCircle, Eye, EyeSlash } from '@phosphor-icons/react'
 import { sendPasswordResetReturnSignal, updatePasswordFromRecovery } from '../api/authRepository'
 import { supabase } from '../lib/supabase'
 import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
+import { isEmailLinkSession } from '../domain/auth/recoverySession'
 
 let recoveryExchangeCode = null
 let recoveryExchangePromise = null
@@ -28,7 +29,8 @@ async function getVerifiedRecoverySession() {
   // failed independently.
   const { data: { user }, error } = await passwordRecoverySupabase.auth.getUser()
   if (error || user?.id !== session.user?.id) return null
-  return session
+  // SEC-59: never treat a normal sign-in session as a reset session.
+  return isEmailLinkSession(session.access_token) ? session : null
 }
 
 export default function ResetPasswordPage() {
@@ -62,6 +64,13 @@ export default function ResetPasswordPage() {
             })
           if (sessionError) {
             console.error('Password recovery session setup failed:', sessionError.message)
+          } else if (sessionData?.session && !isEmailLinkSession(sessionData.session.access_token)) {
+            // SEC-59: tokens from a normal sign-in were placed in a reset link.
+            await passwordRecoverySupabase.auth.signOut({ scope: 'local' })
+            url.hash = ''
+            window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`)
+            if (active) setRecoveryReady(false)
+            return
           } else if (sessionData?.session) {
             url.hash = ''
             window.history.replaceState(
@@ -81,7 +90,7 @@ export default function ResetPasswordPage() {
           const { data: exchangeData, error: exchangeError } = await exchangeRecoveryCodeOnce(code)
           if (exchangeError) {
             console.error('Password recovery link exchange failed:', exchangeError.message)
-          } else if (exchangeData?.session) {
+          } else if (exchangeData?.session && isEmailLinkSession(exchangeData.session.access_token)) {
             url.searchParams.delete('code')
             window.history.replaceState(
               window.history.state,
