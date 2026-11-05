@@ -15,6 +15,7 @@ jobs:
     steps:
       - name: Run the privacy retention job
         env:
+          # Production-only by design (OPS-12); DEV uses privacy-retention-sync-dev.yml.
           SUPABASE_URL: https://npvcghdzrtqrlliprtnw.supabase.co
           RETENTION_JOB_SECRET: ${{ secrets.RETENTION_JOB_SECRET }}
         run: |
@@ -33,3 +34,30 @@ jobs:
 
           echo "$response" | jq -e '.success == true' >/dev/null
           echo "$response" | jq '{success, newly_queued_count, attempted_count, expired_signup_accounts_deleted_count, expired_signup_accounts_failed_count, orphaned_pending_email_mappings_deleted_count, expired_partner_rewards_deleted_count, sheet_synced_count, auth_accounts_deleted_count, sheet_failed_count, overdue_record_count, pending_sync_count}'
+
+  # OPS-10: a failed run opens (or comments on) one GitHub issue, so the
+  # failure is visible and emailed to repository watchers. The repository is
+  # public: the issue holds only the run link, never any job output.
+  alert-on-failure:
+    needs: retention
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: "Daily privacy retention failed"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          existing="$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == env.TITLE) | .number" | head -n 1)"
+          body="The scheduled job failed on $(date -u +%Y-%m-%dT%H:%MZ). Run: $RUN_URL"
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$TITLE" --body "$body"
+          fi

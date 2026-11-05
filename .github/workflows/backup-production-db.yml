@@ -96,3 +96,30 @@ jobs:
           retention-days: 30
           if-no-files-found: error
           compression-level: 0
+
+  # OPS-10: a failed run opens (or comments on) one GitHub issue, so the
+  # failure is visible and emailed to repository watchers. The repository is
+  # public: the issue holds only the run link, never any job output.
+  alert-on-failure:
+    needs: backup
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: "Encrypted production database backup failed"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          existing="$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == env.TITLE) | .number" | head -n 1)"
+          body="The scheduled job failed on $(date -u +%Y-%m-%dT%H:%MZ). Run: $RUN_URL"
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$TITLE" --body "$body"
+          fi

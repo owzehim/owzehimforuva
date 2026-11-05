@@ -815,7 +815,7 @@ function ReportsTab() {
                 <p className="mb-3 text-xs font-medium text-gray-500">이메일 미리보기</p>
                 <p className="mx-auto mb-3 max-w-[520px] break-words text-xs text-gray-600">제목: {noticeDraft.subject || '(제목 없음)'}</p>
                 <div className="mx-auto min-h-[440px] max-w-[520px] bg-white px-7 py-9 font-sans text-[#111111] shadow-sm sm:px-8">
-                  <img src="https://npvcghdzrtqrlliprtnw.supabase.co/storage/v1/object/public/public-assets/UvA-IN-logo-transparent.png" alt="UvA-IN" width="44" height="44" className="mb-11 block h-11 w-11 object-contain" />
+                  <img src="/UvA-IN-logo-transparent.png" alt="UvA-IN" width="44" height="44" className="mb-11 block h-11 w-11 object-contain" />
                   <h4 className="mb-8 text-[30px] font-extrabold leading-tight tracking-tight text-[#050505]">{noticeDraft.recipientKind === 'reporter' ? '신고 처리 결과' : '게시물 처리 안내'}</h4>
                   <div className="mb-8 h-px bg-gray-200" />
                   <div className="break-words text-sm leading-7 text-gray-600">

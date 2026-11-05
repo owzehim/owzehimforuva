@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession } from '../_shared/requireVerifiedLogin.ts'
-import { recordAdminAction } from '../_shared/adminAudit.ts'
+import { AUDIT_UNAVAILABLE_MESSAGE, recordAdminAction, recordAdminActionFailure } from '../_shared/adminAudit.ts'
 
 function computeStampState(totalVisits: number, totalStamps: number, pendingReward: any = null) {
   if (pendingReward) {
@@ -58,6 +58,19 @@ Deno.serve(async (req) => {
   if (!isAllowedCorsOrigin(origin, configuredOrigins)) return new Response('Origin not allowed', { status: 403 })
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+
+  // OPS-11: the audit entry is written before any change; if the change then
+  // fails, a ".failed" entry follows (best effort, see the catch below).
+  const auditState: { pending: Parameters<typeof recordAdminAction>[1] | null; client: any } = {
+    pending: null,
+    client: null,
+  }
+  const auditFirst = async (client: any, entry: Parameters<typeof recordAdminAction>[1]) => {
+    if (!(await recordAdminAction(client, entry))) return false
+    auditState.pending = entry
+    auditState.client = client
+    return true
   }
 
   try {
@@ -133,6 +146,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'restoreReward') {
+      if (!(await auditFirst(admin, {
+        actorId: caller.id,
+        action: 'stamp_reward.restore',
+        resourceType: 'stamp_card_rewards',
+        resourceId: rewardId,
+        changedFields: ['redeemed', 'redeemed_at'],
+      }))) {
+        return json({ success: false, message: AUDIT_UNAVAILABLE_MESSAGE }, 503)
+      }
       const { data: restoredReward, error: restoreError } = await admin
         .from('stamp_card_rewards')
         .update({ redeemed: false, redeemed_at: null })
@@ -144,17 +166,13 @@ Deno.serve(async (req) => {
 
       if (restoreError) throw restoreError
       if (!restoredReward) {
+        if (auditState.pending) await recordAdminActionFailure(admin, auditState.pending)
+        auditState.pending = null
         return json({ success: false, message: '이미 미사용 상태이거나 리워드를 찾을 수 없습니다.' }, 404)
       }
 
-      const auditLogged = await recordAdminAction(admin, {
-        actorId: caller.id,
-        action: 'stamp_reward.restore',
-        resourceType: 'stamp_card_rewards',
-        resourceId: rewardId,
-        changedFields: ['redeemed', 'redeemed_at'],
-      })
-      return json({ success: true, auditLogged })
+      auditState.pending = null
+      return json({ success: true, auditLogged: true })
     }
 
     if (action === 'resetProgress') {
@@ -167,6 +185,16 @@ Deno.serve(async (req) => {
       if (restaurantError) throw restaurantError
       if (!restaurant || restaurant.is_archived) {
         return json({ success: false, message: '보관된 매장 기록은 변경할 수 없습니다.' }, 409)
+      }
+
+      if (!(await auditFirst(admin, {
+        actorId: caller.id,
+        action: 'stamp_progress.reset',
+        resourceType: 'restaurants',
+        resourceId: restaurantId,
+        changedFields: ['stamp_card_rewards', 'stamp_card_visits'],
+      }))) {
+        return json({ success: false, message: AUDIT_UNAVAILABLE_MESSAGE }, 503)
       }
 
       const { error: rewardsError } = await admin
@@ -183,14 +211,8 @@ Deno.serve(async (req) => {
 
       if (visitsError) throw visitsError
 
-      const auditLogged = await recordAdminAction(admin, {
-        actorId: caller.id,
-        action: 'stamp_progress.reset',
-        resourceType: 'restaurants',
-        resourceId: restaurantId,
-        changedFields: ['stamp_card_rewards', 'stamp_card_visits'],
-      })
-      return json({ success: true, auditLogged })
+      auditState.pending = null
+      return json({ success: true, auditLogged: true })
     }
 
     const safeTotalStamps = Math.max(1, Number(totalStamps || 10))
@@ -232,6 +254,16 @@ Deno.serve(async (req) => {
       return json({ success: false, message: '멤버 계정과 연결된 사용자를 찾을 수 없습니다.' }, 404)
     }
 
+    if (!(await auditFirst(admin, {
+      actorId: caller.id,
+      action: 'stamp.add',
+      resourceType: 'members',
+      resourceId: targetMember.id,
+      changedFields: ['stamp_card_visits', 'stamp_card_rewards'],
+    }))) {
+      return json({ success: false, message: AUDIT_UNAVAILABLE_MESSAGE }, 503)
+    }
+
     const { data: stampResultRows, error: stampError } = await admin.rpc(
       'admin_add_stamp_card_visit',
       {
@@ -245,13 +277,8 @@ Deno.serve(async (req) => {
     const stampResult = Array.isArray(stampResultRows) ? stampResultRows[0] : stampResultRows
     if (!stampResult) throw new Error('Stamp adjustment returned no result')
 
-    const auditLogged = await recordAdminAction(admin, {
-      actorId: caller.id,
-      action: 'stamp.add',
-      resourceType: 'members',
-      resourceId: targetMember.id,
-      changedFields: ['stamp_card_visits', 'stamp_card_rewards'],
-    })
+    auditState.pending = null
+    const auditLogged = true
 
     if (stampResult.reward_pending) {
       return json({ success: true, auditLogged, rewardPending: true, cycleCompleted: true, cardCycle: stampResult.card_cycle })
@@ -265,6 +292,7 @@ Deno.serve(async (req) => {
       cycleCompleted: stampResult.cycle_completed,
     })
   } catch (err) {
+    if (auditState.pending && auditState.client) await recordAdminActionFailure(auditState.client, auditState.pending)
     console.error('admin-add-stamp fatal error:', err)
     return json({
       success: false,
