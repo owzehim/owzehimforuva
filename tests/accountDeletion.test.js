@@ -33,16 +33,36 @@ const handlerSource = stripTypeScriptTypes(
     .replace(/^import .*\r?\n/gm, ''),
 )
 
-async function runDeletion({ proofClaims = validClaims, authRejects = false, otherUser = false, legacyRequest = false } = {}) {
+async function runDeletion({ proofClaims = validClaims, authRejects = false, otherUser = false, legacyRequest = false, completeRun = false, sheetFails = true } = {}) {
   let handler
   let privacyCalls = 0
+  const operations = []
   const appToken = tokenFor({ sub: userId, app_access: true, session_id: 'existing-app-session', amr: [{ method: 'otp', timestamp: now - 7 * 86400 }] })
   const admin = {
-    auth: { getUser: async token => token === appToken
-      ? { data: { user: { id: userId } }, error: null }
-      : { data: { user: authRejects ? null : { id: otherUser ? 'another-user' : userId } }, error: authRejects ? new Error('invalid token') : null } },
-    from() {
-      const query = { select: () => query, eq: () => query, maybeSingle: async () => ({ data: null, error: null }) }
+    auth: {
+      getUser: async token => token === appToken
+        ? { data: { user: { id: userId } }, error: null }
+        : { data: { user: authRejects ? null : { id: otherUser ? 'another-user' : userId } }, error: authRejects ? new Error('invalid token') : null },
+      admin: {
+        signOut: async () => { operations.push('auth.signOut'); return { error: null } },
+        deleteUser: async () => { operations.push('auth.deleteUser'); return { error: null } },
+      },
+    },
+    storage: { from: () => ({ remove: async () => { operations.push('storage.remove'); return { error: null } } }) },
+    from(table) {
+      const done = async () => ({ data: null, error: null })
+      const query = {
+        select: () => query, eq: () => query, or: () => query, maybeSingle: done,
+        delete: () => { operations.push(`${table}.delete`); return query },
+        update: () => { operations.push(`${table}.update`); return query },
+        // The durable Master Sheet queue entry is the first privacy write.
+        upsert: async () => {
+          operations.push(`${table}.upsert`)
+          if (table === 'privacy_sheet_sync_queue') privacyCalls++
+          return completeRun ? { error: null } : { error: new Error('Stop before any external request or write') }
+        },
+        then: (resolve) => resolve({ data: null, error: null }),
+      }
       return query
     },
   }
@@ -52,13 +72,20 @@ async function runDeletion({ proofClaims = validClaims, authRejects = false, oth
     getSupabaseServiceKey: () => 'synthetic', apiKeyOnlyFetch: () => undefined,
     hasVerifiedAppLogin: () => true, hasActiveDeviceSession: async () => true,
     hasFreshDeletionPasswordProof,
-    getMasterPrivacyEndpoint: async () => { privacyCalls++; throw new Error('Stop before any external request or write') },
-    Request, Response, atob, Date, AbortSignal, console: { error() {} },
+    getMasterPrivacyEndpoint: async () => {
+      operations.push('sheet.lookup')
+      if (sheetFails) throw new Error('Master Sheet privacy endpoint is not configured')
+      return 'https://script.google.com/macros/s/synthetic/exec'
+    },
+    withAppsScriptSecret: payload => payload,
+    fetch: async () => { operations.push('sheet.anonymize'); return Response.json({ success: true }) },
+    Request, Response, atob, Date, AbortSignal, JSON, console: { error() {} },
   })
   const response = await handler(new Request('https://example.invalid', {
     method: 'POST', headers: { Authorization: `Bearer ${appToken}` },
     body: JSON.stringify(legacyRequest ? { confirmation: 'DELETE' } : { passwordAccessToken: tokenFor(proofClaims) }),
   }))
+  if (completeRun) return { status: response.status, body: await response.json(), operations }
   return { status: response.status, privacyCalls }
 }
 
@@ -77,9 +104,26 @@ test('invalid, wrong-account, OTP-only, and stale proofs are rejected before any
 })
 
 test('a fresh password proof works with an old active app login, without forcing re-login', async () => {
-  // The synthetic privacy endpoint intentionally stops the handler before any
-  // real cleanup; reaching it proves the old app login was accepted.
+  // The synthetic privacy queue write intentionally stops the handler before
+  // any real cleanup; reaching it proves the old app login was accepted.
   assert.deepEqual(await runDeletion(), { status: 500, privacyCalls: 1 })
+})
+
+test('FUNC-01: database and Auth deletion finish first; a Master Sheet failure stays queued without failing deletion', async () => {
+  const failed = await runDeletion({ completeRun: true, sheetFails: true })
+  assert.equal(failed.status, 200)
+  assert.deepEqual(failed.body, { success: true })
+  const ops = failed.operations
+  assert.equal(ops[0], 'privacy_sheet_sync_queue.upsert')
+  assert.ok(ops.indexOf('auth.deleteUser') < ops.indexOf('sheet.lookup'))
+  // Failure releases the lease for the daily retry instead of deleting the entry.
+  assert.equal(ops.at(-1), 'privacy_sheet_sync_queue.update')
+  assert.ok(!ops.includes('privacy_sheet_sync_queue.delete'))
+
+  const synced = await runDeletion({ completeRun: true, sheetFails: false })
+  assert.deepEqual(synced.body, { success: true })
+  assert.ok(synced.operations.indexOf('auth.deleteUser') < synced.operations.indexOf('sheet.anonymize'))
+  assert.equal(synced.operations.at(-1), 'privacy_sheet_sync_queue.delete')
 })
 
 const clientSource = (await readFile(new URL('../src/api/authRepository.js', import.meta.url), 'utf8'))

@@ -7,10 +7,15 @@ import { constantTimeSecretEquals } from '../_shared/constantTimeSecret.js'
 import { getMasterPrivacyEndpoint } from '../_shared/masterPrivacyEndpoint.ts'
 import { retryPendingEmailCleanup } from '../_shared/finalizePendingEmail.js'
 
+// Keep the whole run well inside the workflow's 120 s limit (FUNC-08).
+const SHEET_REQUEST_TIMEOUT_MS = 8_000
+const SHEET_STEP_BUDGET_MS = 60_000
+
 async function anonymizeMasterSheet(url: string, userId: string) {
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(SHEET_REQUEST_TIMEOUT_MS),
     body: JSON.stringify(withAppsScriptSecret(
       { type: 'privacy_anonymize', user_id: userId },
       Deno.env.get('MASTER_APPS_SCRIPT_SECRET'),
@@ -165,16 +170,16 @@ Deno.serve(async (req) => {
       try {
         masterUrl = await getMasterPrivacyEndpoint(admin)
       } catch {
-        console.error('Master sheet configuration lookup failed')
-        return new Response(
-          JSON.stringify({ success: false, message: '개인정보 보존 작업을 처리하지 못했습니다.' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        )
+        // FUNC-08: a missing or ambiguous Master URL only defers the Sheet
+        // step. Database cleanup below still runs and the Sheet entries stay
+        // queued (the run reports success: false so the workflow alerts).
+        console.error('Master sheet configuration lookup failed; Sheet step deferred')
       }
     }
     let syncedCount = 0
     let deletedAuthAccountCount = 0
     let failedCount = 0
+    const sheetStepDeadline = Date.now() + SHEET_STEP_BUDGET_MS
 
     for (const row of users) {
       const userId = typeof row === 'string' ? row : row?.anonymized_user_id || row?.user_id
@@ -191,25 +196,46 @@ Deno.serve(async (req) => {
         ? row.sync_master_sheet
         : typeof row !== 'object' || row?.delete_auth_user !== true
 
+      // 1. Database and Auth first (FUNC-08). finish_privacy_retention_database
+      //    removes the queue entry, or keeps it as a Sheet-only entry when the
+      //    Master Sheet still has to be anonymized.
       try {
-        if (syncMasterSheet) {
-          if (!masterUrl) throw new Error('Master sheet endpoint is not configured')
-          await anonymizeMasterSheet(masterUrl, userId)
-          syncedCount += 1
-        }
         if (deleteAuthUser) {
           await deleteAuthAccount(admin, userId)
           deletedAuthAccountCount += 1
         } else {
           await clearAuthPersonalMetadata(admin, userId)
         }
+        const { data: finished, error: finishError } = await admin.rpc('finish_privacy_retention_database', {
+          p_user_id: userId,
+        })
+        if (finishError || finished !== true) throw new Error('Privacy database cleanup failed')
+      } catch {
+        console.error('Privacy queue cleanup failed')
+        failedCount += 1
+        await admin.rpc('complete_privacy_sheet_sync', {
+          p_user_id: userId,
+          p_success: false,
+        })
+        continue
+      }
+
+      if (!syncMasterSheet) continue
+
+      // 2. Master Sheet. On failure the Sheet-only entry stays queued for the
+      //    next daily run; nothing else waits on it.
+      try {
+        if (!masterUrl) throw new Error('Master sheet endpoint is not configured')
+        if (Date.now() > sheetStepDeadline) throw new Error('Sheet step time budget used up')
+        await anonymizeMasterSheet(masterUrl, userId)
         const { data: completed, error: completionError } = await admin.rpc('complete_privacy_sheet_sync', {
           p_user_id: userId,
           p_success: true,
         })
         if (completionError || completed !== true) throw new Error('Privacy queue acknowledgement failed')
+        syncedCount += 1
       } catch {
-        console.error('Privacy queue cleanup failed')
+        console.error('Master sheet anonymization deferred to next run')
         failedCount += 1
         await admin.rpc('complete_privacy_sheet_sync', {
           p_user_id: userId,

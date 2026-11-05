@@ -95,18 +95,11 @@ REVOKE ALL ON FUNCTION public.get_google_aggregate_report(text)
 GRANT EXECUTE ON FUNCTION public.get_google_aggregate_report(text)
   TO service_role;
 
--- Stop all legacy per-member/per-event sheet webhooks. Existing files and rows
--- remain intact as the requested archive; no application path should write to them.
-UPDATE public.partnership_integrations
-SET master_apps_script_url = NULL,
-    partner_apps_script_url = NULL;
-
-UPDATE public.partnerships
-SET master_apps_script_url = NULL,
-    partner_apps_script_url = NULL,
-    partner_sheet_url = NULL
-WHERE master_apps_script_url IS NOT NULL
-   OR partner_apps_script_url IS NOT NULL
-   OR partner_sheet_url IS NOT NULL;
+-- FUNC-01 (2026-11-05): the statements that cleared every Google Sheets
+-- integration URL were removed from this file. Production recorded this
+-- migration as 20261011123747 and its links were re-entered afterwards; the
+-- Master/Partner Apps Script links are required (stamps, reviews, rewards and
+-- Master Sheet anonymization), so replaying this file must never wipe them.
+-- The legacy copies in public.partnerships are already empty in production.
 
 COMMIT;

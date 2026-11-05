@@ -136,10 +136,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    // The master sheet still has identifying fields. Anonymize it before the
-    // member row and Auth identity are irreversibly removed.
-    stage = 'master_sheet_anonymization'
-    await anonymizeMasterSheet(admin, user.id)
+    // The master sheet still has identifying fields. Record the pending Sheet
+    // anonymization durably before anything is irreversibly removed, so it is
+    // retried by privacy-retention-sync if the Sheet call below fails (FUNC-01).
+    // The lease keeps the daily job from picking it up while this request runs.
+    stage = 'master_sheet_queue_registration'
+    const { error: sheetQueueError } = await admin
+      .from('privacy_sheet_sync_queue')
+      .upsert({
+        user_id: user.id,
+        delete_auth_user: false,
+        sync_master_sheet: true,
+        lease_until: new Date(Date.now() + 10 * 60_000).toISOString(),
+      }, { onConflict: 'user_id' })
+    if (sheetQueueError) throw new Error('Master Sheet anonymization could not be queued')
 
     stage = 'profile_image_cleanup'
     const { error: imageError } = await admin.storage
@@ -185,15 +195,6 @@ Deno.serve(async (req) => {
       .eq('content_author_id', user.id)
     if (authorReportsError) throw new Error('Reported author identity cleanup failed')
 
-    // This retry queue deliberately has no Auth foreign key. Remove any stale
-    // retention entry so a later scheduled run does not revisit this account.
-    stage = 'privacy_queue_cleanup'
-    const { error: privacyQueueError } = await admin
-      .from('privacy_sheet_sync_queue')
-      .delete()
-      .eq('user_id', user.id)
-    if (privacyQueueError) throw new Error('Privacy queue cleanup failed')
-
     // Revoke refresh sessions before deleting the Auth user. Existing access
     // JWTs may remain valid until expiry, but all account-owned rows are gone.
     stage = 'session_revocation'
@@ -203,6 +204,27 @@ Deno.serve(async (req) => {
     stage = 'auth_user_deletion'
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id)
     if (deleteUserError) throw new Error('Auth account deletion failed')
+
+    // Database and Auth are done. Anonymize the Master Sheet now; on failure
+    // the queued entry (no Auth foreign key) is retried by the daily job.
+    stage = 'master_sheet_anonymization'
+    try {
+      await anonymizeMasterSheet(admin, user.id)
+      const { error: queueDoneError } = await admin
+        .from('privacy_sheet_sync_queue')
+        .delete()
+        .eq('user_id', user.id)
+      if (queueDoneError) console.error('Master Sheet queue entry could not be cleared; daily job will re-confirm')
+    } catch (sheetError) {
+      console.error('Master Sheet anonymization deferred to daily retry', {
+        error: sheetError instanceof Error ? sheetError.message : 'Unknown error',
+      })
+      const { error: releaseError } = await admin
+        .from('privacy_sheet_sync_queue')
+        .update({ lease_until: null })
+        .eq('user_id', user.id)
+      if (releaseError) console.error('Master Sheet queue lease release failed; it expires in 10 minutes')
+    }
 
     return json({ success: true })
   } catch (error) {
