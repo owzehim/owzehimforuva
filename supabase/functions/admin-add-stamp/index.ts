@@ -166,19 +166,13 @@ Deno.serve(async (req) => {
         return json({ success: false, message: AUDIT_UNAVAILABLE_MESSAGE }, 503)
       }
 
-      const { error: rewardsError } = await admin
-        .from('stamp_card_rewards')
-        .delete()
-        .eq('restaurant_id', restaurantId)
-
-      if (rewardsError) throw rewardsError
-
-      const { error: visitsError } = await admin
-        .from('stamp_card_visits')
-        .delete()
-        .eq('restaurant_id', restaurantId)
-
-      if (visitsError) throw visitsError
+      // OPS-11: move this place's visits and rewards into the archive tables in
+      // one transaction instead of deleting the history.
+      const { error: resetError } = await admin.rpc('admin_reset_stamp_progress', {
+        p_restaurant_id: restaurantId,
+        p_actor_id: caller.id,
+      })
+      if (resetError) throw resetError
 
       auditState.pending = null
       return json({ success: true, auditLogged: true })
