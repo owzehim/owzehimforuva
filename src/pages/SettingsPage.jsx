@@ -246,40 +246,6 @@ export default function SettingsPage({ userId, isAdmin }) {
     }
   }
 
-  const syncRestaurantNotesProfile = async (profile) => {
-    if (!profile?.user_id) return
-
-    const { data: ownNotes, error: notesReadError } = await supabase
-      .from('restaurant_notes_safe')
-      .select('id')
-      .eq('is_mine', true)
-
-    if (notesReadError) throw notesReadError
-    const noteIds = (ownNotes || []).map((note) => note.id).filter(Boolean)
-    if (noteIds.length === 0) return
-
-    const username = profile.username?.trim() || ''
-    const noteProfile = username
-      ? {
-          username,
-          profile_image_url: profile.profile_image_url || null,
-          avatar_color_seed: getMemberAvatarSeed(profile),
-        }
-      : {
-          username: '익명',
-          is_anonymous: true,
-          profile_image_url: null,
-          avatar_color_seed: null,
-        }
-
-    const { error: notesUpdateError } = await supabase
-      .from('restaurant_notes')
-      .update(noteProfile)
-      .in('id', noteIds)
-
-    if (notesUpdateError) throw notesUpdateError
-  }
-
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -312,8 +278,6 @@ export default function SettingsPage({ userId, isAdmin }) {
         .from('members').update({ profile_image_url: filePath }).eq('user_id', member.user_id)
       if (updateError) throw updateError
 
-      const nextMember = { ...member, profile_image_url: filePath }
-      await syncRestaurantNotesProfile(nextMember)
       setMember((prev) => prev ? { ...prev, profile_image_url: signedUrl } : prev)
       setCropModalOpen(false)
       setCropImageSrc(null)
@@ -338,8 +302,6 @@ export default function SettingsPage({ userId, isAdmin }) {
         .from('members').update({ profile_image_url: null }).eq('id', member.id)
       if (updateError) throw updateError
 
-      const nextMember = { ...member, profile_image_url: null }
-      await syncRestaurantNotesProfile(nextMember)
       setMember((prev) => prev ? { ...prev, profile_image_url: null } : prev)
     } catch (err) {
       console.error(err)
@@ -381,10 +343,6 @@ export default function SettingsPage({ userId, isAdmin }) {
 
       if (updateError) throw updateError
 
-      await syncRestaurantNotesProfile({
-        ...member,
-        username: trimmedUsername,
-      })
 
       setMember((prev) => prev ? { ...prev, username: trimmedUsername || null } : prev)
       setUsernameEditing(false)
