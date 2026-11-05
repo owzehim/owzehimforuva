@@ -272,6 +272,20 @@ Deno.serve(async (req) => {
       console.error('Expired partner reward cleanup failed')
       retentionFailedCount += 1
     }
+    // OPS-11: stamp history archived by an admin reset is kept 12 months.
+    let expiredStampArchiveCount = 0
+    for (const table of ['stamp_card_visits_archive', 'stamp_card_rewards_archive']) {
+      const { count, error: archiveRetentionError } = await admin
+        .from(table)
+        .delete({ count: 'exact' })
+        .lte('delete_after', rewardRetentionNow)
+      if (archiveRetentionError) {
+        console.error('Stamp archive retention cleanup failed')
+        retentionFailedCount += 1
+      } else {
+        expiredStampArchiveCount += Number(count) || 0
+      }
+    }
     const { count: expiredHiddenNoteCount, error: hiddenNoteRetentionError } = await admin
       .from('restaurant_notes')
       .delete({ count: 'exact' })
@@ -327,6 +341,7 @@ Deno.serve(async (req) => {
         expired_signup_accounts_failed_count: expiredSignupFailedCount,
         orphaned_pending_email_mappings_deleted_count: Number(cleanedPendingEmailMappings) || 0,
         expired_partner_rewards_deleted_count: Number(expiredPartnerRewardsCount) || 0,
+        expired_stamp_archive_records_deleted_count: expiredStampArchiveCount,
         sheet_synced_count: syncedCount,
         auth_accounts_deleted_count: deletedAuthAccountCount,
         expired_hidden_notes_deleted_count: Number(expiredHiddenNoteCount) || 0,
