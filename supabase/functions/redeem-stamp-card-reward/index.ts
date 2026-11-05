@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
       storeId.length === 0 ||
       storeId.length > 200 ||
       storeId.trim() !== storeId ||
+      // deno-lint-ignore no-control-regex -- rejecting control characters is the point
       /[\u0000-\u001f\u007f]/.test(storeId)
     ) {
       return json({ success: false, message: '잘못된 리워드 사용 요청입니다.' }, 400)

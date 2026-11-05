@@ -3385,6 +3385,7 @@ function EventsTab({ events }) {
     ? '0'
     : `calc(100% - ${eventCollapsedCardHeight})`
   const displayEvent = selectedEvent
+  const safeInstagramUrl = getSafeHttpsUrl(displayEvent?.instagram_url)
   const eventIndicatorRows = Array.from(
     { length: Math.ceil(allEvents.length / 5) },
     (_, rowIndex) => allEvents.slice(rowIndex * 5, rowIndex * 5 + 5),
@@ -3706,7 +3707,8 @@ function EventsTab({ events }) {
     if (!ev) return null
     const isExpanded = expandedId === ev.id
     const imgs = ev.image_urls || []
-    const instaUrl = ev.instagram_url
+    // Only plain https links (no javascript: or other schemes) become links.
+    const instaUrl = getSafeHttpsUrl(ev.instagram_url)
     const currentSlide = slideIndexes[ev.id] || 0
 
     return (
@@ -4108,9 +4110,9 @@ const effectiveDateColor = isDragging
               </div>
             )}
 
-            {displayEvent.instagram_url && (
+            {safeInstagramUrl && (
               <a
-                href={displayEvent.instagram_url}
+                href={safeInstagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
@@ -4591,9 +4593,9 @@ const effectiveDateColor = isDragging
                       ))}
                     </div>
                   )}
-                  {displayEvent.instagram_url && (
+                  {safeInstagramUrl && (
                     <a
-                      href={displayEvent.instagram_url}
+                      href={safeInstagramUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hidden"

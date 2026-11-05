@@ -85,18 +85,17 @@ Deno.serve(async (req) => {
       action = 'addStamp',
       userId,
       restaurantId,
-      rewardId,
       totalStamps,
       visitedAt,
       adminNote,
     } = await req.json().catch(() => ({}))
 
-    const supportedActions = new Set(['addStamp', 'listMembers', 'restoreReward', 'resetProgress'])
+    // Reward restore was removed: a used reward cannot be put back.
+    const supportedActions = new Set(['addStamp', 'listMembers', 'resetProgress'])
     if (
       !supportedActions.has(action) ||
       ((action === 'addStamp' || action === 'listMembers' || action === 'resetProgress') && !restaurantId) ||
-      (action === 'addStamp' && (!userId || !visitedAt)) ||
-      (action === 'restoreReward' && !rewardId)
+      (action === 'addStamp' && (!userId || !visitedAt))
     ) {
       return json({ success: false, message: '잘못된 요청입니다.' }, 400)
     }
@@ -143,36 +142,6 @@ Deno.serve(async (req) => {
 
     if (!isAdmin) {
       return json({ success: false, message: '관리자 권한이 필요합니다.' }, 403)
-    }
-
-    if (action === 'restoreReward') {
-      if (!(await auditFirst(admin, {
-        actorId: caller.id,
-        action: 'stamp_reward.restore',
-        resourceType: 'stamp_card_rewards',
-        resourceId: rewardId,
-        changedFields: ['redeemed', 'redeemed_at'],
-      }))) {
-        return json({ success: false, message: AUDIT_UNAVAILABLE_MESSAGE }, 503)
-      }
-      const { data: restoredReward, error: restoreError } = await admin
-        .from('stamp_card_rewards')
-        .update({ redeemed: false, redeemed_at: null })
-        .eq('id', rewardId)
-        .eq('redeemed', true)
-        .is('expires_at', null)
-        .select('id')
-        .maybeSingle()
-
-      if (restoreError) throw restoreError
-      if (!restoredReward) {
-        if (auditState.pending) await recordAdminActionFailure(admin, auditState.pending)
-        auditState.pending = null
-        return json({ success: false, message: '이미 미사용 상태이거나 리워드를 찾을 수 없습니다.' }, 404)
-      }
-
-      auditState.pending = null
-      return json({ success: true, auditLogged: true })
     }
 
     if (action === 'resetProgress') {
