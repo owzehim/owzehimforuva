@@ -4,7 +4,6 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { getPartnerAppsScriptSecret } from '../supabase/functions/_shared/partnerAppsScriptSecret.js'
 
-const SHARED = 's'.repeat(40)
 const OWN = 'a'.repeat(64)
 
 function fakeAdmin(rows, { fail = false } = {}) {
@@ -29,25 +28,25 @@ function fakeAdmin(rows, { fail = false } = {}) {
 
 test('an enabled partner uses its own secret', async () => {
   const admin = fakeAdmin([{ partnership_id: 'A', secret: OWN, enabled: true }])
-  assert.equal(await getPartnerAppsScriptSecret(admin, 'A', SHARED), OWN)
+  assert.equal(await getPartnerAppsScriptSecret(admin, 'A'), OWN)
 })
 
-test('a partner not switched over yet keeps the shared secret', async () => {
+test('a partner that is not enabled gets no secret at all (no shared fallback)', async () => {
   const admin = fakeAdmin([{ partnership_id: 'A', secret: OWN, enabled: false }])
-  assert.equal(await getPartnerAppsScriptSecret(admin, 'A', SHARED), SHARED)
-  assert.equal(await getPartnerAppsScriptSecret(admin, 'B', SHARED), SHARED)
+  assert.equal(await getPartnerAppsScriptSecret(admin, 'A'), null)
+  assert.equal(await getPartnerAppsScriptSecret(admin, 'B'), null)
 })
 
 test("one partner's secret is never used for another partner", async () => {
   const admin = fakeAdmin([{ partnership_id: 'A', secret: OWN, enabled: true }])
-  assert.equal(await getPartnerAppsScriptSecret(admin, 'B', SHARED), SHARED)
+  assert.equal(await getPartnerAppsScriptSecret(admin, 'B'), null)
 })
 
-test('lookup failures or bad rows fall back safely', async () => {
-  assert.equal(await getPartnerAppsScriptSecret(fakeAdmin([], { fail: true }), 'A', SHARED), SHARED)
+test('lookup failures or bad rows send nothing', async () => {
+  assert.equal(await getPartnerAppsScriptSecret(fakeAdmin([], { fail: true }), 'A'), null)
   const short = fakeAdmin([{ partnership_id: 'A', secret: 'short', enabled: true }])
-  assert.equal(await getPartnerAppsScriptSecret(short, 'A', SHARED), SHARED)
-  assert.equal(await getPartnerAppsScriptSecret(fakeAdmin([]), '', SHARED), SHARED)
+  assert.equal(await getPartnerAppsScriptSecret(short, 'A'), null)
+  assert.equal(await getPartnerAppsScriptSecret(fakeAdmin([]), ''), null)
 })
 
 test('the secrets table is server-only and every partner gets a random secret', () => {
@@ -62,5 +61,13 @@ test('all three partner senders use the per-partner secret', () => {
   for (const fn of ['log-redemption', 'redeem-stamp-card-reward', 'sync-to-sheets']) {
     const source = readFileSync(`supabase/functions/${fn}/index.ts`, 'utf8')
     assert.ok(source.includes('getPartnerAppsScriptSecret(admin'), fn)
+  }
+})
+
+test('the shared partner secret is no longer read by any Edge Function', () => {
+  for (const fn of ['log-redemption', 'redeem-stamp-card-reward', 'sync-to-sheets']) {
+    const source = readFileSync(`supabase/functions/${fn}/index.ts`, 'utf8')
+    assert.ok(!source.includes("Deno.env.get('PARTNER_APPS_SCRIPT_SECRET')"), fn)
+    assert.ok(!source.includes("'PARTNER_APPS_SCRIPT_SECRET'"), fn)
   }
 })
