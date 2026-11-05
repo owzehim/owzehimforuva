@@ -1,5 +1,5 @@
 import { supabase } from '../../../lib/supabase'
-import { compressImage } from '../../../lib/imageCompression'
+import { preparePublicImage } from '../../../lib/preparePublicImage'
 
 export const DEFAULT_STAMP_CARD_CONFIG = {
   total_stamps: 10,
@@ -47,19 +47,14 @@ export async function upsertConfig(restaurantId, data) {
 }
 
 export async function uploadWallpaper(restaurantId, file) {
-  // Use existing compressImage helper (browser-image-compression)
-  const compressed = await compressImage(file, {
-    maxSizeMB: 0.8,
-    maxWidthOrHeight: 1200,
-  })
-
-  const fileExt = file.name.split('.').pop() || 'jpg'
-  const fileName = `${restaurantId}_${Date.now()}.${fileExt}`
-  const contentType = compressed.type || file.type || 'image/jpeg'
+  // SEC-36: re-encode like other public admin uploads (strips EXIF/GPS, WebP).
+  const prepared = await preparePublicImage(file)
+  const fileName = `${restaurantId}_${Date.now()}.webp`
+  const contentType = 'image/webp'
 
   const { error: uploadError } = await supabase.storage
     .from('stamp-card-wallpapers')
-    .upload(fileName, compressed, {
+    .upload(fileName, prepared, {
       contentType,
       upsert: true,
     })

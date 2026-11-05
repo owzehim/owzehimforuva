@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession } from '../_shared/requireVerifiedLogin.ts'
-import { recordAdminAction } from '../_shared/adminAudit.ts'
+import { AUDIT_UNAVAILABLE_MESSAGE, recordAdminAction, recordAdminActionFailure } from '../_shared/adminAudit.ts'
 
 const allowedFields = new Set([
   'first_name',
@@ -185,6 +185,17 @@ Deno.serve(async (req) => {
       }
     }
 
+    const auditEntry = {
+      actorId: caller.id,
+      action: 'member.update',
+      resourceType: 'members',
+      resourceId: memberId,
+      changedFields: Object.keys(safeUpdates),
+    }
+    if (!(await recordAdminAction(admin, auditEntry))) {
+      return json({ success: false, message: AUDIT_UNAVAILABLE_MESSAGE }, 503)
+    }
+
     const { data: updatedMember, error: updateError } = await admin
       .from('members')
       .update(safeUpdates)
@@ -192,6 +203,7 @@ Deno.serve(async (req) => {
       .select('id')
       .maybeSingle()
 
+    if (updateError || !updatedMember) await recordAdminActionFailure(admin, auditEntry)
     if (updateError) {
       console.error('Admin member update failed:', updateError)
       if (updateError.code === '23505' && 'student_number' in safeUpdates) {
@@ -203,15 +215,7 @@ Deno.serve(async (req) => {
       return json({ success: false, message: '회원을 찾을 수 없습니다.' }, 404)
     }
 
-    const auditLogged = await recordAdminAction(admin, {
-      actorId: caller.id,
-      action: 'member.update',
-      resourceType: 'members',
-      resourceId: memberId,
-      changedFields: Object.keys(safeUpdates),
-    })
-
-    return json({ success: true, auditLogged })
+    return json({ success: true, auditLogged: true })
   } catch (error) {
     console.error('Unexpected admin member update error:', error)
     return json({ success: false, message: '회원 정보를 수정하지 못했습니다.' }, 500)

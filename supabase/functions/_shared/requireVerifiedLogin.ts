@@ -23,11 +23,15 @@ export function requireVerifiedLoginResponse(corsHeaders: Record<string, string>
   )
 }
 
+// SEC-63: the single-device exemption is limited to this one test account,
+// even if another user is added to login_otp_exempt_users.
+const DEVICE_CHECK_EXEMPT_TEST_EMAIL = 'test@uvain.nl'
+
 export async function hasActiveDeviceSession(
   admin: any,
   userId: string,
   accessToken: string,
-  { allowTestAccountExemption = false }: { allowTestAccountExemption?: boolean } = {},
+  { testAccountEmail }: { testAccountEmail?: string | null } = {},
 ): Promise<boolean> {
   try {
     const { data: adminRole, error: roleError } = await admin
@@ -53,7 +57,10 @@ export async function hasActiveDeviceSession(
 
     if (memberError || !member) return false
 
-    if (allowTestAccountExemption && member.is_test_account === true) {
+    const isExemptTestEmail =
+      typeof testAccountEmail === 'string' &&
+      testAccountEmail.trim().toLowerCase() === DEVICE_CHECK_EXEMPT_TEST_EMAIL
+    if (isExemptTestEmail && member.is_test_account === true) {
       const { data: exemption, error: exemptionError } = await admin
         .from('login_otp_exempt_users')
         .select('user_id')

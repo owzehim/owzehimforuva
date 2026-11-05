@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession } from '../_shared/requireVerifiedLogin.ts'
-import { recordAdminAction } from '../_shared/adminAudit.ts'
+import { AUDIT_UNAVAILABLE_MESSAGE, recordAdminAction } from '../_shared/adminAudit.ts'
 
 function isValidDate(value: unknown) {
   if (value === null) return true
@@ -133,6 +133,21 @@ Deno.serve(async (req) => {
       return json({ success: false, message: '회원 정보를 저장하지 못했습니다.' }, 500)
     }
 
+    const auditLogged = await recordAdminAction(admin, {
+      actorId: caller.id,
+      action: 'member.create',
+      resourceType: 'members',
+      resourceId: createdMember.id,
+      changedFields: ['account_status', 'is_member', 'membership_valid_until'],
+    })
+    if (!auditLogged) {
+      // OPS-11: no member is created without an audit record.
+      await admin.from('members').delete().eq('user_id', createdUserId)
+      await admin.auth.admin.deleteUser(createdUserId)
+      createdUserId = null
+      return json({ success: false, message: AUDIT_UNAVAILABLE_MESSAGE }, 503)
+    }
+
     if (!skipEmailConfirmation) {
       const { error: emailError } = await admin.auth.resend({ type: 'signup', email })
       if (emailError) {
@@ -143,14 +158,6 @@ Deno.serve(async (req) => {
         return json({ success: false, message: '인증 이메일을 보내지 못해 회원 생성을 취소했습니다.' }, 502)
       }
     }
-
-    const auditLogged = await recordAdminAction(admin, {
-      actorId: caller.id,
-      action: 'member.create',
-      resourceType: 'members',
-      resourceId: createdMember.id,
-      changedFields: ['account_status', 'is_member', 'membership_valid_until'],
-    })
 
     return json({ success: true, auditLogged })
   } catch (error) {
