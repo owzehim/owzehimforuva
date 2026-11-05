@@ -1808,7 +1808,8 @@ function LegalAgreementList({
 }) {
   const labels = {
     terms: language === 'ko' ? '이용약관에 동의합니다' : 'I agree to the Terms & Conditions',
-    privacy: language === 'ko' ? '개인정보 처리방침에 동의합니다' : 'I agree to the Privacy Policy',
+    // GDPR-19: the Privacy Policy is an information notice, not consent.
+    privacy: language === 'ko' ? '개인정보 처리방침을 읽고 확인했습니다' : 'I have read the Privacy Policy',
     community: language === 'ko' ? '커뮤니티 가이드라인에 동의합니다' : 'I agree to the Community Guidelines',
   };
 

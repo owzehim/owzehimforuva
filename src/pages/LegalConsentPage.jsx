@@ -23,6 +23,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
         community: '커뮤니티 가이드라인',
         read: '전문 보기',
         agree: (name) => `${name}에 동의합니다`,
+        acknowledgePrivacy: '개인정보 처리방침을 읽고 확인했습니다',
         submit: '동의하고 계속',
         retry: '다시 확인',
         loadError: '동의 상태를 확인하지 못했습니다. 다시 시도해 주세요.',
@@ -37,6 +38,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
         community: 'Community Guidelines',
         read: 'Read full text',
         agree: (name) => `I agree to the ${name}`,
+        acknowledgePrivacy: 'I have read the Privacy Policy',
         submit: 'Accept and continue',
         retry: 'Check again',
         loadError: 'We could not check your consent status. Please try again.',
@@ -111,7 +113,8 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
                       className="h-5 w-5 shrink-0 accent-orange-500"
                     />
                     <label htmlFor={`consent-${key}`} className="flex-1 text-sm font-semibold">
-                      {labels.agree(names[key])}
+                      {/* GDPR-19: the Privacy Policy is acknowledged, not agreed to. */}
+                      {key === 'privacy' ? labels.acknowledgePrivacy : labels.agree(names[key])}
                     </label>
                     <button
                       type="button"
