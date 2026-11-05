@@ -66,7 +66,24 @@ unchanged; downloaded code identical to the branch):
 Smoke tests on production: reset signal `check` → 200, `complete` with a password-login token → 401,
 consent status without login → 401. Live app bundle uses version 2026-11-05-01 and the server's
 `requiredVersion`. Still on the pre-`8e575f8` shared login check: `admin-add-stamp`,
-`admin-create-member`, `admin-update-member`, `sync-to-sheets`.
+`admin-create-member`, `admin-update-member`, `sync-to-sheets` (redeployed later the same day, below).
+
+Later deploys on 2026-11-05 (DEV from `dev`, then production from `main`; downloaded code identical
+to `main`; `verify_jwt` unchanged):
+
+| Function | Production version | Change |
+|---|---|---|
+| redeem-stamp-card-reward | v19 | Reward can be applied on the day of the check-in (Already Checked-IN screen) |
+| admin-add-stamp | v26 | OPS-11 audit-first; current shared login check |
+| admin-create-member | v6 | OPS-11 audit-first; current shared login check |
+| admin-update-member | v12 | OPS-11 audit-first; current shared login check |
+| log-redemption | v82 | SEC-63: device exemption only for test@uvain.nl |
+| send-content-report-notice | v6 | OPS-12: email logo from the project's own storage |
+| sync-to-sheets | v37 | Current shared login check (was out of date) |
+| verify-member-qr | deleted | OPS-14 (unused); now returns 404 |
+
+Smoke test: browser preflight from `https://app.uva-in.nl` → `ok` with that origin allowed for all six;
+`verify-member-qr` → `NOT_FOUND`.
 
 Fresh pre-change backups were taken just before each production apply (kept outside the repository).
 The SEC-55 and SEC-56 sections below describe the state **before** this change.
