@@ -224,7 +224,7 @@ export default function ScanPage() {
         }}
       >
         {/* Blinking orange dot – only on success */}
-        {state === STATE.SUCCESS && !testMode && (
+        {state === STATE.SUCCESS && (
           <>
             <style>{`
               @keyframes recordingDot {
@@ -271,29 +271,6 @@ export default function ScanPage() {
           </div>
         )}
 
-        {state === STATE.SUCCESS && testMode && (
-          <div className="flex flex-col items-center gap-4 mt-8 text-center max-w-sm w-full">
-            <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center">
-              <span className="text-amber-700 text-4xl">✓</span>
-            </div>
-
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold tracking-wide text-amber-800">
-              TEST MODE
-            </span>
-
-            <h2 className="font-bold text-gray-900 text-xl">TEST MODE — SCAN SUCCESS</h2>
-
-            <p className="text-gray-500 text-sm">@{storeName}</p>
-
-            <div className="w-full rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 text-left">
-              <p className="font-bold text-amber-900">No benefit was redeemed.</p>
-              <p className="mt-2 text-sm text-amber-900">
-                This test account is checking the scan flow. This screen is not a valid check-in or approval for a member benefit. Please do not present it to claim an offer.
-              </p>
-            </div>
-          </div>
-        )}
-
         {state === STATE.ALREADY_CHECKED_IN && (
           <section
             className="flex flex-col items-center gap-4 mt-8 text-center max-w-sm w-full"
@@ -313,13 +290,16 @@ export default function ScanPage() {
           </section>
         )}
 
-        {state === STATE.SUCCESS && !testMode && (
+        {/* Test accounts see the same screen, labelled TEST with a yellow icon. */}
+        {state === STATE.SUCCESS && (
           <div className="flex flex-col items-center gap-4 mt-2 text-center max-w-sm w-full">
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-              <span className="text-green-600 text-4xl">✓</span>
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center ${testMode ? 'bg-amber-100' : 'bg-green-100'}`}>
+              <span className={`text-4xl ${testMode ? 'text-amber-500' : 'text-green-600'}`}>✓</span>
             </div>
 
-            <h2 className="font-bold text-gray-900 text-xl">Check-IN 완료!</h2>
+            <h2 className="font-bold text-gray-900 text-xl">
+              {testMode ? <><span className="font-extrabold text-red-600">TEST</span> 완료!</> : 'Check-IN 완료!'}
+            </h2>
 
             <p className="text-gray-500 text-sm">
               @{storeName}
