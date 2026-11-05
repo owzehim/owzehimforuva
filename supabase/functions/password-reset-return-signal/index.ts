@@ -10,6 +10,20 @@ async function hashToken(token: string) {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+// SEC-61: recovery-link sessions carry amr 'otp' (GoTrue); a normal sign-in
+// (password/OAuth) must not be able to mark a reset as completed.
+function isEmailLinkSession(accessToken: string) {
+  try {
+    const payload = accessToken.split('.')[1] || ''
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const claims = JSON.parse(atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')))
+    return Array.isArray(claims?.amr) && claims.amr.length > 0 &&
+      claims.amr.every((entry: { method?: unknown }) => ['otp', 'recovery', 'magiclink'].includes(String(entry?.method)))
+  } catch {
+    return false
+  }
+}
+
 function jsonResponse(body: Record<string, unknown>, status: number, corsHeaders: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -50,6 +64,16 @@ Deno.serve(async (req) => {
     })
     const tokenHash = await hashToken(token)
 
+    // SEC-61: same limits as email-confirmation-return-signal. The login
+    // screen polls 'check' about every 5 seconds while visible.
+    const ip = req.headers.get('cf-connecting-ip') || 'unknown-client'
+    const limits = await Promise.all([
+      admin.rpc('consume_edge_rate_limit', { p_key_hash: await hashToken(`reset-return:${action}:ip:${ip}`), p_limit: action === 'check' ? 100 : 30, p_window_seconds: action === 'check' ? 10 : 60 }),
+      admin.rpc('consume_edge_rate_limit', { p_key_hash: await hashToken(`reset-return:${tokenHash}`), p_limit: 60, p_window_seconds: 60 }),
+    ])
+    if (limits.some((result) => result.error)) return jsonResponse({ error: 'Service unavailable' }, 503, corsHeaders)
+    if (limits.some((result) => result.data !== true)) return jsonResponse({ error: 'Too many requests' }, 429, corsHeaders)
+
     // Opportunistically remove expired records. The table only contains
     // hashed, short-lived tokens and never stores an email or account ID.
     await admin.from('password_reset_return_signals').delete().lt('expires_at', new Date().toISOString())
@@ -58,7 +82,9 @@ Deno.serve(async (req) => {
       const bearerToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
       if (!bearerToken) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders)
       const { data: { user }, error: authError } = await admin.auth.getUser(bearerToken)
-      if (authError || !user) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders)
+      if (authError || !user || !isEmailLinkSession(bearerToken)) {
+        return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders)
+      }
 
       const expiresAt = new Date(Date.now() + SIGNAL_TTL_MS).toISOString()
       const { error } = await admin.from('password_reset_return_signals').upsert(
