@@ -46,6 +46,8 @@ Supersedes `production-main-20261006.md`.
 
 | after frontend `e6dd993` (main) / `816f4cd` (dev) was live | `20261105180000_func01_func08_database_first_privacy_sync` | DEV, then production | Same single-file + ledger-row method | `finish_privacy_retention_database(uuid)` exists, EXECUTE only for service_role; ledger row present; Master Sheet link unchanged (1 URL); queue empty. |
 
+| after the member-write audit (no frontend change needed) | `20261105200000_restrict_note_insert_columns` | DEV, then production | Same single-file + ledger-row method | Members' INSERT on `restaurant_notes` limited to `body, is_anonymous, restaurant_id, source_rating, source_redemption_id, source_review_id, source_store_id, source_tags, user_id, username` (no `hidden_at`, `id`, timestamps, photo path or avatar seed); UPDATE unchanged (`body, hidden_at, is_anonymous`); table-level only SELECT, DELETE; ledger row present. |
+
 Edge Functions deployed the same day (DEV from `dev`, then production from `main`; `verify_jwt`
 unchanged; downloaded code identical to the branch):
 
