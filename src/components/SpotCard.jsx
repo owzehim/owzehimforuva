@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Image as ImageIcon, MapPin, Ticket, Star, StarFour } from '@phosphor-icons/react'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
@@ -706,6 +706,12 @@ export function SpotCard({
   const [darkMode, setDarkMode] = useState(() => isDarkMode())
   const [sheetMaxHeight, setSheetMaxHeight] = useState(0)
   const [googleMapsButtonCenterY, setGoogleMapsButtonCenterY] = useState(null)
+  // Compact cards grow to fit their text so the fixed Google Maps button
+  // always sits below it, whatever the screen size.
+  const [compactFitHeight, setCompactFitHeight] = useState(0)
+  const compactFitHeightRef = useRef(0)
+  const compactTextEndRef = useRef(null)
+  const googleMapsButtonRef = useRef(null)
   const selectedId = selected?.id
   const [reviewBoxPanelState, setReviewBoxPanelState] = useState(() => ({ selectedId, value: 'guide' }))
   const startYRef = useRef(0)
@@ -740,9 +746,12 @@ export function SpotCard({
     selected?.spot_card_height === 'full' || selected?.spot_card_height === 'tall'
       ? 'full'
       : 'compact'
-  const COMPACT_HEIGHT = Math.min(WIN_H * 0.22, 150)
   const FULL_HEIGHT = Math.min(WIN_H * 0.44, 315)
   const MAX_HEIGHT = sheetMaxHeight || WIN_H
+  const COMPACT_HEIGHT = Math.min(
+    Math.max(Math.min(WIN_H * 0.22, 150), compactFitHeight),
+    MAX_HEIGHT * 0.8,
+  )
   const LANDSCAPE_FULL_COLLAPSED_HEIGHT = Math.min(
     Math.max(WIN_H * 0.68, 240),
     MAX_HEIGHT * 0.84,
@@ -869,7 +878,10 @@ export function SpotCard({
               315,
             )
           : Math.min(viewportHeight * 0.44, 315)
-        : Math.min(viewportHeight * 0.22, 150)
+        : Math.min(
+            Math.max(Math.min(viewportHeight * 0.22, 150), compactFitHeightRef.current),
+            nextMaxHeight * 0.8,
+          )
 
       setCardHeightValue(cardIsExpanded ? nextMaxHeight : nextMinHeight)
     }
@@ -882,6 +894,54 @@ export function SpotCard({
       window.removeEventListener('orientationchange', measureSheet)
     }
   }, [selectedId, spotCardHeightMode, selected?.spot_card_height, cardIsExpanded])
+
+  const showGoogleMapsButtonSetting = selected?.show_google_maps_button !== false
+  useLayoutEffect(() => {
+    if (!selectedId || spotCardHeightMode === 'full') {
+      compactFitHeightRef.current = 0
+      setCompactFitHeight(0)
+      return undefined
+    }
+
+    const measureCompactFit = () => {
+      const sheet = cardRef.current
+      const container = sheet?.parentElement
+      const textEnd = compactTextEndRef.current
+      if (!sheet || !container || !textEnd) return
+
+      // Both share the sheet's transform, so this is the text's height inside the card.
+      const textBottom = textEnd.getBoundingClientRect().top - sheet.getBoundingClientRect().top
+      let buttonSpace = 0
+      const button = googleMapsButtonRef.current
+      if (showGoogleMapsButtonSetting && button) {
+        const transform = window.getComputedStyle(button).transform
+        const offsetY = transform && transform !== 'none' ? new DOMMatrixReadOnly(transform).m42 : 0
+        const buttonTop = button.getBoundingClientRect().top - offsetY
+        buttonSpace = Math.max(0, container.getBoundingClientRect().bottom - buttonTop)
+      }
+      const next = Math.ceil(textBottom + buttonSpace + 12)
+      if (next === compactFitHeightRef.current) return
+      compactFitHeightRef.current = next
+      setCompactFitHeight(next)
+    }
+
+    measureCompactFit()
+    const frame = requestAnimationFrame(measureCompactFit)
+    document.fonts?.ready?.then(measureCompactFit).catch(() => {})
+    window.addEventListener('resize', measureCompactFit)
+    window.addEventListener('orientationchange', measureCompactFit)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('resize', measureCompactFit)
+      window.removeEventListener('orientationchange', measureCompactFit)
+    }
+  }, [selected, selectedId, spotCardHeightMode, showGoogleMapsButtonSetting, sheetMaxHeight])
+
+  // Keep a resting compact card at its fitted height.
+  useEffect(() => {
+    if (!selectedId || spotCardHeightMode === 'full' || closing) return
+    setCardHeightValue(COMPACT_HEIGHT)
+  }, [COMPACT_HEIGHT, selectedId, spotCardHeightMode, closing])
 
   // Watch dark mode changes
   useEffect(() => {
@@ -1542,7 +1602,7 @@ export function SpotCard({
             </div>
           )}
 
-          <div style={{ height: googleMapsReservedSpace }} />
+          <div ref={compactTextEndRef} style={{ height: googleMapsReservedSpace }} />
         </div>
 
       </div>
@@ -1550,6 +1610,7 @@ export function SpotCard({
       {/* Fixed outside the moving sheet so it remains in one place over the SpotCard. */}
       {showGoogleMapsButton && (
         <div
+          ref={googleMapsButtonRef}
           className={
             'spot-card-google-maps-button fixed left-0 right-0 pointer-events-none flex justify-center transition-opacity duration-200 ' +
             (shouldShowGoogleMapsButton ? 'opacity-100' : 'opacity-0')
