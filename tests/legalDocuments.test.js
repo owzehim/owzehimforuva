@@ -13,10 +13,21 @@ test('each legal document has complete English and Korean versions under one ver
     assert.ok(document.ko?.effectiveDate)
     assert.ok(document.ko?.body.length > 1000)
     assert.match(document.ko.body, /[가-힣]/)
-    assert.ok(document.ko.body.includes('2026년 10월 24일'))
+    assert.ok(document.body.includes(`Effective Date: ${document.effectiveDate}`))
+    assert.ok(document.ko.body.includes(document.ko.effectiveDate))
     assert.ok(document.body.includes('The English version is the original and prevails'))
     assert.ok(document.ko.body.includes('영어 원문이 우선합니다'))
   }
+})
+
+test('app and server use the same legal document version (GDPR-19)', async () => {
+  const { CURRENT_LEGAL_DOCUMENT_VERSION } = await import('../supabase/functions/_shared/legalConsent.js')
+  assert.equal(CURRENT_LEGAL_DOCUMENT_VERSION, LEGAL_DOCUMENT_VERSION)
+})
+
+test('privacy policy tells members that non-anonymous notes show their profile photo (SEC-56)', () => {
+  assert.ok(legalDocuments.privacy.body.includes('it is shown with your non-anonymous notes to other signed-in App members'))
+  assert.ok(legalDocuments.privacy.ko.body.includes('익명이 아닌 노트에는 로그인한 다른 앱 회원에게 프로필 사진도 함께 표시됩니다'))
 })
 
 test('Korean privacy text includes the app privacy sections and contact information', () => {
