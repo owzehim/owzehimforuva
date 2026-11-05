@@ -31,7 +31,7 @@ async function syncClaimToAppsScript(
       signal: controller.signal,
       body: JSON.stringify(withAppsScriptSecret(
         payload,
-        secret ?? Deno.env.get(label === 'master' ? 'MASTER_APPS_SCRIPT_SECRET' : 'PARTNER_APPS_SCRIPT_SECRET'),
+        label === 'master' ? Deno.env.get('MASTER_APPS_SCRIPT_SECRET') : secret,
       )),
     })
     const text = await response.text().catch(() => '')
@@ -273,7 +273,7 @@ Deno.serve(async (req) => {
         integrations?.partner_apps_script_url,
         'partner',
         partnerPayload,
-        await getPartnerAppsScriptSecret(admin, storeId, Deno.env.get('PARTNER_APPS_SCRIPT_SECRET')),
+        await getPartnerAppsScriptSecret(admin, storeId),
       ),
     ])
 
