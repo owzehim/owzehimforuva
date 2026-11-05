@@ -3,12 +3,29 @@ import { ArrowLeft, Plus, ClockCounterClockwise } from '@phosphor-icons/react'
 import { fetchAllMemberStampData, restoreReward } from '../api/rewards'
 import { adminInsertVisit } from '../api/visits'
 import { isPendingRewardAvailable } from '../rewardAvailability'
+import { supabase } from '../../../lib/supabase'
+import AdminBadge from '../../../components/AdminBadge'
 
 export default function StampCardMemberPanel({ restaurantId, spotName, totalStamps, onClose }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [slideIn, setSlideIn] = useState(false)
+  const [adminUserIds, setAdminUserIds] = useState(() => new Set())
+
+  // Blue check mark next to administrators, as on 가본 사람 한마디.
+  useEffect(() => {
+    let active = true
+    supabase.rpc('admin_list_admin_user_ids').then(({ data, error }) => {
+      if (!active) return
+      if (error) {
+        console.error('admin list error:', error)
+        return
+      }
+      setAdminUserIds(new Set((data || []).map((row) => (typeof row === 'string' ? row : row?.admin_list_admin_user_ids)).filter(Boolean)))
+    })
+    return () => { active = false }
+  }, [])
 
   // Slide-up on mount
   useEffect(() => {
@@ -104,6 +121,7 @@ export default function StampCardMemberPanel({ restaurantId, spotName, totalStam
               <MemberRow
                 key={member.id}
                 member={member}
+                isAdmin={adminUserIds.has(member.user_id)}
                 stampState={stampState}
                 latestReward={latestReward}
                 totalStamps={totalStamps}
@@ -119,7 +137,7 @@ export default function StampCardMemberPanel({ restaurantId, spotName, totalStam
 }
 
 // ── Single member row ─────────────────────────────────────────────────────────
-function MemberRow({ member, stampState, latestReward, totalStamps, restaurantId, onRefresh }) {
+function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, restaurantId, onRefresh }) {
   const [addOpen, setAddOpen] = useState(false)
   const [date, setDate] = useState(todayString())
   const [note, setNote] = useState('')
@@ -185,7 +203,10 @@ function MemberRow({ member, stampState, latestReward, totalStamps, restaurantId
       {/* Member info row */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-gray-900">{fullName}</p>
+          <p className="flex items-center gap-1 text-sm font-semibold text-gray-900">
+            {fullName}
+            {isAdmin && <AdminBadge size={14} />}
+          </p>
           <p className="text-xs text-gray-400 mt-0.5">
             현재 사이클: {currentCycle} · 스탬프: {stampsInCurrentCycle} / {totalStamps}
           </p>
