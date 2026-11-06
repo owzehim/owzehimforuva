@@ -134,8 +134,19 @@ export function GoodToKnowNotesPanel({
     loadNotes()
 
     if (!restaurantId) return undefined
-    const refreshInterval = window.setInterval(loadNotes, 15000)
-    return () => window.clearInterval(refreshInterval)
+    // PERF-08: refresh once a minute while the panel is visible, and right
+    // away when the app comes back to the foreground.
+    const refreshInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') loadNotes()
+    }, 60000)
+    const refreshOnReturn = () => {
+      if (document.visibilityState === 'visible') loadNotes()
+    }
+    document.addEventListener('visibilitychange', refreshOnReturn)
+    return () => {
+      window.clearInterval(refreshInterval)
+      document.removeEventListener('visibilitychange', refreshOnReturn)
+    }
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [restaurantId, loadNotes])
 

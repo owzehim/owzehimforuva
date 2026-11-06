@@ -436,15 +436,21 @@ Deno.serve(async (req) => {
       stamp_card_progress: formatStampProgress(stampResult),
       stamp_card_claimed_after_scan: stampResult?.claimedAfterScan ? 'Yes' : 'No',
     }
-    const sheetResults = await Promise.all([
+    // PERF-04: the check-in is already recorded, so the member does not wait
+    // for Google Sheets. The sheet rows are written in the background (each
+    // call still has its own 8-second timeout); a repeat scan re-sends them.
+    const partnerSecret = await getPartnerAppsScriptSecret(admin, storeId)
+    const sheetSync = Promise.all([
       postJsonToAppsScript(integrations?.master_apps_script_url, masterPayload, 'master'),
-      postJsonToAppsScript(
-        integrations?.partner_apps_script_url,
-        partnerPayload,
-        'partner',
-        await getPartnerAppsScriptSecret(admin, storeId),
-      ),
-    ])
+      postJsonToAppsScript(integrations?.partner_apps_script_url, partnerPayload, 'partner', partnerSecret),
+    ]).then((results) => {
+      for (const result of results) {
+        if (!result.ok && !result.skipped) console.error(`${result.label} sheet sync failed in background`, { errorCode: result.errorCode })
+      }
+    }).catch(() => console.error('Background sheet sync failed'))
+    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil(promise: Promise<unknown>): void } }).EdgeRuntime
+    if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(sheetSync)
+    else await sheetSync
 
     return new Response(
       JSON.stringify({
@@ -463,9 +469,7 @@ Deno.serve(async (req) => {
         checkedInAt: redemptionTimestamp.toISOString(),
         checkinAlreadyRecorded,
         stampResult,
-        sheetResults: sheetResults.map(({ ok, skipped, label, errorCode, scriptVersion }) => ({
-          ok, skipped, label, errorCode, scriptVersion,
-        })),
+        sheetSync: 'background',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

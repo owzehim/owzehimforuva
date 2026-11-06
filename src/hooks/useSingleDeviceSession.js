@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getSessionId } from '../domain/auth/authRules'
 
-const CHECK_INTERVAL_MS = 15000
+// PERF-08: check once a minute while visible, and right away when the app
+// comes back to the foreground. Server functions still check every request.
+const CHECK_INTERVAL_MS = 60000
 const CLAIM_RETRY_DELAY_MS = 10000
 
 /** Claim once per login session, then check that the server still recognizes this device. */
@@ -85,7 +87,9 @@ export function useSingleDeviceSession(session) {
     }
 
     void claimThisDevice()
-    const intervalId = window.setInterval(checkCurrentDevice, CHECK_INTERVAL_MS)
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void checkCurrentDevice()
+    }, CHECK_INTERVAL_MS)
     const visibilityHandler = () => {
       if (document.visibilityState === 'visible') {
         if (claimSucceeded) void checkCurrentDevice()
