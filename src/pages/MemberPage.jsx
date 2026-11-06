@@ -9,6 +9,7 @@ import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
 import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, ArrowsVertical, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning, Image as ImageIcon, X } from '@phosphor-icons/react'
 import { useReviewPrompt } from '../hooks/useReviewPrompt'
 import ReviewModal from '../components/ReviewModal'
+import { MEMBER_CARD_WIDTH } from '../lib/memberCardWidth'
 import ActivityStatsCard from '../components/ActivityStatsCard'
 import StampCardMini from '../features/stampCard/components/StampCardMini'
 import StampCardModal from '../features/stampCard/components/StampCardModal'
@@ -1434,8 +1435,7 @@ function MembershipCard({
   const [cameraFrameSize, setCameraFrameSize] = useState(null)
   const cameraFaceRef = useRef(null)
 
-  const W =
-    'min(var(--membership-card-width, min(calc(100vw - 48px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
+  const W = MEMBER_CARD_WIDTH
   const cardW = W
   const fs = {
     brand: '3.8cqw',
@@ -1926,8 +1926,7 @@ function QRTab({ member, isValid, previewOnly = false, scannerOpenSignal = 0, on
   const touchStartX = useRef(null)
   const touchStartY = useRef(null)
   const liftedRef = useRef(false)
-  const W =
-    'min(var(--membership-card-width, min(calc(100vw - 48px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
+  const W = MEMBER_CARD_WIDTH
   const cardRestingOffsetPx = 0
   const liftedActivityGapPx = 8 // small gap between the lifted card and the box
   const cardRestingOffsetY = `${cardRestingOffsetPx}px`
