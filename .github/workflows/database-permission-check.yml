@@ -1,0 +1,59 @@
+name: Database permission check
+
+# OPS-04 (CITS report v3): weekly read-only check that production still has
+# RLS on every table and exactly the reviewed anon/authenticated privileges.
+# See supabase/checks/permission-check.sql. Uses the same SUPABASE_PROD_DB_URL
+# secret as the backup workflow; the session is forced read-only.
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run the read-only permission check
+        env:
+          DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
+          PGOPTIONS: -c default_transaction_read_only=on
+        run: |
+          set -euo pipefail
+          if [[ -z "$DB_URL" ]]; then
+            echo "Set SUPABASE_PROD_DB_URL in GitHub Actions secrets."
+            exit 1
+          fi
+          psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 -f supabase/checks/permission-check.sql
+
+  # A failed run opens (or comments on) one GitHub issue (same as OPS-10).
+  alert-on-failure:
+    needs: check
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: "Database permission check failed"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          existing="$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == env.TITLE) | .number" | head -n 1)"
+          body="The weekly permission check failed on $(date -u +%Y-%m-%dT%H:%MZ). Run: $RUN_URL"
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$TITLE" --body "$body"
+          fi

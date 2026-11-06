@@ -51,6 +51,9 @@ Create a production build with `npm run build`.
 
 ## Database changes and deployment
 
+- **Schema baseline (OPS-01):** `supabase/baselines/production-schema-20261106.sql` is a schema-only snapshot of production (no data). To build a new empty database, run it first, then any migration newer than `20261106010000`. Reference only: never run it against production.
+- **Permission check (OPS-04):** `supabase/checks/permission-check.sql` runs weekly (GitHub Actions, *Database permission check*) in a read-only session. It fails, and opens a GitHub issue, if a table loses RLS or anon/authenticated gain a privilege or SECURITY DEFINER function outside the reviewed list. When a migration changes permissions on purpose, update that list in the same pull request.
+
 Projects: production `npvcghdzrtqrlliprtnw` (Vercel Production, branch `main`) and DEV
 `smesebnighdcwqcgokhg` (Vercel Preview, branch `dev`). Commit to `main` first, then cherry-pick
 the same commit to `dev`.
