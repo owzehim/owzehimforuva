@@ -54,6 +54,8 @@ Supersedes `production-main-20261006.md`.
 
 | OPS-05 (merged in PR #16; backup `uvain-backups/2026-11-06-pre-ops05-audit` first) | `20261105235000_ops05_audit_coverage` | DEV, then production | Same single-file + ledger-row method | `admin_action_audit` gains `db_role`, `db_application`; `log_admin_action` also records changes with no app user (dashboard / SQL / CLI / pg_cron) and still skips members and Edge Function service calls; triggers on 12 tables (added `admin_roles`, `partnership_integrations`, `login_otp_exempt_users`). Rolled-back test: admin edit → actor recorded; SQL edit → `postgres / mgmt-api`; 85 existing rows unchanged; ledger row present. |
 
+| SEC-58 (merged in PR #18 and #19; backup `uvain-backups/2026-11-06-pre-sec58` first) | `20261106010000_sec58_partner_apps_script_secrets` | DEV, then production | Same single-file + ledger-row method | `partnership_apps_script_secrets`: one 64-hex secret per partnership (created in the DB, new partnerships get one by trigger), RLS on, no anon/authenticated access, audited. Gyojasang and Northeast_Kitchen switched (`enabled = true`, check-in confirmed). `log-redemption`, `redeem-stamp-card-reward`, `sync-to-sheets` send only the partner's own secret; shared `PARTNER_APPS_SCRIPT_SECRET` removed from code and from both projects' Edge Function secrets. |
+
 Edge Functions deployed the same day (DEV from `dev`, then production from `main`; `verify_jwt`
 unchanged; downloaded code identical to the branch):
 
