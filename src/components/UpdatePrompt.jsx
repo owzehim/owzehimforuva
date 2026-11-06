@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ArrowsClockwise, CircleNotch } from '@phosphor-icons/react'
 import { applyWaitingUpdate, isUpdatePromptHiddenOn, isUpdateReady, onUpdateReady } from '../lib/appUpdate.js'
+import { MEMBER_CARD_WIDTH } from '../lib/memberCardWidth.js'
 
 // OPS-17: "새로운 업데이트가 있어요!" card. Shows once a new version is waiting;
 // 나중에 hides it until the app is opened again; 업데이트 switches versions.
@@ -11,6 +12,7 @@ export default function UpdatePrompt() {
   const [dismissed, setDismissed] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [legalConsentOpen, setLegalConsentOpen] = useState(false)
+  const [cardWidth, setCardWidth] = useState(null)
 
   useEffect(() => onUpdateReady(setReady), [])
 
@@ -23,6 +25,28 @@ export default function UpdatePrompt() {
     observer.observe(document.body, { childList: true, subtree: true })
     return () => observer.disconnect()
   }, [])
+
+  // Match the membership card's width: measure it when it is on screen,
+  // otherwise use the same width formula the card uses.
+  useEffect(() => {
+    if (!ready) return undefined
+    const measure = () => {
+      const frame = document.querySelector('.my-membership-card-frame')
+      const width = frame?.getBoundingClientRect().width
+      setCardWidth(width && width > 0 ? Math.round(width) : null)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('orientationchange', measure)
+    const frame = document.querySelector('.my-membership-card-frame')
+    const observer = typeof ResizeObserver !== 'undefined' && frame ? new ResizeObserver(measure) : null
+    if (observer && frame) observer.observe(frame)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('orientationchange', measure)
+      observer?.disconnect()
+    }
+  }, [ready, location.pathname])
 
   if (!ready || dismissed || legalConsentOpen || isUpdatePromptHiddenOn(location.pathname)) return null
 
@@ -38,8 +62,9 @@ export default function UpdatePrompt() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed left-3 right-3 mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-3 shadow-[0_2px_12px_rgba(0,0,0,0.06)] dark:border-[#2c2c2e] dark:shadow-none dark:bg-[#1c1c1e]"
+      className="fixed left-1/2 -translate-x-1/2 rounded-2xl border border-gray-200 bg-white p-3 shadow-[0_2px_12px_rgba(0,0,0,0.06)] dark:border-[#2c2c2e] dark:shadow-none dark:bg-[#1c1c1e]"
       style={{
+        width: cardWidth ? `${cardWidth}px` : MEMBER_CARD_WIDTH,
         bottom: aboveTabs
           ? 'calc(env(safe-area-inset-bottom) + 108px)'
           : 'calc(env(safe-area-inset-bottom) + 16px)',
