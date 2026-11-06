@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import LoadingIndicator from '../components/LoadingIndicator'
-import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X, Trash } from '@phosphor-icons/react'
+import { UserCircle, CaretLeft, Camera, PencilSimpleLine, Check, X, Trash, DownloadSimple, CircleNotch } from '@phosphor-icons/react'
 import Cropper from 'react-easy-crop'
 import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
@@ -82,6 +82,8 @@ export default function SettingsPage({ userId, isAdmin }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [exportingData, setExportingData] = useState(false)
+  const [exportDataError, setExportDataError] = useState('')
   const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false)
   const [deleteAccountPassword, setDeleteAccountPassword] = useState('')
   const [deleteCaptchaToken, setDeleteCaptchaToken] = useState('')
@@ -202,6 +204,40 @@ export default function SettingsPage({ userId, isAdmin }) {
       document.removeEventListener('touchcancel', handleTouchEnd)
     }
   }, [])
+
+  // GDPR-04: download a copy of the member's own data as a JSON file.
+  const handleExportData = async () => {
+    if (exportingData) return
+    setExportingData(true)
+    setExportDataError('')
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('export-my-data', { body: {} })
+      if (invokeError || !data?.success || !data.export) {
+        let message = '내 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'
+        try {
+          const body = await invokeError?.context?.clone?.().json()
+          if (typeof body?.message === 'string') message = body.message
+        } catch {
+          // Keep the generic message.
+        }
+        setExportDataError(message)
+        return
+      }
+      const blob = new Blob([JSON.stringify(data.export, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `uvain-my-data-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    } catch {
+      setExportDataError('내 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    } finally {
+      setExportingData(false)
+    }
+  }
 
   const handleLogout = async () => {
     navigate('/public', { replace: true })
@@ -431,7 +467,9 @@ export default function SettingsPage({ userId, isAdmin }) {
             bottom: env(safe-area-inset-bottom, 0px) !important;
             left: env(safe-area-inset-left, 0px) !important;
             display: block !important;
-            overflow: hidden !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
             padding: 10px clamp(20px, 4vw, 48px) !important;
             box-sizing: border-box !important;
           }
@@ -487,7 +525,8 @@ export default function SettingsPage({ userId, isAdmin }) {
             flex-direction: column;
             gap: 10px;
           }
-          .settings-actions-column > button {
+          .settings-actions-column > button,
+          .settings-actions-column > div > button {
             min-height: 36px;
             padding: 8px 12px !important;
             font-size: 12px !important;
@@ -696,6 +735,23 @@ export default function SettingsPage({ userId, isAdmin }) {
             >
               약관 및 정책
             </button>
+
+            <div>
+              <button
+                type="button"
+                onClick={handleExportData}
+                disabled={exportingData}
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-3 text-center text-sm font-semibold text-gray-700 shadow-sm disabled:opacity-60 dark:border-[#2c2c2e] dark:bg-[#111111] dark:text-gray-200"
+              >
+                {exportingData
+                  ? <CircleNotch size={17} weight="bold" className="animate-spin" aria-hidden="true" />
+                  : <DownloadSimple size={17} weight="bold" aria-hidden="true" />}
+                {exportingData ? '준비 중…' : '내 정보 다운로드'}
+              </button>
+              {exportDataError && (
+                <p role="alert" className="mt-2 text-center text-xs text-red-500">{exportDataError}</p>
+              )}
+            </div>
 
             <button
               type="button"
