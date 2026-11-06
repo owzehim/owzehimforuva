@@ -24,6 +24,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/delete-my-account/index.ts"
 
+[functions.export-my-data]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/export-my-data/index.ts"
+
 [functions.change-pending-email]
 enabled = true
 verify_jwt = false
