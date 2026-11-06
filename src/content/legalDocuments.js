@@ -1,6 +1,6 @@
 import { legalDocumentsKo } from './legalDocumentsKo.js'
 
-export const LEGAL_DOCUMENT_VERSION = '2026-11-06-03';
+export const LEGAL_DOCUMENT_VERSION = '2026-11-06-04';
 
 export const legalDocuments = {
   terms: {
@@ -134,7 +134,7 @@ Privacy contact: uvaksa16@gmail.com
 
 2. Information We Collect
 
-When creating an account, we collect your email address, first and last name, and student number. We may also collect your Korean name, university, education level, year of study, major, username, profile photo, and optional year of birth, country of origin, and gender. Authentication credentials are managed by Supabase Auth; UvA-IN does not receive or store your raw password.
+When creating an account, we collect your email address, first and last name, and student number. We may also collect your Korean name, university, education level, year of study, major, username, profile photo, and optional year of birth, country of origin, and gender. Authentication credentials are managed by Supabase Auth, which stores your password only in hashed form. UvA-IN does not store your password. A few account actions (changing your email address during sign-up, or an administrator creating an account for you) pass the password through our server functions only to complete that action; it is not saved or logged.
 
 To operate your membership, we may collect membership validity period, membership status, student verification status, and membership history.
 
