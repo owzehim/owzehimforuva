@@ -32,3 +32,13 @@ test('inline grey text uses readable colours', () => {
   const memberPage = readFileSync('src/pages/MemberPage.jsx', 'utf8')
   assert.ok(!memberPage.includes("color: darkMode ? '#6F6F76' : '#9ca3af'"))
 })
+
+test('GDPR-16: the policy says the password is not stored, and where it passes through', () => {
+  const en = legalDocuments.privacy.body
+  const ko = legalDocuments.privacy.ko.body
+  assert.ok(!en.includes('does not receive or store your raw password'))
+  assert.ok(en.includes('UvA-IN does not store your password.'))
+  assert.ok(en.includes('pass the password through our server functions only to complete that action'))
+  assert.ok(!ko.includes('비밀번호를 받거나 저장하지 않습니다'))
+  assert.ok(ko.includes('UvA-IN은 회원의 비밀번호를 저장하지 않습니다.'))
+})
