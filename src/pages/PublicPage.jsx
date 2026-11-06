@@ -401,7 +401,7 @@ const MEMBERSHIP_SLIDES = [
         <span className="whitespace-nowrap">글로벌 캠퍼스 네트워크</span>
       </span>
     ),
-    description: 'UvA 학생 전용 커뮤니티 연결',
+    description: 'UvA 학생들을 위한 커뮤니티 연결',
     images: [
       membershipImage('uvain-network-1.webp'),
     ],
@@ -740,7 +740,7 @@ function MembershipTab() {
             UvA-IN 독점 이벤트 지원 혜택
           </Benefit>
           <Benefit icon={<Users size={24} weight="fill" color="#22c55e" />} title="글로벌 캠퍼스 네트워크">
-            UvA 학생 전용 커뮤니티 연결
+            UvA 학생들을 위한 커뮤니티 연결
           </Benefit>
         </div>
 
@@ -758,6 +758,10 @@ function MembershipTab() {
         >
           콘텐츠 신고
         </button>
+
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-gray-500">
+          UvA-IN은 UvA 학생들이 운영하는 독립 학생 단체로, 암스테르담 대학교(UvA)의 공식 단체가 아니며 대학교와 제휴 관계가 없습니다.
+        </p>
 
         <button
   onClick={() => navigate('/register')}
