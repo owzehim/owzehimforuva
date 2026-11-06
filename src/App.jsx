@@ -16,6 +16,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import ContentReportPage from './pages/ContentReportPage'
 import LegalPage from './pages/LegalPage'
 import ThirdPartyLicensesPage from './pages/ThirdPartyLicensesPage'
+import UpdatePrompt from './components/UpdatePrompt'
 import LegalConsentPage from './pages/LegalConsentPage'
 import { useSingleDeviceSession } from './hooks/useSingleDeviceSession'
 import { useTheme } from './hooks/useTheme'
@@ -226,6 +227,7 @@ function App() {
   return (
     <BrowserRouter>
       <InstallBanner />
+      <UpdatePrompt />
       <ZoomViewportMinimap />
       <LandscapeInputFocusGuard />
       <Routes>
