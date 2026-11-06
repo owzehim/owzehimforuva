@@ -1,6 +1,6 @@
 import { legalDocumentsKo } from './legalDocumentsKo.js'
 
-export const LEGAL_DOCUMENT_VERSION = '2026-11-06-04';
+export const LEGAL_DOCUMENT_VERSION = '2026-11-06-05';
 
 export const legalDocuments = {
   terms: {
@@ -18,7 +18,7 @@ By creating an account or using UvA-IN, you agree to these Terms. If you do not 
 
 1. About UvA-IN
 
-UvA-IN is the membership app operated by the UvA-IN student association. It connects members with participating restaurants and local businesses through offers, digital rewards, and community experiences.
+UvA-IN is the membership app operated by the UvA-IN student association, an independent association run by students of the University of Amsterdam (UvA). UvA-IN is not part of, recognised by or affiliated with the University of Amsterdam, and the university is not responsible for the App or its content. It connects members with participating restaurants and local businesses through offers, digital rewards, and community experiences.
 
 2. Eligibility
 
@@ -126,7 +126,7 @@ UvA-IN complies with the General Data Protection Regulation and applicable Dutch
 
 1. Who We Are
 
-UvA-IN is the membership app operated by the UvA-IN student association. It connects members with participating restaurants and local businesses through offers, digital rewards, and community experiences.
+UvA-IN is the membership app operated by the UvA-IN student association, an independent association run by students of the University of Amsterdam (UvA). UvA-IN is not part of, recognised by or affiliated with the University of Amsterdam, and the university is not responsible for the App or its content. It connects members with participating restaurants and local businesses through offers, digital rewards, and community experiences.
 
 Data controller: UvA-IN
 Website: www.uva-in.nl
