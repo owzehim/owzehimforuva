@@ -74,7 +74,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
   const names = { terms: labels.terms, privacy: labels.privacy, community: labels.community }
 
   return (
-    <main className="flex min-h-dvh flex-col bg-gray-50 px-4 py-8 text-gray-900 dark:bg-[#121212] dark:text-white">
+    <main data-legal-consent-screen className="flex min-h-dvh flex-col bg-gray-50 px-4 py-8 text-gray-900 dark:bg-[#121212] dark:text-white">
       <button
         type="button"
         onClick={() => setLanguage((current) => current === 'ko' ? 'en' : 'ko')}

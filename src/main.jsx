@@ -5,12 +5,19 @@ import './index.css'
 import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
 import { initErrorMonitoring } from './lib/errorMonitoring.js'
+import { markUpdateReady } from './lib/appUpdate.js'
 
 if ('serviceWorker' in navigator) {
-  // Download updates quietly. The waiting worker activates naturally after
-  // every tab/app window using the old worker closes; never reload active work.
-  registerSW({
+  // Download updates quietly. The waiting version activates when every app
+  // window closes, or earlier when the member taps 업데이트 (OPS-17). Active
+  // work is never reloaded without that tap.
+  // OPS-17: when a new version is waiting, offer it in the UpdatePrompt card.
+  // It is only activated when the member taps 업데이트 (updateSW(true)).
+  const updateSW = registerSW({
     immediate: true,
+    onNeedRefresh() {
+      if (typeof markUpdateReady === 'function') markUpdateReady(() => updateSW(true))
+    },
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return
 

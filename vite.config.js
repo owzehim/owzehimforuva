@@ -22,8 +22,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      // "prompt" keeps the worker waiting; the app deliberately shows no prompt
-      // and never requests skipWaiting, so updates apply after all clients close.
+      // "prompt" keeps the new worker waiting. The UpdatePrompt card (OPS-17)
+      // offers it; only a tap on 업데이트 asks it to skip waiting and reload.
       registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       workbox: {
