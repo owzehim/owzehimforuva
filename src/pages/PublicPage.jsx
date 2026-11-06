@@ -401,7 +401,7 @@ const MEMBERSHIP_SLIDES = [
         <span className="whitespace-nowrap">글로벌 캠퍼스 네트워크</span>
       </span>
     ),
-    description: '네덜란드 학생 전용 커뮤니티 연결',
+    description: '네덜란드 유학생 커뮤니티 연결',
     images: [
       membershipImage('uvain-network-1.webp'),
     ],
@@ -740,7 +740,7 @@ function MembershipTab() {
             UvA-IN 독점 이벤트 지원 혜택
           </Benefit>
           <Benefit icon={<Users size={24} weight="fill" color="#22c55e" />} title="글로벌 캠퍼스 네트워크">
-            네덜란드 학생 전용 커뮤니티 연결
+            네덜란드 유학생 커뮤니티 연결
           </Benefit>
         </div>
 
