@@ -1,14 +1,14 @@
 import { legalDocumentsKo } from './legalDocumentsKo.js'
 
-export const LEGAL_DOCUMENT_VERSION = '2026-11-06-01';
+export const LEGAL_DOCUMENT_VERSION = '2026-11-06-02';
 
 export const legalDocuments = {
   terms: {
     title: 'Terms and Conditions',
-    effectiveDate: '5 November 2026',
+    effectiveDate: '6 November 2026',
     body: `UvA-IN Terms and Conditions
 
-Effective Date: 5 November 2026
+Effective Date: 6 November 2026
 
 This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
@@ -96,7 +96,7 @@ UvA-IN may introduce new features, modify existing services, or discontinue part
 
 15. Changes to These Terms
 
-These Terms may be updated from time to time. The latest version will be available within the App and on our website. Continued use of the App after changes become effective constitutes acceptance of the revised Terms.
+These Terms may be updated from time to time. The latest version is available within the App and on our website, and earlier versions are available on the legal documents page. When the Terms change, the App will show you the updated Terms and ask you to accept them before you continue using the App.
 
 16. Governing Law
 
@@ -217,10 +217,10 @@ Privacy contact: uvaksa16@gmail.com`,
   },
   community: {
     title: 'Community Guidelines',
-    effectiveDate: '24 October 2026',
+    effectiveDate: '6 November 2026',
     body: `UvA-IN Community Guidelines
 
-Effective Date: 24 October 2026
+Effective Date: 6 November 2026
 
 This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
@@ -296,7 +296,7 @@ If you discover fraudulent activity, security vulnerabilities, reward misuse, in
 
 13. Changes to These Guidelines
 
-These Guidelines may be updated from time to time. The latest version will be available within the App and on our website. Continued use of the App after updates become effective constitutes acceptance of the revised Guidelines.
+These Guidelines may be updated from time to time. The latest version is available within the App and on our website, and earlier versions are available on the legal documents page. When the Guidelines change, the App will show you the updated Guidelines and ask you to accept them before you continue using the App.
 
 14. Contact
 
