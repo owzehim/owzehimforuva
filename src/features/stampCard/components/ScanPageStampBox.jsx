@@ -114,7 +114,7 @@ export default function ScanPageStampBox({
             </p>
             <p
               className="text-[11px] mt-1 leading-none"
-              style={{ color: cardColor ? 'rgba(255,255,255,0.86)' : '#9ca3af' }}
+              style={{ color: cardColor ? 'rgba(255,255,255,0.86)' : '#6b7280' }}
             >
               {redeemedThisSession ? '\u00a0' : isBenefitReady ? '혜택 준비 완료' : `남은 스탬프 ${remaining}개`}
             </p>
