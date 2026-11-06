@@ -1,6 +1,6 @@
 import { legalDocumentsKo } from './legalDocumentsKo.js'
 
-export const LEGAL_DOCUMENT_VERSION = '2026-11-06-02';
+export const LEGAL_DOCUMENT_VERSION = '2026-11-06-03';
 
 export const legalDocuments = {
   terms: {
@@ -152,6 +152,19 @@ We process your information to verify student eligibility, create and manage you
 
 Legal bases: We process the information needed to register and operate your membership and the features you choose to use, including submitting a review and delivering its rating and selected tags to the relevant partner, because this is necessary to perform our agreement with you (Article 6(1)(b) GDPR). We process limited account, visit, and security information where necessary for our legitimate interests in verifying reward claims, preventing fraud, protecting the App, and maintaining service reliability (Article 6(1)(f) GDPR). We process specific information under Article 6(1)(c) only where a concrete legal obligation requires it. Withdrawing consent will not affect processing already carried out lawfully or processing based on another applicable legal basis.
 
+Purpose and legal basis by type of information:
+
+• Account and identity information (email address, first and last name, student number, university, education level, year of study and major): to check that you are eligible, create and run your membership, show your name, student number, university and membership validity on the check-in screen so staff can verify you, and keep the association's member records. Legal basis: performance of our agreement with you (Article 6(1)(b) GDPR).
+• Optional profile information (Korean name, username and profile photo): to show the name and photo you choose where you use those App features. Legal basis: Article 6(1)(b) GDPR. You can change your username and remove your photo in Settings.
+• Optional year of birth, country of origin and gender: if you give your year of birth, it is also used to confirm the minimum age of 16. Otherwise these fields are used only to produce combined statistics about the membership (for example age groups or regions); they are not shown to other members or to partners for individual members. Legal basis: our legitimate interest in confirming the minimum age and in understanding our membership as a whole (Article 6(1)(f) GDPR). These fields are optional and you can ask us to remove them at any time.
+• Membership records (validity period, status, verification and history): to run your membership and apply its end and retention dates. Legal basis: Article 6(1)(b) GDPR.
+• Check-ins, visits, stamps and rewards: to provide check-ins, stamp cards and rewards (Article 6(1)(b) GDPR) and to verify reward claims and prevent misuse (Article 6(1)(f) GDPR).
+• Reviews, ratings, tags, notes and comments: to provide the review and community features you choose to use. Legal basis: Article 6(1)(b) GDPR.
+• Reports about content: to review and act on reports and keep a minimal record of each decision. Legal basis: Article 6(1)(f) GDPR, and Article 6(1)(c) GDPR where a legal obligation applies to handling such reports.
+• Records of accepted documents and age confirmation: to show which document versions you accepted and when. Legal basis: Article 6(1)(c) and 6(1)(f) GDPR.
+• Security, technical and error information (including error reports sent to Sentry): to keep the App secure and working. Legal basis: Article 6(1)(f) GDPR.
+• Information stored on your device (sign-in session, temporary sign-up state and display preference): strictly necessary for the App to work, so no separate consent is requested.
+
 We do not sell your personal information.
 
 4. Information Shared with Partner Businesses
@@ -197,6 +210,8 @@ We implement appropriate technical and organisational safeguards designed to pro
 10. Your Rights
 
 Under the GDPR, you may have the right to access your personal information, correct inaccurate information, request deletion of your account, request restriction of processing, object to processing, request a copy of your personal information where applicable, and lodge a complaint with the Dutch Data Protection Authority (Autoriteit Persoonsgegevens): https://autoriteitpersoonsgegevens.nl/.
+
+You can download a copy of the information held about you in the App database at any time in Settings (Download my data / 내 정보 다운로드).
 
 You can request account deletion in Settings. This deletes your account and linked profile, comments, notes, and app visit/reward data, removes your profile photo, and anonymizes direct identifiers in operational records. A partner may retain the minimum transaction record needed for reward verification and related questions, fraud, or disputes for up to 12 months from the transaction date; after that, it must be deleted or irreversibly anonymized. Any legal accounting exception is limited to the necessary records as described in Section 7. For access, correction, restriction, objection, or other privacy requests concerning a partner's copy, contact the controller using the information below so we can pass the request to the relevant partner.
 

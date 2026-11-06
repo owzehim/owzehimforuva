@@ -166,7 +166,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
             style={{
               zIndex: 1,
               background: darkMode ? '#2C2C2E' : '#d4d4d8',
-              color: darkMode ? '#A1A1AA' : 'rgba(44,42,39,0.45)',
+              color: darkMode ? '#A1A1AA' : 'rgba(44,42,39,0.72)',
             }}
           >
             <VideoCameraSlash size={54} weight="regular" />
@@ -205,7 +205,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
         <p
           style={{
             fontSize: '12px',
-            color: darkMode ? '#A1A1AA' : 'rgba(44,42,39,0.45)',
+            color: darkMode ? '#A1A1AA' : 'rgba(44,42,39,0.72)',
             fontFamily: 'var(--font-app)',
             letterSpacing: '0.02em',
             margin: 0,

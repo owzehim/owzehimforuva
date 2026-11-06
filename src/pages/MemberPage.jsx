@@ -1808,7 +1808,7 @@ function MembershipCard({
               style={{
                 marginTop: '10px',
                 fontSize: '2.8cqw',
-                color: darkMode ? '#6F6F76' : '#9ca3af',
+                color: darkMode ? '#8e8e93' : '#6b7280', // LEG-10: readable contrast
               }}
             >
               멤버십 갱신은 임원에게 문의해주세요

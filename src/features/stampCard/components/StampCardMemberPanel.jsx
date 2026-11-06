@@ -192,7 +192,7 @@ function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, res
             현재 사이클: {currentCycle} · 스탬프: {stampsInCurrentCycle} / {totalStamps}
           </p>
           {latestReward && (
-            <p className="text-xs mt-0.5" style={{ color: latestReward.redeemed || rewardExpired ? '#9ca3af' : '#f97316' }}>
+            <p className="text-xs mt-0.5" style={{ color: latestReward.redeemed || rewardExpired ? '#6b7280' : '#f97316' }}>
               {rewardExpired
                 ? '만료된 리워드'
                 : latestReward.redeemed
