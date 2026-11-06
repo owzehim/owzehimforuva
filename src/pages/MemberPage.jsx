@@ -1844,7 +1844,7 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
   const W =
     'min(var(--membership-card-width, min(calc(100vw - 48px), 448px)), calc((100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 210px) / 1.586))'
   const cardRestingOffsetPx = 0
-  const liftedActivityGapPx = 0
+  const liftedActivityGapPx = 8 // small gap between the lifted card and the box
   const cardRestingOffsetY = `${cardRestingOffsetPx}px`
   const inactiveCardRestingOffsetY = `${cardRestingOffsetPx}px`
   const guideTextGapY = '2px' // Increase for more space between the card and guide text.
@@ -1852,8 +1852,22 @@ function QRTab({ member, isValid, scannerOpenSignal = 0, onLiftChange }) {
     guide: `calc(${W} * 0.032)`,
   }
 
-  const getMaxLift = () =>
-    (activityRef.current?.offsetHeight ?? 260) + cardRestingOffsetPx + liftedActivityGapPx
+  // Lift the card far enough to uncover the whole 이번 달 활동 box. Measure from
+  // the bottom of the tab to the top of the box, so the panel's bottom padding
+  // (and any margin) is included; the box's own height alone left its top
+  // edge under the card.
+  const getMaxLift = () => {
+    const stack = activityRef.current
+    const panel = stack?.parentElement
+    // Landscape lays the box out beside the card; keep its lift unchanged.
+    if (typeof window !== 'undefined' && window.matchMedia('(orientation: landscape)').matches) {
+      return (stack?.offsetHeight ?? 260) + cardRestingOffsetPx
+    }
+    const reveal = stack && panel
+      ? panel.offsetHeight - stack.offsetTop
+      : (stack?.offsetHeight ?? 260) + 16
+    return reveal + cardRestingOffsetPx + liftedActivityGapPx
+  }
 
   useEffect(() => {
     const resetLandscapeShift = () => {
