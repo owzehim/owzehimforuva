@@ -1,7 +1,7 @@
 // LEG-05: explicit acceptance wording and the archive of earlier versions.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { legalDocuments, LEGAL_DOCUMENT_VERSION } from '../src/content/legalDocuments.js'
 
 const archiveDir = 'src/content/legal-archive'
@@ -20,8 +20,8 @@ test('no document says that continued use counts as acceptance', () => {
 })
 
 test('every archived file is a complete earlier version listed in the index', () => {
-  const files = readdirSync(archiveDir).filter((name) => name.endsWith('.json'))
-  assert.ok(files.length >= 4)
+  // Pre-launch drafts were removed on 2026-11-07, so the folder may not exist yet.
+  const files = existsSync(archiveDir) ? readdirSync(archiveDir).filter((name) => name.endsWith('.json')) : []
   for (const file of files) {
     const data = JSON.parse(readFileSync(`${archiveDir}/${file}`, 'utf8'))
     assert.equal(`${data.version}.json`, file)
@@ -34,8 +34,10 @@ test('every archived file is a complete earlier version listed in the index', ()
   }
 })
 
-test('versions without a committed text are listed as not archived', () => {
-  for (const version of ['2026-10-24-05', '2026-10-24-06']) {
-    assert.ok(indexSource.includes(`{ version: '${version}', available: false }`), version)
+test('terms and guidelines promise to keep earlier versions once they change', () => {
+  for (const key of ['terms', 'community']) {
+    assert.match(legalDocuments[key].body, /earlier versions will remain available on the legal documents page/, key)
+    assert.match(legalDocuments[key].ko.body, /변경 전 버전은 법적 문서 페이지에서 계속 볼 수 있습니다/, key)
+    assert.doesNotMatch(legalDocuments[key].body, /earlier versions are available/, key)
   }
 })
