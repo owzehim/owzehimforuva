@@ -202,6 +202,14 @@ export default function LegalPage() {
           </div>
         </article>
       )}
+      <footer className="mx-auto max-w-3xl px-5 pb-8 text-xs leading-relaxed text-gray-500 sm:px-8 dark:text-gray-400">
+        <p>© 2026 Woojay Lim. Developed for UvA-IN. All rights reserved.</p>
+        <p className="mt-1">
+          {language === 'ko'
+            ? '이 앱의 소스 코드, 디자인, 문구와 이미지는 서면 허락 없이 복사·재사용·배포하거나 AI 학습에 사용할 수 없습니다.'
+            : "This app's source code, design, text and images may not be copied, reused, redistributed or used to train AI without written permission."}
+        </p>
+      </footer>
     </main>
   )
 }
