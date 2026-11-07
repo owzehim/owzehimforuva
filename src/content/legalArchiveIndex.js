@@ -1,19 +1,12 @@
 // LEG-05: earlier published versions of the legal documents, newest first.
-// Texts live in src/content/legal-archive/<version>.json, rebuilt from the
-// git commit that published them (sourceCommit), and load only when opened.
-// Versions whose text was never committed are listed without a text.
-export const LEGAL_ARCHIVE = [
-  { version: '2026-11-06-05', available: true },
-  { version: '2026-11-06-04', available: true },
-  { version: '2026-11-06-03', available: true },
-  { version: '2026-11-06-02', available: true },
-  { version: '2026-11-06-01', available: true },
-  { version: '2026-11-05-01', available: true },
-  { version: '2026-10-24-07', available: true },
-  { version: '2026-10-24-06', available: false },
-  { version: '2026-10-24-05', available: false },
-  { version: '2026-10-07-02', available: true },
-]
+// Texts live in src/content/legal-archive/<version>.json and load only when
+// opened. The pre-launch drafts were removed on 2026-11-07; 2026-11-07-01 is
+// the first launch version. When a later version replaces the current one,
+// save the replaced version's full text as <version>.json (with the commit it
+// was published from as sourceCommit) and list it here.
+// The "Earlier versions" button on the legal page appears once this list has
+// an entry.
+export const LEGAL_ARCHIVE = []
 
 const loaders = import.meta.glob('./legal-archive/*.json')
 
