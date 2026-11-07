@@ -6,6 +6,12 @@ A progressive web app (PWA) for UvA-IN members.
 
 - Software developer and technical maintainer: Woojay Lim
 
+## Copyright
+
+Copyright (c) 2026 Woojay Lim. Developed for UvA-IN. All rights reserved.
+
+This is proprietary software, not open source. Being able to view this repository does not give permission to copy, modify, reuse or redistribute any part of it, or to use it to train AI models. See [LICENSE](LICENSE). Permission requests: uvaksa16@gmail.com.
+
 ## Technology
 
 - Frontend: React, Vite, and Tailwind CSS
