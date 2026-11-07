@@ -3,6 +3,7 @@
 // git commit that published them (sourceCommit), and load only when opened.
 // Versions whose text was never committed are listed without a text.
 export const LEGAL_ARCHIVE = [
+  { version: '2026-11-06-05', available: true },
   { version: '2026-11-06-04', available: true },
   { version: '2026-11-06-03', available: true },
   { version: '2026-11-06-02', available: true },
