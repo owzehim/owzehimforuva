@@ -81,6 +81,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
+        // Copyright notice at the top of every app JS file served to browsers
+        // (postBanner: added after minification, which strips normal banners).
+        postBanner: (chunk) => (chunk.fileName.endsWith('.js')
+          ? '/*! (c) 2026 Woojay Lim. Developed for UvA-IN. All rights reserved. Proprietary: no copying, reuse or AI training without written permission. */'
+          : ''),
         manualChunks(id) {
           if (id.includes('node_modules/@supabase')) {
             return 'vendor-supabase'
