@@ -107,17 +107,19 @@ export default function LegalPage() {
           >
             {language === 'ko' ? '오픈소스 라이선스' : 'Open-source licenses'}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setShowArchiveList(true)
-              setShowLicenses(false)
-            }}
-            aria-pressed={showArchiveList}
-            className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold ${showArchiveList ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300'}`}
-          >
-            {language === 'ko' ? '이전 버전' : 'Earlier versions'}
-          </button>
+          {LEGAL_ARCHIVE.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowArchiveList(true)
+                setShowLicenses(false)
+              }}
+              aria-pressed={showArchiveList}
+              className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold ${showArchiveList ? 'border-orange-500 bg-orange-500 text-white' : 'border-gray-200 text-gray-600 dark:border-gray-700 dark:text-gray-300'}`}
+            >
+              {language === 'ko' ? '이전 버전' : 'Earlier versions'}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => window.print()}

@@ -96,7 +96,7 @@ UvA-IN may introduce new features, modify existing services, or discontinue part
 
 15. Changes to These Terms
 
-These Terms may be updated from time to time. The latest version is available within the App and on our website, and earlier versions are available on the legal documents page. When the Terms change, the App will show you the updated Terms and ask you to accept them before you continue using the App.
+These Terms may be updated from time to time. The latest version is available within the App and on our website. When the Terms change, the App will show you the updated Terms and ask you to accept them before you continue using the App, and earlier versions will remain available on the legal documents page.
 
 16. Governing Law
 
@@ -232,10 +232,10 @@ Privacy contact: uvaksa16@gmail.com`,
   },
   community: {
     title: 'Community Guidelines',
-    effectiveDate: '6 November 2026',
+    effectiveDate: '7 November 2026',
     body: `UvA-IN Community Guidelines
 
-Effective Date: 6 November 2026
+Effective Date: 7 November 2026
 
 This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
@@ -311,7 +311,7 @@ If you discover fraudulent activity, security vulnerabilities, reward misuse, in
 
 13. Changes to These Guidelines
 
-These Guidelines may be updated from time to time. The latest version is available within the App and on our website, and earlier versions are available on the legal documents page. When the Guidelines change, the App will show you the updated Guidelines and ask you to accept them before you continue using the App.
+These Guidelines may be updated from time to time. The latest version is available within the App and on our website. When the Guidelines change, the App will show you the updated Guidelines and ask you to accept them before you continue using the App, and earlier versions will remain available on the legal documents page.
 
 14. Contact
 
