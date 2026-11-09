@@ -444,6 +444,7 @@ const translations = {
     checkEmail: 'Check your email',
     emailSent: 'We sent a confirmation link to',
     verifyEmail: 'Please open that email, verify your address, then come back and log in.',
+    existingAccountHint: 'If this address already has an account, no email is sent. Log in, or reset your password from the login screen.',
     goToLogin: 'Go to login',
     alreadyHaveAccount: 'Already have an account?',
     logIn: 'Log in',
@@ -490,6 +491,7 @@ const translations = {
     checkEmail: '이메일 확인',
     emailSent: '확인 링크를 다음 주소로 보냈습니다',
     verifyEmail: '해당 이메일을 열고 주소를 확인한 뒤 다시 로그인하세요.',
+    existingAccountHint: '이미 가입된 주소라면 메일이 발송되지 않습니다. 로그인하거나 로그인 화면에서 비밀번호를 재설정해 주세요.',
     goToLogin: '로그인으로 이동',
     alreadyHaveAccount: '이미 계정이 있으신가요?',
     logIn: '로그인',
@@ -1107,6 +1109,7 @@ export default function RegistrationPage() {
               <br />
               {t.verifyEmail}
             </p>
+            <p style={{ ...s.emailText, fontSize: '12px', marginTop: '8px' }}>{t.existingAccountHint}</p>
           </div>
           <div className="registration-email-actions">
             {confirmationCheckNeedsCaptcha && (

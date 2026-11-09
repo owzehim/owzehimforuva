@@ -120,9 +120,12 @@ export async function registerMember(payload) {
     },
   });
 
+  // SEC-15: an address that already has an account gets the same "check your
+  // email" result as a new one, so sign-up cannot be used to learn whether
+  // someone is registered. No account is created and Supabase sends no email.
   if (authError) {
     if (isAlreadyRegisteredError(authError)) {
-      throw new Error(ALREADY_REGISTERED_MESSAGE);
+      return { userId: null };
     }
     throw new Error(authError.message);
   }
@@ -134,9 +137,11 @@ export async function registerMember(payload) {
     );
   }
 
+  // Supabase answers an existing address with a placeholder user without
+  // identities; treat it like a new sign-up (SEC-15, see above).
   const identities = authData.user?.identities;
   if (Array.isArray(identities) && identities.length === 0) {
-    throw new Error(ALREADY_REGISTERED_MESSAGE);
+    return { userId: null };
   }
 
   return { userId };
