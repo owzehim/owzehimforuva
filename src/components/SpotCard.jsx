@@ -9,6 +9,14 @@ import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 import { sanitizeRichText } from '../lib/sanitizeHtml'
 import { useModalFocus } from '../hooks/useModalFocus'
 import LightboxCloseButton from './LightboxCloseButton'
+import {
+  RESTAURANT_COMMERCIAL_LABEL_TYPES,
+  getRestaurantCommercialLabel,
+  getRestaurantCommercialLabelType,
+} from '../lib/restaurantCommercialLabel'
+
+// Same yellow as the paid-ad map marker (MapView).
+const PAID_AD_LABEL_COLOR = '#FFB81C'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -1119,32 +1127,45 @@ export function SpotCard({
       return undefined
     }
 
-    setGoogleMapsButtonCenterY(null)
+    // Keep the current position while another marker's card is measured, so
+    // the button does not disappear and reappear (blink) between markers.
     let measureTimer = null
+    let measureFrame = null
     const measureCenter = () => {
-      const imageBox = cardRef.current?.querySelector(
+      const sheet = cardRef.current
+      const imageBox = sheet?.querySelector(
         '.spot-card-short-photo-strip, .spot-card-short-photo-placeholder',
       )
       const bottomTabs = document.querySelector('.app-landscape-bottom-tabs')
-      if (!imageBox || !bottomTabs || !window.matchMedia('(orientation: portrait)').matches) {
+      if (!sheet || !imageBox || !bottomTabs || !window.matchMedia('(orientation: portrait)').matches) {
         setGoogleMapsButtonCenterY(null)
         return
       }
 
-      const imageBottom = imageBox.getBoundingClientRect().bottom
+      // Measure where the photo box will rest, even while the sheet is still
+      // sliding in, so the button can slide up together with the card.
+      const restingOffset = Number(sheet.dataset.restingOffset) || 0
+      const transform = window.getComputedStyle(sheet).transform
+      const currentOffset = transform && transform !== 'none'
+        ? new DOMMatrixReadOnly(transform).m42
+        : restingOffset
+      const imageBottom = imageBox.getBoundingClientRect().bottom - (currentOffset - restingOffset)
       const tabsTop = bottomTabs.getBoundingClientRect().top
-      const nextCenter = (imageBottom + tabsTop) / 2
-      if (Number.isFinite(nextCenter)) setGoogleMapsButtonCenterY(nextCenter)
+      const nextCenter = Math.round((imageBottom + tabsTop) / 2)
+      if (Number.isFinite(nextCenter)) {
+        setGoogleMapsButtonCenterY((current) => (current === nextCenter ? current : nextCenter))
+      }
     }
     const scheduleMeasure = () => {
       if (measureTimer != null) window.clearTimeout(measureTimer)
-      measureTimer = window.setTimeout(measureCenter, 350)
+      measureTimer = window.setTimeout(measureCenter, 150)
     }
 
-    scheduleMeasure()
+    measureFrame = window.requestAnimationFrame(measureCenter)
     window.addEventListener('resize', scheduleMeasure)
     window.addEventListener('orientationchange', scheduleMeasure)
     return () => {
+      if (measureFrame != null) window.cancelAnimationFrame(measureFrame)
       if (measureTimer != null) window.clearTimeout(measureTimer)
       window.removeEventListener('resize', scheduleMeasure)
       window.removeEventListener('orientationchange', scheduleMeasure)
@@ -1156,6 +1177,8 @@ export function SpotCard({
     isVisible,
     closing,
   ])
+  const commercialLabelType = getRestaurantCommercialLabelType(selected)
+  const commercialLabel = getRestaurantCommercialLabel(commercialLabelType)
   const ratingSummary = summary?.store_id === selected?.partnership_id
     ? summary
     : null
@@ -1361,8 +1384,23 @@ export function SpotCard({
         }}
       >
         {/* Drag handle */}
-        <div className="flex justify-center pt-2.5 pb-2 flex-shrink-0">
+        <div className={'relative flex justify-center pt-2.5 flex-shrink-0 ' + (commercialLabel ? 'pb-4' : 'pb-2')}>
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          {/* LEG-07: 할인 제공 / 유료 광고 label, top left, collapsed card only. */}
+          {commercialLabel && (
+            <span
+              className={
+                'spot-card-commercial-label absolute left-4 top-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4 transition-opacity duration-200 ' +
+                (isCollapsed ? 'opacity-100' : 'opacity-0')
+              }
+              style={commercialLabelType === RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
+                ? { backgroundColor: PAID_AD_LABEL_COLOR, color: '#1f2937' }
+                : { backgroundColor: '#f97316', color: '#ffffff' }}
+              aria-hidden={!isCollapsed}
+            >
+              {commercialLabel}
+            </span>
+          )}
         </div>
 
         <div
@@ -1612,10 +1650,14 @@ export function SpotCard({
         <div
           ref={googleMapsButtonRef}
           className={
-            'spot-card-google-maps-button fixed left-0 right-0 pointer-events-none flex justify-center transition-opacity duration-200 ' +
+            'spot-card-google-maps-button fixed left-0 right-0 pointer-events-none flex justify-center ' +
             (shouldShowGoogleMapsButton ? 'opacity-100' : 'opacity-0')
           }
           style={{
+            // Same timing as the sheet, so the button slides up and down with it.
+            transition: isDragging
+              ? 'opacity 0.2s ease'
+              : 'transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.2s ease',
             ...(googleMapsButtonCenterY == null
               ? { bottom: 'calc(env(safe-area-inset-bottom) + 115px)' }
               : { top: `${googleMapsButtonCenterY}px`, bottom: 'auto' }),
