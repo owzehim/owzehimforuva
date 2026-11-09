@@ -198,10 +198,7 @@ export default function ResetPasswordPage() {
   // SEC-59: show which account this link resets, so a member who opened a
   // link carrying someone else's session can tell and close the page.
   useEffect(() => {
-    if (!recoveryReady) {
-      setRecoveryEmail('')
-      return undefined
-    }
+    if (!recoveryReady) return undefined
     let active = true
     passwordRecoverySupabase.auth.getUser()
       .then(({ data }) => {
@@ -240,7 +237,7 @@ export default function ResetPasswordPage() {
             <p className="mt-3 text-sm leading-relaxed text-gray-500">
               새 비밀번호를 입력해주세요
             </p>
-            {recoveryEmail && (
+            {recoveryReady && recoveryEmail && (
               <div className="reset-password-account mt-4 rounded-lg bg-gray-50 px-3 py-2.5">
                 <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-900">
                   <EnvelopeSimple size={16} weight="fill" className="flex-shrink-0 text-orange-500" aria-hidden="true" />
