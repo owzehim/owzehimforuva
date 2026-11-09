@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChatDots, Flag, Footprints, PencilSimple, Plus, Trash, UserCircle, X } from '@phosphor-icons/react'
 import { supabase } from '../lib/supabase'
 import { getPastelColor } from '../lib/avatarColor'
-import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
+import { loadNoteAuthorPhotos } from '../lib/noteAuthorPhotos'
 import AdminBadge from './AdminBadge'
 import { useModalFocus } from '../hooks/useModalFocus'
 
@@ -94,7 +94,7 @@ export function GoodToKnowNotesPanel({
 
     const { data, error: loadError } = await supabase
       .from('restaurant_notes_safe')
-      .select('id, restaurant_id, is_mine, username, profile_image_url, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags, author_is_admin, is_visit_verified')
+      .select('id, restaurant_id, is_mine, username, has_author_photo, avatar_color_seed, is_anonymous, body, created_at, updated_at, source_redemption_id, source_store_id, source_rating, source_tags, author_is_admin, is_visit_verified')
       .eq('restaurant_id', restaurantId)
       .order('created_at', { ascending: false })
       .limit(10)
@@ -102,13 +102,14 @@ export function GoodToKnowNotesPanel({
     if (loadError) {
       setError('Could not load notes.')
     } else {
-      const notesWithImageUrls = await Promise.all((data || []).map(async (note) => ({
+      // SEC-56: author photo links come from the server; the view no longer
+      // exposes storage paths. Without a photo the colour avatar is shown.
+      const loadedNotes = data || []
+      const photos = await loadNoteAuthorPhotos(loadedNotes)
+      setNotes(loadedNotes.map((note) => ({
         ...note,
-        profile_image_url: !note.is_anonymous
-          ? await createProfileImageSignedUrl(note.profile_image_url)
-          : null,
+        profile_image_url: !note.is_anonymous ? photos[note.id] || null : null,
       })))
-      setNotes(notesWithImageUrls)
     }
     setLoading(false)
   }, [restaurantId, userId])

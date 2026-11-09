@@ -63,3 +63,19 @@ test('test@uvain.nl still needs the test flag and the exemption row', async () =
   const noRow = fakeAdmin({ member: { session_token: 'device-a', is_test_account: true } })
   assert.equal(await hasActiveDeviceSession(noRow, USER, otherDevice, { testAccountEmail: 'test@uvain.nl' }), false)
 })
+
+test('SEC-25: an admin with a members row holds one device seat like a member', async () => {
+  const admin = fakeAdmin({
+    adminRole: { user_id: USER },
+    member: { session_token: 'device-a', is_test_account: false },
+  })
+  assert.equal(await hasActiveDeviceSession(admin, USER, memberToken), true)
+  const otherDevice = token({ sub: USER, app_access: true, session_id: 'device-b' })
+  assert.equal(await hasActiveDeviceSession(admin, USER, otherDevice), false)
+})
+
+test('SEC-25: only an admin without a members row skips the seat check', async () => {
+  const otherDevice = token({ sub: USER, app_access: true, session_id: 'device-b' })
+  assert.equal(await hasActiveDeviceSession(fakeAdmin({ adminRole: { user_id: USER } }), USER, otherDevice), true)
+  assert.equal(await hasActiveDeviceSession(fakeAdmin(), USER, otherDevice), false)
+})

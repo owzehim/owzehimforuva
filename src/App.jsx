@@ -1,33 +1,37 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { hasAdminRole } from './lib/adminRoles'
 import LoginPage from './pages/LoginPage'
 import MemberPage from './pages/MemberPage'
-import AdminPage from './pages/AdminPage'
 import PublicPage from './pages/PublicPage'
-import ScanPage from './pages/ScanPage'
 import InstallBanner from './components/InstallBanner'
-import RegistrationPage from './pages/RegistrationPage'
-import EmailConfirmedPage from './pages/EmailConfirmedPage'
-import SettingsPage from './pages/SettingsPage'
-import ChangePasswordPage from './pages/ChangePasswordPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import ContentReportPage from './pages/ContentReportPage'
-import LegalPage from './pages/LegalPage'
-import ThirdPartyLicensesPage from './pages/ThirdPartyLicensesPage'
 import UpdatePrompt from './components/UpdatePrompt'
 import LegalConsentPage from './pages/LegalConsentPage'
 import { useSingleDeviceSession } from './hooks/useSingleDeviceSession'
 import { useTheme } from './hooks/useTheme'
 import { WifiX } from '@phosphor-icons/react'
 import LoadingIndicator from './components/LoadingIndicator'
+import { lazyPage } from './lib/lazyPage'
 import DevScreenInteractionLock from './components/DevScreenInteractionLock'
 import ZoomViewportMinimap from './components/ZoomViewportMinimap'
 import LandscapeInputFocusGuard from './components/LandscapeInputFocusGuard'
 import { hasAppAccessClaim } from './domain/auth/authRules'
 import { LEGAL_DOCUMENT_VERSION } from './content/legalDocuments'
 import { hasCurrentLegalConsent } from './domain/legalConsent'
+
+// PERF-01: pages most members never open on a visit load on demand. The login,
+// public, member and policy screens stay in the first download.
+const AdminPage = lazyPage(() => import('./pages/AdminPage'))
+const ScanPage = lazyPage(() => import('./pages/ScanPage'))
+const RegistrationPage = lazyPage(() => import('./pages/RegistrationPage'))
+const EmailConfirmedPage = lazyPage(() => import('./pages/EmailConfirmedPage'))
+const SettingsPage = lazyPage(() => import('./pages/SettingsPage'))
+const ChangePasswordPage = lazyPage(() => import('./pages/ChangePasswordPage'))
+const ResetPasswordPage = lazyPage(() => import('./pages/ResetPasswordPage'))
+const ContentReportPage = lazyPage(() => import('./pages/ContentReportPage'))
+const LegalPage = lazyPage(() => import('./pages/LegalPage'))
+const ThirdPartyLicensesPage = lazyPage(() => import('./pages/ThirdPartyLicensesPage'))
 
 const OTP_PENDING_KEY = 'uvain_otp_pending_email'
 const OTP_PENDING_EVENT = 'uvain-otp-pending-change'
@@ -230,6 +234,7 @@ function App() {
       <UpdatePrompt />
       <ZoomViewportMinimap />
       <LandscapeInputFocusGuard />
+      <Suspense fallback={<LoadingIndicator fullScreen />}>
       <Routes>
         <Route
           path="/login"
@@ -289,6 +294,7 @@ function App() {
           element={<Navigate to={appSession && !isOtpPending ? '/member' : (session ? '/login' : '/public')} />}
         />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

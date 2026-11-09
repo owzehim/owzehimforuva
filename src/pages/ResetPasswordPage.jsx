@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, Eye, EyeSlash } from '@phosphor-icons/react'
+import { CheckCircle, EnvelopeSimple, Eye, EyeSlash } from '@phosphor-icons/react'
 import { sendPasswordResetReturnSignal, updatePasswordFromRecovery } from '../api/authRepository'
 import { supabase } from '../lib/supabase'
 import { passwordRecoverySupabase } from '../lib/passwordRecoverySupabase'
 import { isEmailLinkSession } from '../domain/auth/recoverySession'
+
+// Let a long address wrap after the @ before breaking inside a word.
+function formatEmailForWrapping(email) {
+  const at = email.indexOf('@')
+  if (at <= 0) return email
+  return <>{email.slice(0, at)}<wbr />{email.slice(at)}</>
+}
 
 let recoveryExchangeCode = null
 let recoveryExchangePromise = null
@@ -43,6 +50,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState('')
   const [recoveryReady, setRecoveryReady] = useState(false)
   const [resetCompleted, setResetCompleted] = useState(false)
+  const [recoveryEmail, setRecoveryEmail] = useState('')
   const returnTokenRef = useRef('')
   const returnHomeTimerRef = useRef(null)
 
@@ -187,6 +195,21 @@ export default function ResetPasswordPage() {
     }
   }
 
+  // SEC-59: show which account this link resets, so a member who opened a
+  // link carrying someone else's session can tell and close the page.
+  useEffect(() => {
+    if (!recoveryReady) return undefined
+    let active = true
+    passwordRecoverySupabase.auth.getUser()
+      .then(({ data }) => {
+        if (active) setRecoveryEmail(typeof data?.user?.email === 'string' ? data.user.email : '')
+      })
+      .catch(() => {
+        if (active) setRecoveryEmail('')
+      })
+    return () => { active = false }
+  }, [recoveryReady])
+
   if (resetCompleted) {
     return (
       <main
@@ -214,6 +237,17 @@ export default function ResetPasswordPage() {
             <p className="mt-3 text-sm leading-relaxed text-gray-500">
               새 비밀번호를 입력해주세요
             </p>
+            {recoveryReady && recoveryEmail && (
+              <div className="reset-password-account mt-4 rounded-lg bg-gray-50 px-3 py-2.5">
+                <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-gray-900">
+                  <EnvelopeSimple size={16} weight="fill" className="flex-shrink-0 text-orange-500" aria-hidden="true" />
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{formatEmailForWrapping(recoveryEmail)}</span>
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                  내 이메일이 아니라면 비밀번호를 바꾸지 말고 이 화면을 닫아 주세요.
+                </p>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="reset-password-form space-y-4">

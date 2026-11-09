@@ -297,3 +297,18 @@ source maps uploaded at build and not served publicly. Reports are scrubbed in
 
 LEG-10 (manifest `orientation: 'any'`) is frontend only and ships with the Vercel deploy of `main` / `dev`.
 
+
+## Changes on 2026-11-09/10 (launch fixes 2)
+
+Backup first: GitHub Actions run `42701151217` (success). Each migration applied to DEV first, then
+production, as its own file content plus its ledger row in one transaction (same version).
+
+| Version | Change | Verified in production |
+|---|---|---|
+| `20261110090000_sec26_perf10_sec20_sec25_admin_cleanup` | SEC-26 legacy `관리자 …` policies dropped; PERF-10 policy calls wrapped; SEC-20 unused grants revoked; SEC-25 admins hold one device seat | Table/function privileges equal `supabase/checks/permission-check.sql`; 0 unwrapped `is_admin()`; RLS on every table. Rolled-back admin test with real `auth.sessions` rows: phone A ✓ → login on B ✓ (B current, still admin) → A reopens ✗, A not current |
+| `20261110100000_sec56_note_author_photos_server_links` | Notes view returns `profile_image_url = NULL` + `has_author_photo`; Storage policy `SEC56 …` and `can_read_note_author_avatar` dropped | Policy and function gone; ledger row present |
+| `20261110110000_perf04_reward_claim_sheet_queue` | `reward_claim_sheet_queue` (RLS on, no anon/authenticated access) | Ledger row present; table not in the anon/authenticated privilege list |
+
+Edge Functions: `note-author-photos` v1 deployed to DEV (from `dev`) and production (from `main`),
+`verify_jwt` true. The functions sharing `_shared/requireVerifiedLogin.ts` (SEC-25 admin seat) and the
+PERF-04 reward/retry changes are deployed with the *Deploy Edge Functions* workflow.

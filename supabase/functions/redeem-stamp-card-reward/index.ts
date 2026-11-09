@@ -3,65 +3,10 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
-import { sheetText } from '../_shared/sheetText.js'
 import { isMembershipActive } from '../_shared/membershipStatus.js'
-import { getAllowedAppsScriptUrl, withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
-import { getPartnerAppsScriptSecret } from '../_shared/partnerAppsScriptSecret.js'
+import { queueRewardClaimSheetRows } from '../_shared/rewardClaimSheetSync.ts'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-async function syncClaimToAppsScript(
-  url: string | null | undefined,
-  label: string,
-  payload: Record<string, unknown>,
-  secret?: string | null,
-) {
-  if (!url) return { ok: false, skipped: true, label }
-  const endpoint = getAllowedAppsScriptUrl(url)
-  if (!endpoint) {
-    console.error(`${label} Apps Script URL is invalid`)
-    return { ok: false, errorCode: 'invalid_endpoint', label }
-  }
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 8000)
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify(withAppsScriptSecret(
-        payload,
-        label === 'master' ? Deno.env.get('MASTER_APPS_SCRIPT_SECRET') : secret,
-      )),
-    })
-    const text = await response.text().catch(() => '')
-    if (!response.ok) {
-      console.error(`${label} reward claim sync failed:`, response.status)
-      return { ok: false, status: response.status, label }
-    }
-    try {
-      const result = text ? JSON.parse(text) : null
-      if (!result || typeof result !== 'object' || Array.isArray(result) || result.success !== true) {
-        console.error(`${label} reward claim sync was not acknowledged`)
-        return { ok: false, errorCode: 'script_rejected', label }
-      }
-    } catch {
-      // HTTP 200 alone does not prove Apps Script applied the Sheet update.
-      console.error(`${label} reward claim sync returned an invalid response`)
-      return { ok: false, errorCode: 'invalid_response', label }
-    }
-    return { ok: true, label }
-  } catch (error) {
-    console.error(`${label} reward claim sync failed unexpectedly`)
-    return {
-      ok: false,
-      errorCode: error instanceof DOMException && error.name === 'AbortError' ? 'timeout' : undefined,
-      label,
-    }
-  } finally {
-    clearTimeout(timeoutId)
-  }
-}
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
@@ -235,54 +180,20 @@ Deno.serve(async (req) => {
       return json({ success: false, message: '이 리워드는 이미 사용되었습니다.' }, 409)
     }
 
-    const { data: partnership, error: partnershipError } = await admin
-      .from('partnerships')
-      .select('name, sheet_name')
-      .eq('id', storeId)
-      .maybeSingle()
-    const { data: integrations, error: integrationsError } = await admin
-      .from('partnership_integrations')
-      .select('master_apps_script_url, partner_apps_script_url')
-      .eq('partnership_id', storeId)
-      .maybeSingle()
-    if (partnershipError || integrationsError) {
-      console.error('Reward claim sheet configuration lookup failed')
-      return json({ success: true, sheetSync: { success: false } })
-    }
-
-    const date = claimedAt.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' })
-    const time = claimedAt.toLocaleTimeString('en-GB', {
-      timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit',
+    // PERF-04: the reward is used. Queue its Master/partner Sheet rows and
+    // send them in the background; anything that fails is re-sent by the
+    // sheet retry job, so staff never wait for Google Sheets.
+    const { queued, sending } = await queueRewardClaimSheetRows(admin, {
+      rewardId,
+      storeId,
+      redemptionId: redemption.id,
+      claimedAt,
     })
-    const payload = {
-      type: 'stamp_claim',
-      partnership_id: storeId,
-      sheet_name: sheetText(partnership?.sheet_name || partnership?.name || storeId, 160),
-      redemption_id: String(redemption.id),
-      stamp_status: 'claimed',
-      claimed_at_date: date,
-      claimed_at_time: time,
-    }
-    // GDPR-20: partners receive the claim date only (privacy policy); the
-    // time stays in the association's Master Sheet. The partner script never
-    // read claimed_at_time.
-    const { claimed_at_time: _masterOnlyTime, ...partnerPayload } = payload
-    const sheetResults = await Promise.all([
-      syncClaimToAppsScript(integrations?.master_apps_script_url, 'master', payload),
-      syncClaimToAppsScript(
-        integrations?.partner_apps_script_url,
-        'partner',
-        partnerPayload,
-        await getPartnerAppsScriptSecret(admin, storeId),
-      ),
-    ])
+    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil(promise: Promise<unknown>): void } }).EdgeRuntime
+    if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(sending)
+    else await sending
 
-    // FUNC-09: a Sheet that is intentionally not connected (no URL) is not a
-    // sync failure; only real errors make the scanner show the warning.
-    return json({
-      success: true,
-      sheetSync: { success: sheetResults.every(result => result.ok || result.skipped === true) },
-    })
+    return json({ success: true, sheetSync: queued ? 'queued' : 'not_queued' })
   } catch (error) {
     console.error('Unexpected reward redemption error:', error)
     return json({ success: false, message: '리워드 사용 처리에 실패했습니다.' }, 500)
