@@ -75,3 +75,12 @@ test('SEC-59: the reset page shows which account the link resets', async () => {
   assert.match(source, /reset-password-account/)
   assert.match(source, /내 이메일이 아니라면 비밀번호를 바꾸지 말고 이 화면을 닫아 주세요\./)
 })
+
+test('SEC-15: sign-up answers an already registered address like a new one', async () => {
+  const source = await readFile('src/api/memberRepository.js', 'utf8')
+  const body = source.slice(source.indexOf('export async function registerMember'))
+  assert.ok(!body.includes('throw new Error(ALREADY_REGISTERED_MESSAGE)'))
+  assert.equal((body.match(/return \{ userId: null \}/g) || []).length, 2)
+  const page = await readFile('src/pages/RegistrationPage.jsx', 'utf8')
+  assert.match(page, /이미 가입된 주소라면 메일이 발송되지 않습니다/)
+})

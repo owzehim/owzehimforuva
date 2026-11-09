@@ -1,0 +1,84 @@
+name: Production schema snapshot
+
+# OPS-01: refresh supabase/baselines/production-schema-<date>.sql from the
+# production database (schema only: tables, RLS policies, grants, functions,
+# triggers; no rows, so no member data) and open a pull request with it.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: schema-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_CLI_VERSION: 2.122.0
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      - name: Dump the production schema (no data)
+        env:
+          DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$DB_URL" ]]; then
+            echo "Set SUPABASE_PROD_DB_URL in GitHub Actions secrets."; exit 1
+          fi
+          supabase db dump --db-url "$DB_URL" -f dump.sql
+          # Schema only: refuse anything that looks like row data.
+          if grep -Eq '^(COPY |INSERT INTO )' dump.sql; then
+            echo "Dump contains row data; refusing to commit it."; exit 1
+          fi
+          day="$(date -u +%Y%m%d)"
+          out="supabase/baselines/production-schema-${day}.sql"
+          {
+            echo "-- Production schema baseline (OPS-01) — REFERENCE ONLY."
+            echo "--"
+            echo "-- Schema-only dump of the production Supabase project (tables, RLS policies,"
+            echo "-- grants, functions, triggers) taken $(date -u +%Y-%m-%d) by the"
+            echo "-- 'Production schema snapshot' workflow. It contains no member data."
+            echo "--"
+            echo "-- Use: rebuild a NEW, empty database (for example a fresh DEV or a restore"
+            echo "-- test) with this file first, then apply any newer migration from"
+            echo "-- supabase/migrations/. NEVER run this against the production project, and"
+            echo "-- never \`supabase db push\` to production (README \"Database changes and deployment\")."
+            echo "--"
+            cat dump.sql
+          } > "$out"
+          rm dump.sql
+          echo "SNAPSHOT_FILE=$out" >> "$GITHUB_ENV"
+          echo "SNAPSHOT_DAY=$day" >> "$GITHUB_ENV"
+
+      - name: Open a pull request with the snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch="schema-snapshot-${SNAPSHOT_DAY}-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add "$SNAPSHOT_FILE"
+          if git diff --cached --quiet; then
+            echo "Snapshot unchanged; nothing to commit."; exit 0
+          fi
+          git commit -m "OPS-01: production schema snapshot ${SNAPSHOT_DAY}"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "OPS-01: production schema snapshot ${SNAPSHOT_DAY}" \
+            --body "Schema-only dump of production taken by the 'Production schema snapshot' workflow (run ${GITHUB_RUN_ID}). No row data. Reference only — never run against production. Review, then remove or keep the older production-schema-*.sql files as you prefer."
