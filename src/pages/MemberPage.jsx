@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useState, useMemo, useRef }
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { getSafeHttpsUrl, richTextToPlainText } from '../lib/sanitizeHtml'
+import { escapeIcsText, getSafeHttpsUrl, richTextToPlainText } from '../lib/sanitizeHtml'
 import { SpotCard, RichText } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
@@ -453,8 +453,14 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin, 
           )}
           {activeTab === 'events' && <EventsTab events={events} />}
         </div>
-        {hasOpenedMap && activeTab === 'map' && (
-          <div className="absolute inset-0">
+        {/* PERF-09: once opened, the map stays mounted (hidden) when another
+            tab is shown, so returning to it does not rebuild the map. */}
+        {hasOpenedMap && (
+          <div
+            className="absolute inset-0"
+            style={{ display: activeTab === 'map' ? 'block' : 'none' }}
+            aria-hidden={activeTab !== 'map'}
+          >
             <MapTab
               restaurants={restaurants}
               member={member}
@@ -3355,8 +3361,9 @@ function EventsTab({ events }) {
       `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\n` +
       `DTSTART:${fmt(start)}\n` +
       `DTEND:${fmt(end)}\n` +
-      `SUMMARY:${ev.title}\n` +
-      `LOCATION:${plainText(ev.location)}\n` +
+      // SEC-11: escape text so a title cannot add or break calendar fields.
+      `SUMMARY:${escapeIcsText(plainText(ev.title))}\n` +
+      `LOCATION:${escapeIcsText(plainText(ev.location))}\n` +
       `DESCRIPTION:\n` +
       `END:VEVENT\nEND:VCALENDAR`
 

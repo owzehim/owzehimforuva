@@ -1,0 +1,67 @@
+name: Sheet sync retry
+
+# PERF-04: re-send reward-claim Google Sheets rows that did not go through
+# when the reward was used (queue: public.reward_claim_sheet_queue).
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sheet-sync-retry
+  cancel-in-progress: false
+
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Re-send queued Sheet rows
+        env:
+          # Production-only by design (OPS-12), like the daily retention job.
+          SUPABASE_URL: https://npvcghdzrtqrlliprtnw.supabase.co
+          RETENTION_JOB_SECRET: ${{ secrets.RETENTION_JOB_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$RETENTION_JOB_SECRET" ]]; then
+            echo "Set RETENTION_JOB_SECRET in GitHub Actions secrets."
+            exit 1
+          fi
+
+          response="$(curl --fail-with-body --silent --show-error --max-time 120 \
+            --request POST "$SUPABASE_URL/functions/v1/privacy-retention-sync" \
+            --header 'content-type: application/json' \
+            --header "x-retention-secret: $RETENTION_JOB_SECRET" \
+            --data '{"task":"sheet_retry"}')"
+
+          echo "$response" | jq '{success, attempted_count, synced_count, failed_count, stuck_count}'
+          echo "$response" | jq -e '.success == true' >/dev/null
+
+  # A row that keeps failing for about a day opens one issue (once).
+  # The repository is public: the issue holds only the run link.
+  alert-on-failure:
+    needs: retry
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the failure issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: "Google Sheets sync retry failing"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          existing="$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == env.TITLE) | .number" | head -n 1)"
+          body="A queued Google Sheets row has failed for about a day ($(date -u +%Y-%m-%dT%H:%MZ)). Run: $RUN_URL"
+          # Runs every 15 minutes: open the issue once, do not comment each run.
+          if [[ -z "$existing" ]]; then
+            gh issue create --title "$TITLE" --body "$body"
+          fi

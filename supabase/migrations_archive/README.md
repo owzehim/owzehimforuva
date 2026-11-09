@@ -17,6 +17,7 @@ None of these is recorded in the production or DEV ledger, and neither database 
 | `20261005080000_sec25_server_enforced_single_device.sql` | `claim_single_device_session` requires `aal2`; every member would be signed out right after login. The current function was applied without this condition. |
 | `20261005081000_sec18_anonymous_author_views.sql` | Safe comment/note views that require `aal2`; lists would appear empty. Superseded by the live views. |
 | `20261005110000_sec18_safe_views_require_active_session.sql` | Same `aal2` view condition. Superseded. |
+| `20261011110000_google_aggregate_reporting_only.sql` | Deletes the Master Sheet address from `partnership_integrations`; account deletion and the retention job then queue every Sheet step until it is restored (FUNC-01). Production recorded it as `20261011123747`; archived 2026-11-10 so `db push` can never run it under the old version. |
 | `20261005130000_sec20_explicit_api_grants.sql` | Stops itself on a self-check; if "fixed" and applied, lines 123–130 revoke EXECUTE on all public functions, which breaks member profile saves (`is_valid_member_username`). API grants are now handled by later migrations (e.g. `20261105160000`). |
 
 ## Duplicates: same SQL, applied to DEV under another timestamp
