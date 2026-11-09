@@ -10,6 +10,7 @@ const PAID_AD_MARKER_SHADOW = 'rgba(255,184,28,0.5)'
 
 import { getMapIconSvg } from '../lib/mapCategories'
 import {
+  getCommercialLabelStyle,
   getRestaurantCommercialLabel,
   getRestaurantCommercialLabelType,
 } from '../lib/restaurantCommercialLabel'
@@ -329,17 +330,7 @@ export default function MapView({ restaurants, selected, onSelect, active = true
       disclosure.className = 'marker-commercial-label'
       disclosure.textContent = commercialLabel
       disclosure.setAttribute('aria-hidden', isSelected ? 'false' : 'true')
-      disclosure.style.cssText = `
-        background: ${isPaidAd ? PAID_AD_MARKER_COLOR : '#f97316'};
-        color: #ffffff;
-        font-size: 8px;
-        font-weight: 700;
-        line-height: 11px;
-        padding: 1px 4px;
-        border-radius: 4px;
-        white-space: nowrap;
-        box-shadow: ${dark ? '0 1px 3px rgba(0,0,0,0.35)' : '0 1px 3px rgba(0,0,0,0.12)'};
-      `
+      Object.assign(disclosure.style, getCommercialLabelStyle(commercialLabelType, dark))
       el.appendChild(disclosure)
     }
 
