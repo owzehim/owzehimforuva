@@ -6,6 +6,7 @@ import { withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 import { constantTimeSecretEquals } from '../_shared/constantTimeSecret.js'
 import { getMasterPrivacyEndpoint } from '../_shared/masterPrivacyEndpoint.ts'
 import { retryPendingEmailCleanup } from '../_shared/finalizePendingEmail.js'
+import { retryRewardClaimSheetRows } from '../_shared/rewardClaimSheetSync.ts'
 
 // Keep the whole run well inside the workflow's 120 s limit (FUNC-08).
 const SHEET_REQUEST_TIMEOUT_MS = 8_000
@@ -98,6 +99,24 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
       global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
+
+    // PERF-04: the 15-minute job only re-sends queued reward-claim Sheet rows.
+    const requestBody = await req.json().catch(() => null)
+    if (requestBody?.task === 'sheet_retry') {
+      const result = await retryRewardClaimSheetRows(admin)
+      const success = result.stuck === 0
+      return new Response(
+        JSON.stringify({
+          success,
+          task: 'sheet_retry',
+          attempted_count: result.attempted,
+          synced_count: result.synced,
+          failed_count: result.failed,
+          stuck_count: result.stuck,
+        }),
+        { status: success ? 200 : 207, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
 
     let pendingEmailCleanup = { completed: 0, failed: 0 }
     try {
