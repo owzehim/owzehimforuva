@@ -7,6 +7,17 @@ import { getSupabasePublishableKey } from '../_shared/publishableKey.ts'
 import { readJsonBody, RequestBodyTooLargeError } from '../_shared/readJsonBody.js'
 
 const genericFailure = 'Unable to change the email address. Check your details and try again later.'
+const successResponse = { success: true, message: 'A confirmation link was sent to the new address.' }
+
+// Supabase Auth reports an address that already has an account as
+// email_exists / user_already_exists (HTTP 422).
+function isEmailTakenError(error: { code?: string; status?: number; message?: string }) {
+  const code = String(error?.code || '').toLowerCase()
+  const message = String(error?.message || '').toLowerCase()
+  return code === 'email_exists' || code === 'user_already_exists' ||
+    message.includes('already been registered') || message.includes('already registered') ||
+    message.includes('already exists')
+}
 
 function normalizeEmail(value: unknown) {
   return typeof value === 'string' ? value.trim().toLowerCase() : ''
@@ -143,7 +154,7 @@ Deno.serve(async (req) => {
         console.error('Pending email confirmation could not be resent')
         return json({ success: false, message: genericFailure }, 400)
       }
-      return json({ success: true, message: 'A confirmation link was sent to the new address.' })
+      return json(successResponse)
     }
 
     const { data: newAuth, error: createError } = await admin.auth.admin.createUser({
@@ -152,6 +163,13 @@ Deno.serve(async (req) => {
       email_confirm: false,
       user_metadata: safePendingMetadata(pendingUser.user_metadata),
     })
+    if (createError && isEmailTakenError(createError)) {
+      // SEC-15: answer exactly as for a free address so this endpoint cannot be
+      // used to learn whether someone else's email is registered. No account
+      // is created and no email is sent.
+      console.warn('Pending email replacement skipped: address unavailable')
+      return json(successResponse)
+    }
     if (createError || !newAuth.user) {
       console.warn('Pending email replacement could not be created')
       return json({ success: false, message: genericFailure }, 400)
@@ -182,7 +200,7 @@ Deno.serve(async (req) => {
       return json({ success: false, message: genericFailure }, 400)
     }
 
-    return json({ success: true, message: 'A confirmation link was sent to the new address.' })
+    return json(successResponse)
   } catch (error) {
     console.error('change-pending-email failed', {
       errorName: error instanceof Error ? error.name : 'unknown',
