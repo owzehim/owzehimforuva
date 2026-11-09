@@ -38,7 +38,9 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'fullscreen',
         display_override: ['fullscreen', 'standalone'],
-        orientation: 'portrait',
+        // LEG-10: landscape layouts are supported, so the installed app follows
+        // the device rotation instead of being locked to portrait.
+        orientation: 'any',
         scope: '/',
         start_url: '/',
         icons: [
