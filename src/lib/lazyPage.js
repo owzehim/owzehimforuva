@@ -15,11 +15,12 @@ export function lazyPage(load) {
       try { window.sessionStorage.removeItem(RELOAD_FLAG) } catch { /* storage unavailable */ }
       return page
     } catch (error) {
-      let alreadyReloaded = false
+      let alreadyReloaded
       try {
         alreadyReloaded = window.sessionStorage.getItem(RELOAD_FLAG) === '1'
         if (!alreadyReloaded) window.sessionStorage.setItem(RELOAD_FLAG, '1')
       } catch {
+        // Without storage a reload could loop; show the error screen instead.
         alreadyReloaded = true
       }
       if (!alreadyReloaded) {

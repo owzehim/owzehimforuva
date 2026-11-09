@@ -38,3 +38,29 @@ test('FUNC-01: the migration that deletes the Master Sheet address is archived',
   const { readdir } = await import('node:fs/promises')
   assert.ok(!(await readdir('supabase/migrations')).some((file) => file.startsWith('20261011110000')))
 })
+
+test('LEG-07: the collapsed SpotCard shows the 할인 제공 / 유료 광고 label', async () => {
+  const source = await readFile('src/components/SpotCard.jsx', 'utf8')
+  assert.match(source, /getRestaurantCommercialLabel\(commercialLabelType\)/)
+  assert.match(source, /spot-card-commercial-label absolute left-4/)
+  assert.match(source, /isCollapsed \? 'opacity-100' : 'opacity-0'/)
+})
+
+test('SpotCard: Google Maps button slides with the sheet and keeps its place between markers', async () => {
+  const source = await readFile('src/components/SpotCard.jsx', 'utf8')
+  assert.match(source, /'transform 0\.35s cubic-bezier\(0\.4,0,0\.2,1\), opacity 0\.2s ease'/)
+  const effect = source.slice(source.indexOf('// Keep the current position while another marker'), source.indexOf('const scheduleMeasure'))
+  assert.ok(!effect.includes('setGoogleMapsButtonCenterY(null)\n    let'), 'must not reset before measuring')
+})
+
+test('PERF-09: the map stays mounted when another tab is shown', async () => {
+  const source = await readFile('src/pages/MemberPage.jsx', 'utf8')
+  assert.ok(!source.includes("hasOpenedMap && activeTab === 'map' &&"))
+  assert.match(source, /display: activeTab === 'map' \? 'block' : 'none'/)
+})
+
+test('SEC-11: calendar export escapes title and location', async () => {
+  const source = await readFile('src/pages/MemberPage.jsx', 'utf8')
+  assert.match(source, /SUMMARY:\$\{escapeIcsText\(/)
+  assert.match(source, /LOCATION:\$\{escapeIcsText\(/)
+})
