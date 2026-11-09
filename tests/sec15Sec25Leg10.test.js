@@ -42,8 +42,12 @@ test('FUNC-01: the migration that deletes the Master Sheet address is archived',
 test('LEG-07: the collapsed SpotCard shows the 할인 제공 / 유료 광고 label', async () => {
   const source = await readFile('src/components/SpotCard.jsx', 'utf8')
   assert.match(source, /getRestaurantCommercialLabel\(commercialLabelType\)/)
-  assert.match(source, /spot-card-commercial-label absolute left-4/)
-  assert.match(source, /isCollapsed \? 'opacity-100' : 'opacity-0'/)
+  // Outside the sheet, above its top-left corner, in the map marker's badge style.
+  assert.match(source, /spot-card-label-anchor/)
+  assert.match(source, /bottom: 'calc\(100% \+ 6px\)'/)
+  assert.match(source, /getCommercialLabelStyle\(commercialLabelType, darkMode\)/)
+  const mapView = await readFile('src/components/MapView.jsx', 'utf8')
+  assert.match(mapView, /getCommercialLabelStyle\(commercialLabelType, dark\)/)
 })
 
 test('SpotCard: Google Maps button slides with the sheet and keeps its place between markers', async () => {
@@ -63,4 +67,11 @@ test('SEC-11: calendar export escapes title and location', async () => {
   const source = await readFile('src/pages/MemberPage.jsx', 'utf8')
   assert.match(source, /SUMMARY:\$\{escapeIcsText\(/)
   assert.match(source, /LOCATION:\$\{escapeIcsText\(/)
+})
+
+test('SEC-59: the reset page shows which account the link resets', async () => {
+  const source = await readFile('src/pages/ResetPasswordPage.jsx', 'utf8')
+  assert.match(source, /passwordRecoverySupabase\.auth\.getUser\(\)/)
+  assert.match(source, /reset-password-account/)
+  assert.match(source, /내 이메일이 아니라면 비밀번호를 바꾸지 말고 이 화면을 닫아 주세요\./)
 })

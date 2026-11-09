@@ -1040,7 +1040,8 @@ html:not(.dark) .text-gray-400 {
     padding-bottom: 6px !important;
   }
 
-  .spot-card-sheet {
+  .spot-card-sheet,
+  .spot-card-label-anchor {
     left: env(safe-area-inset-left, 0px) !important;
     right: auto !important;
     width: calc(50% - env(safe-area-inset-left, 0px)) !important;
@@ -2891,4 +2892,17 @@ select {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* SEC-59: on short portrait screens the account box would push the submit
+   button off screen; trade the heading's top spacing for it. */
+@media (orientation: portrait) and (max-height: 640px) {
+  .reset-password-page:has(.reset-password-account) {
+    padding-top: 8vh !important;
+  }
+
+  .reset-password-heading:has(.reset-password-account) {
+    min-height: 0;
+    padding-top: 24px;
+  }
 }

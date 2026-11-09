@@ -10,13 +10,10 @@ import { sanitizeRichText } from '../lib/sanitizeHtml'
 import { useModalFocus } from '../hooks/useModalFocus'
 import LightboxCloseButton from './LightboxCloseButton'
 import {
-  RESTAURANT_COMMERCIAL_LABEL_TYPES,
+  getCommercialLabelStyle,
   getRestaurantCommercialLabel,
   getRestaurantCommercialLabelType,
 } from '../lib/restaurantCommercialLabel'
-
-// Same yellow as the paid-ad map marker (MapView).
-const PAID_AD_LABEL_COLOR = '#FFB81C'
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -1384,23 +1381,8 @@ export function SpotCard({
         }}
       >
         {/* Drag handle */}
-        <div className={'relative flex justify-center pt-2.5 flex-shrink-0 ' + (commercialLabel ? 'pb-4' : 'pb-2')}>
+        <div className="flex justify-center pt-2.5 pb-2 flex-shrink-0">
           <div className="w-10 h-1 bg-gray-300 rounded-full" />
-          {/* LEG-07: 할인 제공 / 유료 광고 label, top left, collapsed card only. */}
-          {commercialLabel && (
-            <span
-              className={
-                'spot-card-commercial-label absolute left-4 top-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold leading-4 transition-opacity duration-200 ' +
-                (isCollapsed ? 'opacity-100' : 'opacity-0')
-              }
-              style={commercialLabelType === RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
-                ? { backgroundColor: PAID_AD_LABEL_COLOR, color: '#1f2937' }
-                : { backgroundColor: '#f97316', color: '#ffffff' }}
-              aria-hidden={!isCollapsed}
-            >
-              {commercialLabel}
-            </span>
-          )}
         </div>
 
         <div
@@ -1644,6 +1626,35 @@ export function SpotCard({
         </div>
 
       </div>
+
+      {/* LEG-07: 할인 제공 / 유료 광고 badge on the map just above the card's
+          top-left corner, styled exactly like the badge under the map marker.
+          It moves with the sheet and shows only while the card is collapsed. */}
+      {commercialLabel && (
+        <div
+          className="spot-card-label-anchor absolute bottom-0 left-0 right-0 pointer-events-none"
+          aria-hidden="true"
+          style={{
+            height: MAX_HEIGHT + 'px',
+            transform: sheetStyle.transform,
+            transition: sheetStyle.transition,
+            zIndex: 1000,
+          }}
+        >
+          <span
+            className="spot-card-commercial-label absolute"
+            style={{
+              ...getCommercialLabelStyle(commercialLabelType, darkMode),
+              left: 16,
+              bottom: 'calc(100% + 6px)',
+              opacity: isCollapsed && isVisible && !closing ? 1 : 0,
+              transition: 'opacity 0.2s ease',
+            }}
+          >
+            {commercialLabel}
+          </span>
+        </div>
+      )}
 
       {/* Fixed outside the moving sheet so it remains in one place over the SpotCard. */}
       {showGoogleMapsButton && (
