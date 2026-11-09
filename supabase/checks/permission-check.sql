@@ -44,7 +44,6 @@ DECLARE
   ];
   expected_authenticated_functions text[] := ARRAY[
     'admin_list_admin_user_ids',
-    'can_read_note_author_avatar',
     'claim_single_device_session',
     'get_member_store_review_summaries',
     'get_store_review_summaries',

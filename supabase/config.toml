@@ -29,6 +29,11 @@ enabled = true
 verify_jwt = true
 entrypoint = "./functions/export-my-data/index.ts"
 
+[functions.note-author-photos]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/note-author-photos/index.ts"
+
 [functions.change-pending-email]
 enabled = true
 verify_jwt = false
