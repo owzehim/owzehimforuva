@@ -4,98 +4,8 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
-import { sheetText } from '../_shared/sheetText.js'
-import { getAllowedAppsScriptUrl, withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
-import { getPartnerAppsScriptSecret } from '../_shared/partnerAppsScriptSecret.js'
+import { queueCheckinSheetRows } from '../_shared/checkinSheetSync.ts'
 import { isMembershipActive } from '../_shared/membershipStatus.js'
-
-async function postJsonToAppsScript(
-  url: string | null | undefined,
-  payload: Record<string, unknown>,
-  label: string,
-  secret?: string | null,
-): Promise<{
-  ok: boolean
-  skipped?: boolean
-  status?: number
-  errorCode?: string
-  scriptVersion?: string
-  label: string
-}> {
-  if (!url) return { ok: false, skipped: true, label }
-  const endpoint = getAllowedAppsScriptUrl(url)
-  if (!endpoint) {
-    console.error(`${label} Apps Script URL is invalid`)
-    return { ok: false, errorCode: 'invalid_endpoint', label }
-  }
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 8000)
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify(withAppsScriptSecret(
-        payload,
-        label === 'master' ? Deno.env.get('MASTER_APPS_SCRIPT_SECRET') : secret,
-      )),
-    })
-    const text = await response.text().catch(() => '')
-    if (!response.ok) {
-      console.error(`${label} sheet sync failed:`, response.status)
-      return { ok: false, status: response.status, label }
-    }
-    let result: Record<string, unknown>
-    try {
-      result = text ? JSON.parse(text) : {}
-    } catch {
-      console.error(`${label} Apps Script returned a non-JSON response`)
-      return { ok: false, errorCode: 'invalid_response', label }
-    }
-
-    const scriptVersion = typeof result.version === 'string' ? result.version : undefined
-    if (result.success !== true) {
-      const message = typeof result.error === 'string' ? result.error.toLowerCase() : ''
-      const errorCode = message === 'unauthorized'
-        ? 'auth_rejected'
-        : message.includes('partnership_id')
-          ? 'partnership_mismatch'
-          : message.includes('permission') || message.includes('spreadsheet') || message.includes('sheet')
-            ? 'sheet_access_or_structure'
-            : 'script_rejected'
-      console.error(`${label} Apps Script returned failure`, { errorCode, scriptVersion })
-      return { ok: false, errorCode, scriptVersion, label }
-    }
-
-    return { ok: true, scriptVersion, label }
-  } catch (error) {
-    console.error(`${label} sheet sync failed unexpectedly`)
-    return {
-      ok: false,
-      errorCode: error instanceof DOMException && error.name === 'AbortError' ? 'timeout' : undefined,
-      label,
-    }
-  } finally {
-    clearTimeout(timeoutId)
-  }
-}
-
-function formatStampStatus(stampResult: any) {
-  if (!stampResult?.enabled) return ''
-  if (stampResult.rewardPending) return 'reward pending'
-  if (stampResult.cycleCompleted) return 'ready to claim'
-  if (stampResult.alreadyStamped) return 'already stamped today'
-  return ''
-}
-
-function formatStampProgress(stampResult: any) {
-  if (!stampResult?.enabled) return ''
-  const totalStamps = Math.max(1, Number(stampResult.totalStamps || 10))
-  const count = stampResult.rewardPending || stampResult.cycleCompleted
-    ? totalStamps
-    : Number(stampResult.newCount ?? stampResult.currentCount ?? 0)
-  return `${Math.max(0, count)}/${totalStamps}`
-}
 
 async function findStampRestaurant(admin: any, storeId: string) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId)
@@ -333,7 +243,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { data: integrations, error: integrationsError } = integrationsResult
+    const { error: integrationsError } = integrationsResult
     if (integrationsError) {
       console.error('Partnership integration lookup failed')
       return new Response(
@@ -405,49 +315,14 @@ Deno.serve(async (req) => {
       redemptionTimestamp = new Date(existingRedemption.redeemed_at)
     }
 
-    const date = redemptionTimestamp.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' })
-    const time = redemptionTimestamp.toLocaleTimeString('en-GB', {
-      timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit',
-    })
-    const safe = (value: unknown) => value == null || value === '' ? '' : sheetText(value)
-    const masterPayload = {
-      type: 'master', date, time, redemption_id: redemptionId,
-      restaurant_id: storeId, place_name: sheetText(partnership.name, 160), user_id: user.id,
-      first_name: safe(member.first_name), last_name: safe(member.last_name),
-      first_name_korean: safe(member.first_name_korean), last_name_korean: safe(member.last_name_korean),
-      university: safe(member.University), student_number: safe(member.student_number),
-      education_level: safe(member.education_level), year_number: member.year_number ?? '',
-      major: safe(member.major), gender: safe(member.gender), year_of_birth: safe(member.year_of_birth),
-      country_of_origin: safe(member.country_of_origin), star_rating: '', great_food: '',
-      friendly_staff: '', nice_atmosphere: '', good_value: '', comment: '',
-      stamp_status: formatStampStatus(stampResult), stamp_progress: formatStampProgress(stampResult),
-      stamp_card_progress: formatStampProgress(stampResult),
-      stamp_card_claimed_after_scan: stampResult?.claimedAfterScan ? 'Yes' : 'No',
-      account_status: safe(member.account_status) || 'active',
-      membership_valid_until: safe(member.membership_valid_until),
-      membership_ended_at: safe(member.membership_ended_at),
-      identity_anonymized_at: safe(member.identity_anonymized_at),
-    }
-    const partnerPayload = {
-      type: 'store', partnership_id: storeId,
-      sheet_name: sheetText(partnership.sheet_name || partnership.name, 160),
-      date, redemption_id: redemptionId, place_name: sheetText(partnership.name, 160),
-      stamp_status: formatStampStatus(stampResult), stamp_progress: formatStampProgress(stampResult),
-      stamp_card_progress: formatStampProgress(stampResult),
-      stamp_card_claimed_after_scan: stampResult?.claimedAfterScan ? 'Yes' : 'No',
-    }
     // PERF-04: the check-in is already recorded, so the member does not wait
-    // for Google Sheets. The sheet rows are written in the background (each
-    // call still has its own 8-second timeout); a repeat scan re-sends them.
-    const partnerSecret = await getPartnerAppsScriptSecret(admin, storeId)
-    const sheetSync = Promise.all([
-      postJsonToAppsScript(integrations?.master_apps_script_url, masterPayload, 'master'),
-      postJsonToAppsScript(integrations?.partner_apps_script_url, partnerPayload, 'partner', partnerSecret),
-    ]).then((results) => {
-      for (const result of results) {
-        if (!result.ok && !result.skipped) console.error(`${result.label} sheet sync failed in background`, { errorCode: result.errorCode })
-      }
-    }).catch(() => console.error('Background sheet sync failed'))
+    // for Google Sheets. Its Master/partner rows are queued and sent in the
+    // background; anything that fails is re-sent by the sheet retry job.
+    const { sending: sheetSync } = await queueCheckinSheetRows(admin, {
+      redemptionId,
+      storeId,
+      stampResult,
+    })
     const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil(promise: Promise<unknown>): void } }).EdgeRuntime
     if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(sheetSync)
     else await sheetSync

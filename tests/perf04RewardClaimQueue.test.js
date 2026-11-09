@@ -47,3 +47,47 @@ test('PERF-04: queue table is server-only and retried every 15 minutes', async (
   const job = await readFile('supabase/functions/privacy-retention-sync/index.ts', 'utf8')
   assert.match(job, /requestBody\?\.task === 'sheet_retry'/)
 })
+
+const checkin = await import('../supabase/functions/_shared/checkinSheetPayload.js')
+
+test('PERF-04 check-ins: queued stamp columns hold no personal data', () => {
+  const stamp = checkin.stampColumns({ enabled: true, newCount: 3, totalStamps: 10, claimedAfterScan: false })
+  assert.deepEqual(stamp, { stamp_status: '', stamp_progress: '3/10', stamp_card_claimed_after_scan: false })
+  assert.deepEqual(checkin.stampColumns({ enabled: false }), { stamp_status: '', stamp_progress: '', stamp_card_claimed_after_scan: false })
+  assert.equal(checkin.formatStampStatus({ enabled: true, rewardPending: true }), 'reward pending')
+})
+
+test('PERF-04 check-ins: rebuilt rows match the original Sheet format', () => {
+  const base = {
+    storeId: 'store-1',
+    partnership: { name: 'Shop', sheet_name: '=Shop' },
+    redemptionId: 7,
+    redeemedAt: new Date('2026-11-10T11:05:00Z'),
+    stamp: { stamp_status: 'ready to claim', stamp_progress: '10/10', stamp_card_claimed_after_scan: true },
+  }
+  const partner = checkin.buildCheckinPartnerPayload(base)
+  assert.equal(partner.type, 'store')
+  assert.equal(partner.date, '10/11/2026')
+  assert.equal(partner.sheet_name, "'=Shop", 'formula-looking text is escaped')
+  assert.equal(partner.stamp_card_claimed_after_scan, 'Yes')
+  assert.equal(partner.first_name, undefined, 'partner rows carry no member identifiers')
+  const master = checkin.buildCheckinMasterPayload({ ...base, userId: 'u1', member: { first_name: 'Kim', account_status: null } })
+  assert.equal(master.type, 'master')
+  assert.equal(master.time, '12:05')
+  assert.equal(master.first_name, 'Kim')
+  assert.equal(master.account_status, 'active')
+  assert.equal(master.stamp_card_progress, '10/10')
+})
+
+test('PERF-04 check-ins: log-redemption queues its Sheet rows and the retry job covers them', async () => {
+  const source = await readFile('supabase/functions/log-redemption/index.ts', 'utf8')
+  assert.match(source, /queueCheckinSheetRows/)
+  assert.ok(!source.includes('postJsonToAppsScript'))
+  const sync = await readFile('supabase/functions/_shared/checkinSheetSync.ts', 'utf8')
+  assert.match(sync, /if \(!redemption\.user_id\) return \{ ok: false, drop: true \}/, 'no Master row once the account is gone')
+  const sql = await readFile('supabase/migrations/20261110120000_perf04_checkin_sheet_queue.sql', 'utf8')
+  assert.match(sql, /REVOKE ALL ON TABLE public\.checkin_sheet_queue FROM PUBLIC, anon, authenticated/)
+  assert.match(sql, /REFERENCES public\.redemptions\(id\) ON DELETE CASCADE/)
+  const job = await readFile('supabase/functions/privacy-retention-sync/index.ts', 'utf8')
+  assert.match(job, /retryCheckinSheetRows\(admin, \{ limit: 20, deadline: startedAt \+ 45_000 \}\)/)
+})
