@@ -312,3 +312,14 @@ production, as its own file content plus its ledger row in one transaction (same
 Edge Functions: `note-author-photos` v1 deployed to DEV (from `dev`) and production (from `main`),
 `verify_jwt` true. The functions sharing `_shared/requireVerifiedLogin.ts` (SEC-25 admin seat) and the
 PERF-04 reward/retry changes are deployed with the *Deploy Edge Functions* workflow.
+
+## Changes on 2026-11-10 (PERF-04 check-in retry list)
+
+Backup first: GitHub Actions run `42714659584` (success). Applied to DEV first, then production, as the
+file content plus its ledger row in one transaction (same version).
+
+| Version | Change | Verified in production |
+|---|---|---|
+| `20261110120000_perf04_checkin_sheet_queue` | `checkin_sheet_queue` for check-in Sheet rows (RLS on, no anon/authenticated access) | RLS on; no anon/authenticated SELECT; ledger row present |
+
+`log-redemption` and `privacy-retention-sync` are deployed with the *Deploy Edge Functions* workflow after merge.
