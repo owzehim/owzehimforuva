@@ -59,11 +59,12 @@ test('the secrets table is server-only and every partner gets a random secret', 
 
 test('all three partner senders use the per-partner secret', () => {
   // PERF-04: the reward function sends through the shared reward-claim queue.
-  for (const file of ['log-redemption/index.ts', '_shared/rewardClaimSheetSync.ts', 'sync-to-sheets/index.ts']) {
+  for (const file of ['_shared/checkinSheetSync.ts', '_shared/rewardClaimSheetSync.ts', 'sync-to-sheets/index.ts']) {
     const source = readFileSync(`supabase/functions/${file}`, 'utf8')
     assert.ok(source.includes('getPartnerAppsScriptSecret(admin'), file)
   }
   assert.ok(readFileSync('supabase/functions/redeem-stamp-card-reward/index.ts', 'utf8').includes('queueRewardClaimSheetRows'))
+  assert.ok(readFileSync('supabase/functions/log-redemption/index.ts', 'utf8').includes('queueCheckinSheetRows'))
 })
 
 test('the shared partner secret is no longer read by any Edge Function', () => {
