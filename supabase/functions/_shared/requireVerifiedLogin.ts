@@ -34,13 +34,6 @@ export async function hasActiveDeviceSession(
   { testAccountEmail }: { testAccountEmail?: string | null } = {},
 ): Promise<boolean> {
   try {
-    const { data: adminRole, error: roleError } = await admin
-      .from('admin_roles')
-      .select('user_id')
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (!roleError && adminRole) return true
-
     const encodedPayload = accessToken.split('.')[1]
     if (!encodedPayload) return false
     const base64 = encodedPayload.replace(/-/g, '+').replace(/_/g, '/')
@@ -55,7 +48,17 @@ export async function hasActiveDeviceSession(
       .eq('user_id', userId)
       .maybeSingle()
 
-    if (memberError || !member) return false
+    if (memberError) return false
+    if (!member) {
+      // SEC-25: admins hold one device seat like members. Only an admin
+      // without a members row (no seat to hold) is let through.
+      const { data: adminRole, error: roleError } = await admin
+        .from('admin_roles')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle()
+      return !roleError && Boolean(adminRole)
+    }
 
     const isExemptTestEmail =
       typeof testAccountEmail === 'string' &&

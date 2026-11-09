@@ -21,3 +21,20 @@ test('LEG-10: the installed app is not locked to portrait', async () => {
   const source = await readFile('vite.config.js', 'utf8')
   assert.ok(!source.includes("orientation: 'portrait'"))
 })
+
+test('SEC-26/PERF-10/SEC-20: legacy admin policies dropped, policy calls wrapped, unused grants revoked', async () => {
+  const source = await readFile('supabase/migrations/20261110090000_sec26_perf10_sec20_sec25_admin_cleanup.sql', 'utf8')
+  for (const name of ['관리자 멤버 삭제', '관리자 식당 삭제', '관리자 식당 수정', '관리자 식당 추가', '관리자 이벤트 삭제', '관리자 이벤트 수정', '관리자 이벤트 추가']) {
+    assert.ok(source.includes(`DROP POLICY IF EXISTS "${name}"`), name)
+  }
+  const alterSection = source.slice(source.indexOf('-- 2. PERF-10 ---'), source.indexOf('-- 3. SEC-20 ---'))
+  assert.ok(!/[^.]is_admin\(\)/.test(alterSection.replaceAll('public.is_admin()', '')))
+  assert.match(source, /REVOKE SELECT, INSERT, UPDATE, DELETE ON public\.privacy_action_log FROM authenticated/)
+  const check = await readFile('supabase/checks/permission-check.sql', 'utf8')
+  assert.ok(!check.includes('privacy_action_log'))
+})
+
+test('FUNC-01: the migration that deletes the Master Sheet address is archived', async () => {
+  const { readdir } = await import('node:fs/promises')
+  assert.ok(!(await readdir('supabase/migrations')).some((file) => file.startsWith('20261011110000')))
+})
