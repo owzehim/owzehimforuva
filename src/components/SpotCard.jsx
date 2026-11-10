@@ -695,14 +695,53 @@ function SpotImageThumbnail({ url, index, onTap, darkMode }) {
 // the session per viewport size. Compact cards reuse it so the button stays in
 // place when the member taps another marker (the compact card fits its text
 // above the button instead of moving the button).
-let rememberedButtonAnchor = null
+const BUTTON_ANCHOR_STORAGE_KEY = 'uvain:spot-card-button-anchor'
+let rememberedButtonAnchor = (() => {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(BUTTON_ANCHOR_STORAGE_KEY) || 'null')
+    return stored && typeof stored.key === 'string' && Number.isFinite(stored.y) ? stored : null
+  } catch {
+    return null
+  }
+})()
 
-function viewportKey() {
-  return typeof window === 'undefined' ? '' : `${window.innerWidth}x${window.innerHeight}`
+function rememberButtonAnchor(y) {
+  rememberedButtonAnchor = { key: viewportKey(), y }
+  try {
+    window.localStorage.setItem(BUTTON_ANCHOR_STORAGE_KEY, JSON.stringify(rememberedButtonAnchor))
+  } catch {
+    // Storage unavailable: the position is still kept for this session.
+  }
 }
 
-export function SpotCard({
+function viewportKey() {
+  return typeof window === 'undefined' ? '' : `v2:${window.innerWidth}x${window.innerHeight}`
+}
+
+// Switching markers while a card is open: the old content (and label) fades
+// out, the new place is swapped in while invisible, then fades in while the
+// card eases to its new height. The sheet itself never replays its entrance.
+const CONTENT_FADE_MS = 150
+
+export function SpotCard(props) {
+  const { selected } = props
+  const [shownSpot, setShownSpot] = useState(selected)
+  const switching = Boolean(selected && shownSpot && selected.id !== shownSpot.id)
+
+  useEffect(() => {
+    if (!selected || !shownSpot || selected.id === shownSpot.id) return undefined
+    const timer = window.setTimeout(() => setShownSpot(selected), CONTENT_FADE_MS)
+    return () => window.clearTimeout(timer)
+  }, [selected, shownSpot])
+
+  // Same place, updated record (e.g. new rating): show it right away.
+  const displayed = !shownSpot || (selected && selected.id === shownSpot.id) ? selected : shownSpot
+  return <SpotCardSheet {...props} selected={displayed} contentVisible={!switching} />
+}
+
+function SpotCardSheet({
   selected,
+  contentVisible = true,
   onClose,
   onClosingStart,
   currentUserId,
@@ -727,6 +766,10 @@ export function SpotCard({
   const compactFitHeightRef = useRef(0)
   const compactTextEndRef = useRef(null)
   const googleMapsButtonRef = useRef(null)
+  // Button position for as long as this card stays open: set once (from the
+  // remembered position or the first measurement) and reused for every marker
+  // the member switches to, so the button never moves. Cleared on resize.
+  const sessionAnchorRef = useRef(null)
   const selectedId = selected?.id
   const [reviewBoxPanelState, setReviewBoxPanelState] = useState(() => ({ selectedId, value: 'guide' }))
   const startYRef = useRef(0)
@@ -853,10 +896,15 @@ export function SpotCard({
         heightMode: spotCardHeightMode,
       }
 
-      // Keep a visible sheet in place when another marker opens the same card
-      // type. Re-running the entrance animation here caused a noticeable hitch.
-      if (previousSpot?.id !== selectedId && isSameCardType) {
+      // Another marker while the card is open: never replay the entrance.
+      // Same card type keeps its height; a different type eases to its new
+      // collapsed height (the sheet's transform transition animates it).
+      if (previousSpot && previousSpot.id !== selectedId) {
         setClosing(false)
+        if (!isSameCardType) {
+          setCardIsExpanded(false)
+          setCardHeightValue(initialMinHeight)
+        }
         return
       }
 
@@ -1170,16 +1218,33 @@ export function SpotCard({
       const tabsTop = bottomTabs.getBoundingClientRect().top
       const nextCenter = Math.round((imageBottom + tabsTop) / 2)
       if (Number.isFinite(nextCenter)) {
-        rememberedButtonAnchor = { key: viewportKey(), y: nextCenter }
+        rememberButtonAnchor(nextCenter)
+        sessionAnchorRef.current = { key: viewportKey(), y: nextCenter }
         setGoogleMapsButtonCenterY((current) => (current === nextCenter ? current : nextCenter))
       }
     }
+    const placeButton = () => {
+      const key = viewportKey()
+      if (!sessionAnchorRef.current && rememberedButtonAnchor?.key === key) {
+        sessionAnchorRef.current = rememberedButtonAnchor
+      }
+      const anchor = sessionAnchorRef.current
+      if (anchor?.key === key) {
+        // Same open card, same screen size: keep the button exactly where it is.
+        setGoogleMapsButtonCenterY((current) => (current === anchor.y ? current : anchor.y))
+        return
+      }
+      measureCenter()
+    }
     const scheduleMeasure = () => {
       if (measureTimer != null) window.clearTimeout(measureTimer)
-      measureTimer = window.setTimeout(measureCenter, 150)
+      measureTimer = window.setTimeout(() => {
+        sessionAnchorRef.current = null
+        measureCenter()
+      }, 150)
     }
 
-    measureFrame = window.requestAnimationFrame(measureCenter)
+    measureFrame = window.requestAnimationFrame(placeButton)
     window.addEventListener('resize', scheduleMeasure)
     window.addEventListener('orientationchange', scheduleMeasure)
     return () => {
@@ -1416,7 +1481,12 @@ export function SpotCard({
               ? ` spot-card-landscape-expanded-content${isLandscapeExpandedSpotCard ? ' is-expanded' : ''}`
               : '')
           }
-          style={{ overflowY: 'hidden' }}
+          style={{
+            overflowY: 'hidden',
+            // Crossfade when switching markers (see SpotCard wrapper).
+            opacity: contentVisible ? 1 : 0,
+            transition: `opacity ${contentVisible ? 220 : CONTENT_FADE_MS}ms ease`,
+          }}
         >
           {/* ?? Place info ?? */}
           <div className="spot-card-place-info pt-1 pb-3">
@@ -1663,13 +1733,14 @@ export function SpotCard({
           }}
         >
           <span
-            className="spot-card-commercial-label absolute"
+            key={selectedId}
+            className="spot-card-commercial-label spot-card-fade-in absolute"
             style={{
               ...getCommercialLabelStyle(commercialLabelType, darkMode, 'card'),
               left: 16,
               bottom: 'calc(100% + 8px)',
-              opacity: isCollapsed && isVisible && !closing ? 1 : 0,
-              transition: 'opacity 0.2s ease',
+              opacity: isCollapsed && isVisible && !closing && contentVisible ? 1 : 0,
+              transition: `opacity ${contentVisible ? 220 : CONTENT_FADE_MS}ms ease`,
             }}
           >
             {commercialLabel}
