@@ -5,6 +5,8 @@ import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, formatAverageRating } from '../domain/reviewDomain'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
+import { REVIEW_BOX_TYPES, getReviewBoxType, isScrapReviewBox, normalizeScrapBoard, placeImagePrefix } from '../domain/scrapBoard'
+import ScrapBoardViewer from './scrap/ScrapBoardViewer'
 import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 import { sanitizeRichText } from '../lib/sanitizeHtml'
 import { useModalFocus } from '../hooks/useModalFocus'
@@ -14,6 +16,8 @@ import {
   getRestaurantCommercialLabel,
   getRestaurantCommercialLabelType,
 } from '../lib/restaurantCommercialLabel'
+
+const SCRAP_IMAGE_PREFIX = placeImagePrefix(import.meta.env.VITE_SUPABASE_URL)
 
 export function RichText({ text, className = '' }) {
   if (!text) return null
@@ -1036,6 +1040,13 @@ function SpotCardSheet({
     startHeightRef.current = spotCardHeightMode === 'full'
       ? cardHeight
       : cardRef.current?.offsetHeight || MIN_HEIGHT
+    const scrapScroller = !isCollapsed ? e.target.closest?.('.spot-card-scrap-scroller') : null
+    if (scrapScroller) {
+      // The 낙서장 scrolls on its own; at its top, pulling down still moves the sheet.
+      contentScrollTouchRef.current = { element: scrapScroller, mode: 'content' }
+      setIsDragging(false)
+      return
+    }
     const scrollableContent = e.target.closest?.('.spot-card-expanded-content')
     const landscapeReviewGuide = e.target.closest?.('.spot-card-landscape-review-guide')
     const canScrollLandscapeGuide = Boolean(landscapeReviewGuide && isLandscapeExpandedSpotCard)
@@ -1266,6 +1277,10 @@ function SpotCardSheet({
     ? summary
     : null
   const reviewCount = ratingSummary?.review_count ?? 0
+  const reviewBoxType = getReviewBoxType(selected)
+  const scrapBoard = isScrapReviewBox(reviewBoxType)
+    ? normalizeScrapBoard(selected.scrap_board, { prefix: SCRAP_IMAGE_PREFIX })
+    : null
   const averageRating = ratingSummary?.average_rating ?? 0
   const usullangStarCount = Math.max(
     0,
@@ -1303,6 +1318,10 @@ function SpotCardSheet({
   }
 
   const handleReviewBoxTouchStart = (event) => {
+    if (event.touches.length > 1 || event.target.closest?.('.spot-card-scrap-scroller[data-zoomed="true"]')) {
+      reviewBoxTouchStartRef.current = null
+      return
+    }
     reviewBoxTouchStartRef.current = {
       x: event.touches[0].clientX,
       y: event.touches[0].clientY,
@@ -1444,6 +1463,13 @@ function SpotCardSheet({
           )
           if (canScrollLandscapeGuide) return
 
+          const scrapScroller = e.target.closest?.('.spot-card-scrap-scroller')
+          if (
+            scrapScroller &&
+            ((e.deltaY > 0 && scrapScroller.scrollTop + scrapScroller.clientHeight < scrapScroller.scrollHeight - 1) ||
+              (e.deltaY < 0 && scrapScroller.scrollTop > 0))
+          ) return
+
           const scrollableContent = e.target.closest?.('.spot-card-expanded-content')
           const canScrollContent = Boolean(
             scrollableContent &&
@@ -1563,7 +1589,7 @@ function SpotCardSheet({
             {/* Review box: swipe left for member notes. */}
             {spotCardHeightMode === 'full' && !isTallCollapsed && (
               <section
-                className={`mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out ${shouldUseLandscapeExpandedLayout ? `spot-card-landscape-review-box ${isCollapsed ? 'is-collapsed' : 'is-expanded'}` : ''}`}
+                className={`relative mt-6 mb-3 flex h-[380px] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 transition-all duration-300 ease-out ${shouldUseLandscapeExpandedLayout ? `spot-card-landscape-review-box ${isCollapsed ? 'is-collapsed' : 'is-expanded'}` : ''}`}
                 aria-label="리뷰 박스"
                 onTouchStart={handleReviewBoxTouchStart}
                 onTouchMove={handleReviewBoxTouchMove}
@@ -1592,6 +1618,25 @@ function SpotCardSheet({
                     : 'translateX(0)',
                 }}
               >
+                {reviewBoxType === REVIEW_BOX_TYPES.SCRAP ? (
+                  <div className="spot-card-scrap-panel relative w-1/2 flex-shrink-0 overflow-hidden">
+                    <ScrapBoardViewer board={scrapBoard} darkMode={darkMode} />
+                    <span className="scrap-pill pointer-events-none absolute left-2.5 top-2.5 z-10 px-[11px] py-[5px] text-xs font-semibold">낙서장</span>
+                  </div>
+                ) : reviewBoxType === REVIEW_BOX_TYPES.SCRAP_RATING ? (
+                  <div className="spot-card-scrap-panel flex w-1/2 flex-shrink-0 flex-col overflow-hidden">
+                    <div className="relative min-h-0 flex-1 overflow-hidden">
+                      <ScrapBoardViewer board={scrapBoard} darkMode={darkMode} />
+                      <span className="scrap-pill pointer-events-none absolute left-2.5 top-2.5 z-10 px-[11px] py-[5px] text-xs font-semibold">낙서장</span>
+                    </div>
+                    <div className="spot-card-landscape-member-evaluation flex-shrink-0 px-4">
+                      <TagBarChart
+                        tagCounts={ratingSummary?.tag_counts}
+                        reviewCount={reviewCount}
+                      />
+                    </div>
+                  </div>
+                ) : (
                 <div className="spot-card-review-guide w-1/2 flex-shrink-0 px-4 pt-1">
                   {guideContent}
                   <div className="spot-card-landscape-member-evaluation">
@@ -1601,7 +1646,8 @@ function SpotCardSheet({
                     />
                   </div>
                 </div>
-                <div className="w-1/2 flex-shrink-0 px-4">
+                )}
+                <div className={`w-1/2 flex-shrink-0 px-4 ${reviewBoxType === REVIEW_BOX_TYPES.SCRAP ? 'pb-10' : ''}`}>
                   {reviewAudience === 'member' ? (
                     <GoodToKnowNotesPanel
                       restaurantId={selected.id}
@@ -1624,7 +1670,12 @@ function SpotCardSheet({
                   )}
                 </div>
               </div>
-              <div className="spot-card-review-pagination relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4" aria-hidden="true">
+              <div
+                className={reviewBoxType === REVIEW_BOX_TYPES.SCRAP
+                  ? 'spot-card-review-pagination spot-card-review-pagination-floating scrap-pill pointer-events-none absolute bottom-2.5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 px-2.5 py-1.5'
+                  : 'spot-card-review-pagination relative z-10 flex flex-shrink-0 justify-center gap-1.5 bg-gray-50 pb-4 pt-4'}
+                aria-hidden="true"
+              >
                 <span className={
                   'h-1.5 rounded-full transition-all ' +
                   (reviewBoxPanel === 'guide' ? 'w-4 bg-orange-500' : 'w-1.5 bg-gray-300')
