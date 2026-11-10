@@ -21,6 +21,8 @@ export default defineConfig([
       // Keep the existing app lintable while surfacing legacy cleanup items
       // without making them block routine builds.
       'no-unused-vars': 'warn',
+      // Use the in-app toast / confirm (components/feedback), not browser popups.
+      'no-alert': 'error',
       'no-constant-binary-expression': 'warn',
       'no-useless-assignment': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
