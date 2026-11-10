@@ -32,3 +32,12 @@ Set `MASTER_APPS_SCRIPT_SECRET` as an Edge Function secret in each Supabase proj
 Do not restore a sheet endpoint until its corresponding Apps Script has been updated and deployed. When rotating from the old shared secret, update every receiving script first, then replace the Supabase secrets, and retire the old `APPS_SCRIPT_SHARED_SECRET` property/value.
 
 The script does not create or update a `Reviews Summary` tab. It writes each review's star rating, selected tags, and review date to the matching redemption row in `Operations` columns H:M. Reviewer identity and comment are sent to the internal Master sheet only. Existing partner review values are preserved during scan resyncs.
+
+## 멤버 평가 item names (place review criteria)
+
+Places can rename their 4 멤버 평가 items in the admin page. The app keeps storing the same 4 tag slots, and now also sends `criteria` (the place's 4 item names) and `tag_labels` (the chosen items in those names) with every review.
+
+- **Partner sheet** (`partner-owner.gs`, v12+): writes the 4 names into the header cells I:L, so a cafe's sheet reads e.g. "커피 맛" instead of a blank header.
+- **Master sheet** (`master-sheet.gs`, v9+): adds two columns at the end, AT `Review Items` (e.g. "커피 맛, 와이파이") and AU `Review Item Names (1–4)`. Columns are added automatically on the first request; existing header labels you renamed are kept. Set `MASTER_SPREADSHEET_ID` to your master spreadsheet's ID when pasting (the repo keeps a placeholder).
+
+Older script versions keep working; they ignore the new fields.

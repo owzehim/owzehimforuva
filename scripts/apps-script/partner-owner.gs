@@ -36,7 +36,7 @@
 const PARTNERSHIP_ID = 'REPLACE_WITH_PARTNERSHIP_ID';
 
 const SHEET_NAME = 'Operations';
-const SCRIPT_VERSION = 'uvain-partner-owner-sheet-v11-place-review-criteria';
+const SCRIPT_VERSION = 'uvain-partner-owner-sheet-v12-place-review-criteria';
 const COLUMN_COUNT = 16;
 const RETENTION_MONTHS = 12;
 const RETENTION_TIME_ZONE = 'Europe/Amsterdam';
