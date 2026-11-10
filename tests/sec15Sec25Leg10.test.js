@@ -44,15 +44,15 @@ test('LEG-07: the collapsed SpotCard shows the 할인 제공 / 유료 광고 lab
   assert.match(source, /getRestaurantCommercialLabel\(commercialLabelType\)/)
   // Outside the sheet, above its top-left corner, in the map marker's badge style.
   assert.match(source, /spot-card-label-anchor/)
-  assert.match(source, /bottom: 'calc\(100% \+ 6px\)'/)
-  assert.match(source, /getCommercialLabelStyle\(commercialLabelType, darkMode\)/)
+  assert.match(source, /bottom: 'calc\(100% \+ 8px\)'/)
+  assert.match(source, /getCommercialLabelStyle\(commercialLabelType, darkMode, 'card'\)/)
   const mapView = await readFile('src/components/MapView.jsx', 'utf8')
   assert.match(mapView, /getCommercialLabelStyle\(commercialLabelType, dark\)/)
 })
 
 test('SpotCard: Google Maps button slides with the sheet and keeps its place between markers', async () => {
   const source = await readFile('src/components/SpotCard.jsx', 'utf8')
-  assert.match(source, /'transform 0\.35s cubic-bezier\(0\.4,0,0\.2,1\), opacity 0\.2s ease'/)
+  assert.match(source, /'transform 0\.35s cubic-bezier\(0\.4,0,0\.2,1\), opacity 0\.2s ease, top 0\.25s ease'/)
   const effect = source.slice(source.indexOf('// Keep the current position while another marker'), source.indexOf('const scheduleMeasure'))
   assert.ok(!effect.includes('setGoogleMapsButtonCenterY(null)\n    let'), 'must not reset before measuring')
 })
@@ -106,4 +106,30 @@ test('No browser alert()/confirm() popups; the in-app feedback components are us
   assert.match(eslint, /'no-alert': 'error'/)
   const main = await readFile('src/main.jsx', 'utf8')
   assert.match(main, /<FeedbackProvider>/)
+})
+
+test('SpotCard: compact cards reuse the tall card button position (no jump between markers)', async () => {
+  const source = await readFile('src/components/SpotCard.jsx', 'utf8')
+  assert.match(source, /let rememberedButtonAnchor = null/)
+  assert.match(source, /rememberedButtonAnchor = \{ key: viewportKey\(\), y: nextCenter \}/)
+  assert.match(source, /top: `\$\{buttonAnchorY\}px`/)
+})
+
+test('Commercial label: card size is larger than the marker badge', async () => {
+  const { getCommercialLabelStyle } = await import('../src/lib/restaurantCommercialLabel.js')
+  const marker = getCommercialLabelStyle('paid_ad', false)
+  const card = getCommercialLabelStyle('paid_ad', false, 'card')
+  assert.equal(marker.fontSize, '8px')
+  assert.ok(parseInt(card.fontSize, 10) > parseInt(marker.fontSize, 10))
+  assert.equal(card.background, marker.background)
+})
+
+test('Admin: sticky header and tabs; 수정 opens in a popup', async () => {
+  const source = await readFile('src/pages/AdminPage.jsx', 'utf8')
+  assert.match(source, /admin-sticky-header sticky top-0/)
+  assert.match(source, /overflow-x-clip/)
+  for (const label of ['멤버 수정', '이벤트 수정', '장소 수정']) assert.match(source, new RegExp(`<EditPopup label="${label}"`))
+  const popup = await readFile('src/components/EditPopup.jsx', 'utf8')
+  assert.match(popup, /onCloseRef\.current\(\)/, 'Esc closes without re-running the effect on each render')
+  assert.match(popup, /transform: shown \? undefined/, 'no transform at rest (keeps fixed children on screen)')
 })

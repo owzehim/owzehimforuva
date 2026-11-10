@@ -18,6 +18,7 @@ import {
 } from '../lib/restaurantCommercialLabel'
 import { useFeedback } from '../components/feedback/feedbackContext.js'
 import { FieldError, invalidFieldClass } from '../components/feedback/FieldError.jsx'
+import EditPopup from '../components/EditPopup.jsx'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -240,7 +241,11 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+    // overflow-x-clip (not hidden) so the sticky header below still sticks.
+    <div className="min-h-screen bg-gray-50 overflow-x-clip">
+      {/* Header and tabs stay at the top (including the safe area) while the
+          tab content scrolls underneath. */}
+      <div className="admin-sticky-header sticky top-0 z-40 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)]">
       {/* Header */}
       <div
         className="bg-white border-b border-gray-100 px-4 pb-3 flex items-center justify-between"
@@ -291,6 +296,7 @@ export default function AdminPage() {
             {tab.label}
           </button>
         ))}
+      </div>
       </div>
 
       <div className="w-full px-4 py-6">
@@ -1317,6 +1323,11 @@ function MembersTab() {
     fetchMembers()
   }
 
+  const closeEdit = useCallback(() => {
+    setShowForm(false)
+    setEditTarget(null)
+  }, [])
+
   const openEdit = (member) => {
     setEditTarget(member)
     setForm({
@@ -1409,6 +1420,7 @@ function MembersTab() {
               </div>
 
               {showForm && editTarget && editTarget.id === member.id && (
+                <EditPopup label="멤버 수정" onClose={closeEdit}>
                 <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4 mt-2">
                   <h3 className="font-medium text-gray-900">멤버 수정</h3>
 
@@ -1634,16 +1646,14 @@ function MembersTab() {
                       수정 완료
                     </button>
                     <button
-                      onClick={() => {
-                        setShowForm(false)
-                        setEditTarget(null)
-                      }}
+                      onClick={closeEdit}
                       className="flex-1 bg-gray-100 text-gray-700 rounded-lg py-2 text-sm"
                     >
                       취소
                     </button>
                   </div>
                 </div>
+                </EditPopup>
               )}
             </div>
           ))}
@@ -2324,7 +2334,9 @@ function EventsTab() {
         </div>
       </div>
       {showForm && editTarget && editTarget.id === event.id && (
-        <EventForm {...formProps} />
+        <EditPopup label="이벤트 수정" onClose={formProps.resetForm}>
+          <EventForm {...formProps} />
+        </EditPopup>
       )}
     </div>
   )
@@ -3274,7 +3286,9 @@ function RestaurantsTab() {
                     </div>
                   </div>
                   {showForm && editTarget && editTarget.id === r.id && (
-                    <RestaurantForm {...formProps} />
+                    <EditPopup label="장소 수정" onClose={resetForm}>
+                      <RestaurantForm {...formProps} />
+                    </EditPopup>
                   )}
                 </div>
               ))}
