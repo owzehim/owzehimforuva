@@ -13,6 +13,28 @@ export default function ScrapBoardFullscreen({ board, placeName, darkMode = fals
   const onCloseRef = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose }, [onClose])
 
+  // While open, the status-bar area must not show white: darken the theme
+  // colour (browser/Android bar) and the page background behind everything
+  // (iPhone safe area), then restore both on close.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    const previousTheme = meta?.getAttribute('content') ?? null
+    meta?.setAttribute('content', '#000000')
+    const html = document.documentElement
+    const previousHtmlBg = html.style.backgroundColor
+    const previousBodyBg = document.body.style.backgroundColor
+    html.style.backgroundColor = '#000000'
+    document.body.style.backgroundColor = '#000000'
+    return () => {
+      if (meta) {
+        if (previousTheme === null) meta.removeAttribute('content')
+        else meta.setAttribute('content', previousTheme)
+      }
+      html.style.backgroundColor = previousHtmlBg
+      document.body.style.backgroundColor = previousBodyBg
+    }
+  }, [])
+
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setShown(true))
     const previousFocus = document.activeElement
@@ -33,8 +55,11 @@ export default function ScrapBoardFullscreen({ board, placeName, darkMode = fals
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1300] flex flex-col bg-gray-900/90 backdrop-blur-md transition-opacity duration-200"
-      style={{ opacity: shown ? 1 : 0 }}
+      className="fixed inset-0 flex flex-col transition-opacity duration-200"
+      // Same layer and plain background as the photo lightbox. No blur: iPhone
+      // Safari leaves blurred fixed overlays out of the status-bar area, which
+      // then shows the white page behind it.
+      style={{ opacity: shown ? 1 : 0, zIndex: 2147483647, background: 'rgba(0, 0, 0, 0.85)' }}
       role="dialog"
       aria-modal="true"
       aria-label={`${placeName || ''} 낙서장`}

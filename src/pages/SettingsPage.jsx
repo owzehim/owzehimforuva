@@ -75,7 +75,7 @@ async function getCroppedImgAsBlob(imageSrc, pixelCrop) {
 
 // ─── Page component ───────────────────────────────────────────────────────────
 
-export default function SettingsPage({ userId, isAdmin }) {
+export default function SettingsPage() {
   const navigate = useNavigate()
   const [member, setMember] = useState(null)
   const [loading, setLoading] = useState(true)
