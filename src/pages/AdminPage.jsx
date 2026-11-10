@@ -19,6 +19,20 @@ import {
 import { useFeedback } from '../components/feedback/feedbackContext.js'
 import { FieldError, invalidFieldClass } from '../components/feedback/FieldError.jsx'
 import EditPopup from '../components/EditPopup.jsx'
+import ReviewCriteriaEditor from '../components/admin/ReviewCriteriaEditor.jsx'
+import { criteriaEqual, normalizeReviewCriteria } from '../domain/reviewCriteria'
+import ScrapBoardEditor from '../components/scrap/ScrapBoardEditor.jsx'
+import ScrapBoardViewer from '../components/scrap/ScrapBoardViewer.jsx'
+import {
+  REVIEW_BOX_TYPES,
+  REVIEW_BOX_TYPE_OPTIONS,
+  emptyScrapBoard,
+  getReviewBoxType,
+  isScrapReviewBox,
+  normalizeScrapBoard,
+  placeImagePrefix,
+  scrapImageUrls,
+} from '../domain/scrapBoard'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -188,6 +202,7 @@ function TimeInput({ value, onChange, className = '' }) {
 const ADMIN_ACTIVE_TAB_KEY = 'uvain_admin_active_tab'
 const ADMIN_TABS = ['members', 'events', 'restaurants', 'reports']
 const PUBLIC_IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/avif'
+const PLACE_IMAGE_PREFIX = placeImagePrefix(import.meta.env.VITE_SUPABASE_URL)
 
 async function uploadSanitizedPublicImage(bucket, file) {
   const preparedFile = await preparePublicImage(file)
@@ -234,8 +249,8 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center">
-        <LoadingIndicator />
+      <div className="min-h-[100dvh]">
+        <LoadingIndicator fullScreen />
       </div>
     )
   }
@@ -1638,7 +1653,7 @@ function MembersTab() {
                     />
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="admin-edit-actions flex gap-2">
                     <button
                       onClick={handleEdit}
                       className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm hover:bg-blue-700 font-medium"
@@ -1916,7 +1931,7 @@ function EventForm({
           onReorder={handleReorderImages}
         />
       </div>
-      <div className="flex gap-2 pt-1">
+      <div className="admin-edit-actions flex gap-2 pt-1">
         <button
           onClick={handleSave}
           disabled={uploading}
@@ -2433,6 +2448,72 @@ const SPOT_CATEGORIES = [
   '기타',
 ]
 
+function ReviewBoxSettings({ form, setForm, onOpenScrapEditor }) {
+  const type = getReviewBoxType(form)
+  const board = form.scrap_board || emptyScrapBoard()
+  return (
+    <div>
+      <label className="text-sm text-gray-500 block mb-1">리뷰 박스 (첫 번째 장)</label>
+      <div className="grid grid-cols-3 gap-2">
+        {REVIEW_BOX_TYPE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setForm((f) => ({ ...f, review_box_type: option.value }))}
+            aria-pressed={type === option.value}
+            className={
+              'rounded-lg border px-2 py-2 text-xs font-medium leading-tight transition-colors break-keep ' +
+              (type === option.value
+                ? 'border-orange-500 bg-orange-50 text-orange-600'
+                : 'border-gray-200 bg-white text-gray-500')
+            }
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {form.spot_card_height !== 'full' && (
+        <p className="mt-1 text-xs text-gray-400">리뷰 박스는 Full 카드에서만 보여요.</p>
+      )}
+      {isScrapReviewBox(type) && (
+        <div className="mt-2 space-y-2">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="낙서장 전체 화면으로 편집"
+            onClick={onOpenScrapEditor}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onOpenScrapEditor()
+              }
+            }}
+            className="relative h-[200px] cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+          >
+            <ScrapBoardViewer board={board} />
+            {board.items.length === 0 && (
+              <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-gray-400">
+                아직 비어 있어요 · 눌러서 꾸미기
+              </p>
+            )}
+            <span className="scrap-pill pointer-events-none absolute bottom-2.5 right-2.5 z-10 px-2.5 py-1 text-[11px] font-semibold">
+              눌러서 전체 화면 편집
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenScrapEditor}
+            className="w-full rounded-lg border border-orange-200 bg-orange-50 py-2 text-sm font-medium text-orange-600 active:bg-orange-100"
+          >
+            낙서장 편집
+          </button>
+          <p className="text-xs text-gray-400">편집한 내용은 장소를 저장해야 반영돼요. 로그인하지 않은 사람도 볼 수 있어요.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RestaurantForm({
   form,
   setForm,
@@ -2453,6 +2534,7 @@ function RestaurantForm({
   resetForm,
   setStampCardEditOpen,
   setStampCardMemberOpen,
+  onOpenScrapEditor,
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3 mt-2">
@@ -2794,6 +2876,14 @@ function RestaurantForm({
   <p className="mt-1 text-xs text-gray-400">켜진 뒤, 채울 별 개수를 선택하세요.</p>
 </div>
 
+<ReviewBoxSettings form={form} setForm={setForm} onOpenScrapEditor={onOpenScrapEditor} />
+
+<ReviewCriteriaEditor
+  value={form.review_criteria}
+  onChange={(review_criteria) => setForm((f) => ({ ...f, review_criteria }))}
+  changed={Boolean(editTarget) && !criteriaEqual(form.review_criteria, editTarget.review_criteria)}
+/>
+
       <div>
         <label className="text-sm text-gray-500 block mb-1">사진</label>
         <ImageUploadPanel
@@ -2808,7 +2898,7 @@ function RestaurantForm({
           onReorder={handleReorderImages}
         />
       </div>
-      <div className="flex gap-2 pt-1">
+      <div className="admin-edit-actions flex gap-2 pt-1">
         <button
           onClick={handleSave}
           disabled={uploading}
@@ -2858,6 +2948,9 @@ function RestaurantsTab() {
     usullang_star_count: 0,
     stamp_card_enabled: false,
     spot_card_height: 'compact',
+    review_box_type: REVIEW_BOX_TYPES.USULLANG,
+    scrap_board: emptyScrapBoard(),
+    review_criteria: null,
   })
 
   const [imageFiles, setImageFiles] = useState([])
@@ -2865,6 +2958,9 @@ function RestaurantsTab() {
   const [pendingReplacements, setPendingReplacements] = useState([])
   const [uploading, setUploading] = useState(false)
   const [richEditorKey, setRichEditorKey] = useState(0)
+  // 낙서장: new photos stay local (blob URL → File) until the place is saved.
+  const [scrapFiles, setScrapFiles] = useState({})
+  const [scrapEditorOpen, setScrapEditorOpen] = useState(false)
 
   // Stamp card overlays
   const [stampCardEditOpen, setStampCardEditOpen] = useState(false)
@@ -2966,17 +3062,59 @@ function RestaurantsTab() {
       usullang_star_count: 0,
       stamp_card_enabled: false,
       spot_card_height: 'compact',
+      review_box_type: REVIEW_BOX_TYPES.USULLANG,
+      scrap_board: emptyScrapBoard(),
+      review_criteria: null,
     })
     setImageFiles([])
     setImagePreviews([])
     setPendingReplacements([])
     setRichEditorKey((k) => k + 1)
+    releaseScrapFiles()
+  }
+
+  const releaseScrapFiles = () => {
+    Object.keys(scrapFiles).forEach((url) => URL.revokeObjectURL(url))
+    setScrapFiles({})
+    setScrapEditorOpen(false)
+  }
+
+  const handleScrapEditorDone = (board, files) => {
+    Object.keys(scrapFiles).forEach((url) => {
+      if (!files[url]) URL.revokeObjectURL(url)
+    })
+    setScrapFiles(files)
+    setForm((f) => ({ ...f, scrap_board: board }))
+    setScrapEditorOpen(false)
+  }
+
+  const removePlaceImages = async (urls) => {
+    const names = urls
+      .filter((url) => PLACE_IMAGE_PREFIX && url?.startsWith(PLACE_IMAGE_PREFIX))
+      .map((url) => url.slice(PLACE_IMAGE_PREFIX.length))
+    if (names.length === 0) return
+    const { error } = await supabase.storage.from('place-images').remove(names)
+    if (error) console.error('Scrap image cleanup failed:', error.message)
   }
 
   const handleSave = async () => {
     if (!form.name?.trim()) {
       setFieldError('장소 이름을 입력해 주세요')
       return
+    }
+    if (Array.isArray(form.review_criteria) && form.review_criteria.some((entry) => !entry.label?.trim())) {
+      toast.warning('멤버 평가 항목 이름을 채워 주세요', { message: '4개 항목 모두 이름이 있어야 해요.' })
+      return
+    }
+    if (editTarget && !criteriaEqual(form.review_criteria, editTarget.review_criteria)) {
+      const ok = await confirm({
+        icon: 'warning',
+        title: '멤버 평가 항목을 바꿀까요?',
+        message: '저장하면 이 장소의 멤버 평가 수가 0부터 다시 시작돼요. 지난 리뷰와 시트 기록은 그대로 남아요.',
+        confirmLabel: '바꾸고 저장',
+        cancelLabel: '취소',
+      })
+      if (!ok) return
     }
     setFieldError('')
     setUploading(true)
@@ -3009,6 +3147,30 @@ function RestaurantsTab() {
       }
     }
 
+    const uploadedScrapUrls = []
+    let scrap_board
+    try {
+      const items = []
+      for (const item of form.scrap_board?.items || []) {
+        if (item.t === 'img' && item.src.startsWith('blob:')) {
+          const file = scrapFiles[item.src]
+          if (!file) continue
+          const url = await uploadSanitizedPublicImage('place-images', file)
+          uploadedScrapUrls.push(url)
+          items.push({ ...item, src: url })
+        } else {
+          items.push(item)
+        }
+      }
+      scrap_board = normalizeScrapBoard({ ...form.scrap_board, items }, { prefix: PLACE_IMAGE_PREFIX })
+    } catch (error) {
+      console.error('Scrap image upload failed:', error?.message || error)
+      await removePlaceImages(uploadedScrapUrls)
+      toast.error('낙서장 사진을 올리지 못했어요', { message: 'JPG·PNG·WebP 이미지인지, 인터넷 연결이 되어 있는지 확인해 주세요.' })
+      setUploading(false)
+      return
+    }
+
     const payload = {
       name: form.name,
       map_label: form.map_label,
@@ -3033,6 +3195,9 @@ function RestaurantsTab() {
       stamp_card_enabled: form.stamp_card_enabled,
       spot_card_height:
         form.spot_card_height === 'full' ? 'full' : 'compact',
+      review_box_type: getReviewBoxType(form),
+      scrap_board,
+      review_criteria: normalizeReviewCriteria(form.review_criteria),
       image_urls,
     }
 
@@ -3049,6 +3214,7 @@ function RestaurantsTab() {
     }
 
     if (saveError) {
+      await removePlaceImages(uploadedScrapUrls)
       toast.error('장소를 저장하지 못했어요', {
         message: '잠시 후 다시 시도해 주세요.',
         action: { label: '다시 시도', onClick: () => { void handleSave() } },
@@ -3056,6 +3222,13 @@ function RestaurantsTab() {
       setUploading(false)
       return
     }
+
+    // Delete board photos the admin removed (never ones still used elsewhere on the place).
+    const keptUrls = new Set([...scrapImageUrls(scrap_board), ...image_urls])
+    await removePlaceImages(
+      scrapImageUrls(normalizeScrapBoard(editTarget?.scrap_board, { prefix: PLACE_IMAGE_PREFIX }))
+        .filter((url) => !keptUrls.has(url)),
+    )
 
     setUploading(false)
     resetForm()
@@ -3107,12 +3280,16 @@ function RestaurantsTab() {
       ),
       stamp_card_enabled: r.stamp_card_enabled || false,
       spot_card_height: r.spot_card_height === 'full' ? 'full' : 'compact',
+      review_box_type: getReviewBoxType(r),
+      scrap_board: normalizeScrapBoard(r.scrap_board, { prefix: PLACE_IMAGE_PREFIX }),
+      review_criteria: normalizeReviewCriteria(r.review_criteria),
     })
 
     setRichEditorKey((k) => k + 1)
     setImageFiles([])
     setImagePreviews([])
     setPendingReplacements([])
+    releaseScrapFiles()
     setShowForm(true)
   }
 
@@ -3141,11 +3318,15 @@ function RestaurantsTab() {
       usullang_star_count: 0,
       stamp_card_enabled: false,
       spot_card_height: 'compact',
+      review_box_type: REVIEW_BOX_TYPES.USULLANG,
+      scrap_board: emptyScrapBoard(),
+      review_criteria: null,
     })
     setRichEditorKey((k) => k + 1)
     setImageFiles([])
     setImagePreviews([])
     setPendingReplacements([])
+    releaseScrapFiles()
     setShowForm(true)
   }
 
@@ -3172,10 +3353,20 @@ function RestaurantsTab() {
     resetForm,
     setStampCardEditOpen,
     setStampCardMemberOpen,
+    onOpenScrapEditor: () => setScrapEditorOpen(true),
   }
 
   return (
     <div className="space-y-4">
+      {scrapEditorOpen && (
+        <ScrapBoardEditor
+          placeName={form.name}
+          initialBoard={form.scrap_board}
+          imagePrefix={PLACE_IMAGE_PREFIX}
+          onCancel={() => setScrapEditorOpen(false)}
+          onDone={handleScrapEditorDone}
+        />
+      )}
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-gray-900">장소 관리</h2>
         <div className="flex items-center gap-3">

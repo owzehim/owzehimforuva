@@ -397,8 +397,8 @@ export default function SettingsPage({ userId, isAdmin }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#121212]">
-        <LoadingIndicator />
+      <div className="min-h-[100dvh] bg-white dark:bg-[#121212]">
+        <LoadingIndicator fullScreen />
       </div>
     )
   }

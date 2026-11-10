@@ -24,6 +24,8 @@
 // F=6  Claimed At [Date]
 // G=7  empty gap
 // H:M store individual star/tag reviews, matched by redemption ID.
+//      I:L are the place's 4 멤버 평가 criteria; their header names are
+//      filled in from the app (e.g. "Great food" or a cafe's "커피 맛").
 // N=14 empty gap
 // O=15 Created At [Date]
 // P=16 Updated At [Date]
@@ -34,7 +36,7 @@
 const PARTNERSHIP_ID = 'REPLACE_WITH_PARTNERSHIP_ID';
 
 const SHEET_NAME = 'Operations';
-const SCRIPT_VERSION = 'uvain-partner-owner-sheet-v10-individual-reviews-no-summary';
+const SCRIPT_VERSION = 'uvain-partner-owner-sheet-v12-place-review-criteria';
 const COLUMN_COUNT = 16;
 const RETENTION_MONTHS = 12;
 const RETENTION_TIME_ZONE = 'Europe/Amsterdam';
@@ -416,6 +418,8 @@ function updateReview(sheet, data) {
     value(data.review_submitted_at_date) || formatDate(now),
   ];
 
+  labelReviewCriteriaColumns(sheet, data.criteria);
+
   let rowNumber = findRowByRedemptionId(sheet, data.redemption_id);
   if (rowNumber === -1) {
     const row = blankRow();
@@ -431,6 +435,20 @@ function updateReview(sheet, data) {
 
   sheet.getRange(rowNumber, COL.review_rating, 1, reviewValues.length).setValues([reviewValues]);
   setUpdatedRange(sheet, rowNumber, now);
+}
+
+// The 4 tag columns (I:L) are this place's 멤버 평가 criteria. The app sends
+// their names with each review; write them into the header row so the
+// columns read e.g. "커피 맛" instead of staying blank.
+function labelReviewCriteriaColumns(sheet, criteria) {
+  if (!Array.isArray(criteria) || criteria.length !== 4) return;
+  const labels = criteria.map(function (label) {
+    const text = String(label || '').slice(0, 40);
+    return /^[\s\uFEFF]*[=+\-@]/.test(text) ? "'" + text : text;
+  });
+  const range = sheet.getRange(1, COL.great_food, 1, 4);
+  const current = range.getValues()[0];
+  if (current.join('\u0000') !== labels.join('\u0000')) range.setValues([labels]);
 }
 
 function setAuditValues(rowValues, createdAt, updatedAt) {
