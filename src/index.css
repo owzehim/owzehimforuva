@@ -2963,3 +2963,23 @@ select {
 .spot-card-landscape-review-box .spot-card-review-pagination.spot-card-review-pagination-floating {
   padding: 6px 10px !important;
 }
+
+/* Admin edit popups: 수정 완료 / 취소 stay pinned to the bottom while the form scrolls. */
+.admin-edit-popup .admin-edit-scroll:has(.admin-edit-actions) {
+  padding-bottom: 0 !important;
+}
+
+.admin-edit-popup .admin-edit-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 0 -20px -20px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: #ffffff;
+  border-top: 1px solid #f3f4f6;
+  box-shadow: 0 -6px 16px -12px rgba(17, 24, 39, 0.25);
+}
+
+.admin-edit-popup .admin-edit-actions > button {
+  min-height: 44px;
+}
