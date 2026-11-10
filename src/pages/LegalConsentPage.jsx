@@ -100,8 +100,6 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
         ) : (
           <div className="mt-5 space-y-3">
             {DOCUMENT_KEYS.map((key) => {
-              const document = legalDocuments[key]
-              const content = language === 'ko' ? document.ko : document
               return (
                 <section key={key} className="rounded-xl border border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-3 p-4">
