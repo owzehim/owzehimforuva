@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.jsx'
 import AppErrorBoundary from './components/AppErrorBoundary.jsx'
+import FeedbackProvider from './components/feedback/FeedbackProvider.jsx'
 import { initErrorMonitoring } from './lib/errorMonitoring.js'
 import { markUpdateReady } from './lib/appUpdate.js'
 
@@ -43,7 +44,9 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AppErrorBoundary>
-      <App />
+      <FeedbackProvider>
+        <App />
+      </FeedbackProvider>
     </AppErrorBoundary>
   </StrictMode>,
 )

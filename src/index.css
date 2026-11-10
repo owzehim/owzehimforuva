@@ -2906,3 +2906,30 @@ select {
     padding-top: 24px;
   }
 }
+
+/* Scan failure on short landscape screens: smaller icon and side-by-side
+   buttons so the title and message are never covered by the buttons. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .scan-error {
+    margin-top: 0 !important;
+  }
+
+  .scan-error .scan-error-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .scan-error .scan-error-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .scan-error-actions {
+    flex-direction: row !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+  }
+
+  .scan-error-actions > * {
+    flex: 1 1 0;
+  }
+}

@@ -10,8 +10,10 @@ import {
 } from '../api/config'
 import { resetStampCardProgress } from '../api/visits'
 import StampCard from './StampCard'
+import { useFeedback } from '../../../components/feedback/feedbackContext.js'
 
 export default function StampCardEditPanel({ restaurantId, spotName, onClose }) {
+  const { toast, confirm } = useFeedback()
   const [savedConfig, setSavedConfig] = useState(null)
   const [draft, setDraft] = useState(DEFAULT_STAMP_CARD_CONFIG)
   const [slideIn, setSlideIn] = useState(false)
@@ -37,8 +39,15 @@ export default function StampCardEditPanel({ restaurantId, spotName, onClose }) 
   const isDirty = JSON.stringify(draft) !== JSON.stringify(savedConfig ?? DEFAULT_STAMP_CARD_CONFIG)
   const set = (key, value) => setDraft((d) => ({ ...d, [key]: value }))
 
-  const handleBack = () => {
-    if (isDirty && !window.confirm('저장하지 않고 나가시겠어요?')) return
+  const handleBack = async () => {
+    if (isDirty && !(await confirm({
+      icon: 'warning',
+      title: '저장하지 않고 나갈까요?',
+      message: '바꾼 내용은 저장되지 않아요.',
+      confirmLabel: '나가기',
+      cancelLabel: '계속 편집',
+      tone: 'danger',
+    }))) return
     onClose()
   }
 
@@ -49,23 +58,34 @@ export default function StampCardEditPanel({ restaurantId, spotName, onClose }) 
       onClose()
     } catch (e) {
       console.error('upsertConfig error:', e)
-      alert('저장 실패: ' + (e?.message || '알 수 없는 오류'))
+      toast.error('스탬프 카드 설정을 저장하지 못했어요', {
+        message: '잠시 후 다시 시도해 주세요.',
+        action: { label: '다시 시도', onClick: () => { void handleSave() } },
+      })
     } finally {
       setSaving(false)
     }
   }
 
   const handleResetProgress = async () => {
-    if (!window.confirm('이 스팟의 모든 멤버 스탬프와 리워드 기록을 0부터 다시 시작할까요?')) return
+    if (!(await confirm({
+      icon: 'warning',
+      title: '스탬프 카드를 초기화할까요?',
+      message: '이 스팟의 모든 멤버 스탬프와 리워드가 0부터 다시 시작돼요.\n이전 기록은 보관돼요.',
+      confirmLabel: '초기화',
+      tone: 'danger',
+    }))) return
     setResetting(true)
     try {
       const result = await resetStampCardProgress(restaurantId)
-      alert(result.auditLogged === false
-        ? '스탬프 기록은 초기화됐지만 관리자 작업 기록 저장에 실패했습니다. 작업 기록을 확인해 주세요.'
-        : '스탬프 카드가 0부터 다시 시작되도록 초기화되었습니다.')
+      if (result.auditLogged === false) {
+        toast.warning('스탬프 카드를 초기화했어요', { message: '관리자 작업 기록은 저장되지 않았어요. 작업 기록을 확인해 주세요.' })
+      } else {
+        toast.success('스탬프 카드를 초기화했어요')
+      }
     } catch (e) {
       console.error('resetStampCardProgress error:', e)
-      alert('초기화 실패: ' + (e?.message || '알 수 없는 오류'))
+      toast.error('초기화하지 못했어요', { message: '잠시 후 다시 시도해 주세요.' })
     } finally {
       setResetting(false)
     }
@@ -80,7 +100,7 @@ export default function StampCardEditPanel({ restaurantId, spotName, onClose }) 
       set('wallpaper_url', publicUrl)
     } catch (e) {
       console.error('uploadWallpaper error:', e)
-      alert('이미지 업로드 실패: ' + (e?.message || '알 수 없는 오류'))
+      toast.error('이미지를 올리지 못했어요', { message: 'JPG·PNG·WebP 이미지인지, 인터넷 연결이 되어 있는지 확인해 주세요.' })
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -94,7 +114,7 @@ export default function StampCardEditPanel({ restaurantId, spotName, onClose }) 
       set('wallpaper_url', null)
     } catch (e) {
       console.error('deleteWallpaper error:', e)
-      alert('이미지 삭제 실패: ' + (e?.message || '알 수 없는 오류'))
+      toast.error('이미지를 삭제하지 못했어요', { message: '잠시 후 다시 시도해 주세요.' })
     }
   }
 

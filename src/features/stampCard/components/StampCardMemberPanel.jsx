@@ -5,6 +5,7 @@ import { adminInsertVisit } from '../api/visits'
 import { isPendingRewardAvailable } from '../rewardAvailability'
 import { supabase } from '../../../lib/supabase'
 import AdminBadge from '../../../components/AdminBadge'
+import { useFeedback } from '../../../components/feedback/feedbackContext.js'
 
 export default function StampCardMemberPanel({ restaurantId, spotName, totalStamps, onClose }) {
   const [rows, setRows] = useState([])
@@ -138,6 +139,7 @@ export default function StampCardMemberPanel({ restaurantId, spotName, totalStam
 
 // ── Single member row ─────────────────────────────────────────────────────────
 function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, restaurantId, onRefresh }) {
+  const { toast } = useFeedback()
   const [addOpen, setAddOpen] = useState(false)
   const [date, setDate] = useState(todayString())
   const [note, setNote] = useState('')
@@ -157,10 +159,10 @@ function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, res
         note || null,
       )
       if (result?.auditLogged === false) {
-        alert('스탬프는 반영됐지만 관리자 작업 기록 저장에 실패했습니다. 작업 기록을 확인해 주세요.')
+        toast.warning('스탬프를 추가했어요', { message: '관리자 작업 기록은 저장되지 않았어요. 작업 기록을 확인해 주세요.' })
       }
       if (result?.rewardPending) {
-        alert('이미 적용 가능한 혜택이 있어요. 혜택 적용 완료 후 새 스탬프를 추가할 수 있습니다.')
+        toast.info('사용할 수 있는 혜택이 먼저 있어요', { message: '혜택을 적용한 뒤에 새 스탬프를 추가할 수 있어요.' })
         return
       }
       setAddOpen(false)
@@ -169,7 +171,7 @@ function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, res
       await onRefresh()
     } catch (e) {
       console.error('adminInsertVisit error:', e)
-      alert('스탬프 추가 실패: ' + (e?.message || '알 수 없는 오류'))
+      toast.error('스탬프를 추가하지 못했어요', { message: '잠시 후 다시 시도해 주세요.' })
     } finally {
       setSubmitting(false)
     }

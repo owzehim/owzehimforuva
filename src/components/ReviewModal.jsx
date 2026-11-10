@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Star, StarHalf, BowlSteam, HandHeart, Wine, CoinVertical, X } from '@phosphor-icons/react'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
 import { useModalFocus } from '../hooks/useModalFocus'
+import { FieldError, InlineAlert } from './feedback/FieldError.jsx'
 
 const TAG_ICONS = {
   BowlSteam,
@@ -63,7 +64,7 @@ function StarRow({ rating, onSelect, error }) {
           )
         })}
       </div>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      <FieldError>{error}</FieldError>
     </div>
   )
 }
@@ -238,7 +239,7 @@ export default function ReviewModal({
                 />
               ))}
             </div>
-            {errors.tags && <p className="text-xs text-red-500">{errors.tags}</p>}
+            <FieldError>{errors.tags}</FieldError>
           </div>
 
           {/* Comment */}
@@ -262,9 +263,7 @@ export default function ReviewModal({
           </div>
 
           {/* Server error */}
-          {submitError && (
-            <p className="text-xs text-red-500 text-center">{submitError}</p>
-          )}
+          {submitError && <InlineAlert title="평가를 보내지 못했어요">{submitError}</InlineAlert>}
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
