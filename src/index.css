@@ -2933,3 +2933,19 @@ select {
     flex: 1 1 0;
   }
 }
+
+/* SpotCard: a label that appears with a newly selected place fades in. */
+@keyframes spot-card-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.spot-card-fade-in {
+  animation: spot-card-fade-in 220ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spot-card-fade-in {
+    animation: none;
+  }
+}

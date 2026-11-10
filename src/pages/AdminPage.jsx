@@ -234,7 +234,7 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <LoadingIndicator />
       </div>
     )
@@ -242,7 +242,7 @@ export default function AdminPage() {
 
   return (
     // overflow-x-clip (not hidden) so the sticky header below still sticks.
-    <div className="min-h-screen bg-gray-50 overflow-x-clip">
+    <div className="min-h-[100dvh] bg-gray-50 overflow-x-clip">
       {/* Header and tabs stay at the top (including the safe area) while the
           tab content scrolls underneath. */}
       <div className="admin-sticky-header sticky top-0 z-40 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)]">
