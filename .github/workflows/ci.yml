@@ -63,9 +63,9 @@ jobs:
       - name: Run automated tests
         run: npm test
 
-      # OPS-09: no new lint warnings (68 today); lower this as warnings are fixed.
+      # OPS-09: no new lint warnings (35 today); lower this as warnings are fixed.
       - name: Run ESLint
-        run: npm run lint -- --max-warnings=68
+        run: npm run lint -- --max-warnings=35
 
       - name: Build application
         run: npm run build

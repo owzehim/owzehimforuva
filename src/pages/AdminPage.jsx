@@ -906,10 +906,13 @@ function RichEditor({ value, onChange, placeholder, rows = 3 }) {
   const ref = useRef(null)
   const [showColors, setShowColors] = useState(false)
   const isInitialized = useRef(false)
+  // Only the first value fills the editor; later typing is not written back
+  // into it (that would move the cursor).
+  const initialValue = useRef(value)
 
   useEffect(() => {
     if (ref.current && !isInitialized.current) {
-      ref.current.innerHTML = sanitizeRichText(value || '')
+      ref.current.innerHTML = sanitizeRichText(initialValue.current || '')
       isInitialized.current = true
     }
   }, [])
@@ -2133,7 +2136,7 @@ function EventsTab() {
       image_urls,
     }
 
-    let saveError = null
+    let saveError
     if (editTarget) {
       const { error } = await supabase
         .from('events')
@@ -3201,7 +3204,7 @@ function RestaurantsTab() {
       image_urls,
     }
 
-    let saveError = null
+    let saveError
     if (editTarget) {
       const { error } = await supabase
         .from('restaurants')
