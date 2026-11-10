@@ -138,5 +138,7 @@ test('dark mode: 할인 제공 / 유료 광고 badge and marker icon are black; 
   assert.match(map, /const iconColor = isHighlighted \? \(dark \? '#121212' : 'white'\) : '#f97316'/)
   const fullscreen = await readFile('src/components/scrap/ScrapBoardFullscreen.jsx', 'utf8')
   assert.match(fullscreen, /meta\[name="theme-color"\]/)
-  assert.match(fullscreen, /zIndex: 2147483646/)
+  assert.match(fullscreen, /zIndex: 2147483647/)
+  assert.doesNotMatch(fullscreen, /backdrop-blur/)
+  assert.match(fullscreen, /document\.body\.style\.backgroundColor = previousBodyBg/)
 })
