@@ -13,6 +13,19 @@ export default function ScrapBoardFullscreen({ board, placeName, darkMode = fals
   const onCloseRef = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose }, [onClose])
 
+  // The phone's status bar takes the page's theme colour (white). Make it dark
+  // while the full-screen 낙서장 is open, then put the old colour back.
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (!meta) return undefined
+    const previous = meta.getAttribute('content')
+    meta.setAttribute('content', '#1f2937')
+    return () => {
+      if (previous === null) meta.removeAttribute('content')
+      else meta.setAttribute('content', previous)
+    }
+  }, [])
+
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setShown(true))
     const previousFocus = document.activeElement
@@ -33,8 +46,10 @@ export default function ScrapBoardFullscreen({ board, placeName, darkMode = fals
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1300] flex flex-col bg-gray-900/90 backdrop-blur-md transition-opacity duration-200"
-      style={{ opacity: shown ? 1 : 0 }}
+      className="fixed inset-0 flex flex-col bg-gray-900/90 backdrop-blur-md transition-opacity duration-200"
+      // Topmost layer like the photo lightbox, so the dark backdrop also covers
+      // the app's top bar and safe area in light mode.
+      style={{ opacity: shown ? 1 : 0, zIndex: 2147483646 }}
       role="dialog"
       aria-modal="true"
       aria-label={`${placeName || ''} 낙서장`}
