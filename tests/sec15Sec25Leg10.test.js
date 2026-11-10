@@ -149,3 +149,13 @@ test('Admin page is sized to the visible screen (no scroll when not needed)', as
   assert.match(source, /min-h-\[100dvh\] bg-gray-50 overflow-x-clip/)
   assert.ok(!source.includes('min-h-screen bg-gray-50'))
 })
+
+test('우슐랭: compact cards show neither stars nor the one-line review; full cards show the bubble only with a review', async () => {
+  const source = await readFile('src/components/SpotCard.jsx', 'utf8')
+  assert.ok(!source.includes("{spotCardHeightMode !== 'full' && (selected.one_line_review || showUsullangStars)"), 'no compact 우슐랭 section')
+  assert.equal((source.match(/spotcard-speech-bubble\.png\) center/g) || []).length, 2, 'only the full-card bubble (mask + -webkit-mask)')
+  const guideStart = source.indexOf('const guideContent =')
+  const guide = source.slice(guideStart, source.indexOf('  return (', guideStart))
+  assert.match(guide, /\{selected\.one_line_review && \(/)
+  assert.match(guide, /spotCardHeightMode === 'full' && showUsullangStars/)
+})
