@@ -84,3 +84,26 @@ test('SEC-15: sign-up answers an already registered address like a new one', asy
   const page = await readFile('src/pages/RegistrationPage.jsx', 'utf8')
   assert.match(page, /이미 가입된 주소라면 메일이 발송되지 않습니다/)
 })
+
+test('No browser alert()/confirm() popups; the in-app feedback components are used instead', async () => {
+  const { readdir } = await import('node:fs/promises')
+  const files = []
+  const walk = async (dir) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = `${dir}/${entry.name}`
+      if (entry.isDirectory()) await walk(full)
+      else if (/\.(jsx?|tsx?)$/.test(entry.name)) files.push(full)
+    }
+  }
+  await walk('src')
+  for (const file of files) {
+    const source = await readFile(file, 'utf8')
+    const code = source.replace(/\/\/.*$/gm, '')
+    // Browser popups: alert(...), window.confirm(...), or confirm('text').
+    assert.ok(!/(^|[^.\w])(window\.)?alert\(|window\.confirm\(|(^|[^.\w])confirm\(\s*['"`]/m.test(code), file)
+  }
+  const eslint = await readFile('eslint.config.js', 'utf8')
+  assert.match(eslint, /'no-alert': 'error'/)
+  const main = await readFile('src/main.jsx', 'utf8')
+  assert.match(main, /<FeedbackProvider>/)
+})

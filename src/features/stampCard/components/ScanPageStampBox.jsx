@@ -4,6 +4,7 @@ import { useStampCardConfig } from '../hooks/useStampCardConfig'
 import { useUserStampVisits } from '../hooks/useUserStampVisits'
 import { redeemReward } from '../api/rewards'
 import { didRedeemRewardForCurrentScan, getScanResultIdentity } from '../utils'
+import { useFeedback } from '../../../components/feedback/feedbackContext.js'
 
 const CLAIM_ORANGE = '#f97316'
 
@@ -14,6 +15,7 @@ export default function ScanPageStampBox({
   onRewardRedeemed,
   onlyWhenBenefitReady = false,
 }) {
+  const { confirm } = useFeedback()
   const { config } = useStampCardConfig(restaurantId, { useDefault: true })
   const { stampState, pendingReward: hookPendingReward, refetch } = useUserStampVisits({
     userId,
@@ -61,7 +63,14 @@ export default function ScanPageStampBox({
 
   const handleRedeem = async () => {
     if (!effectivePendingReward) return
-    if (!window.confirm('Confirm applying benefits?')) return
+    if (!(await confirm({
+      variant: 'dialog',
+      icon: 'gift',
+      title: 'Apply this reward?',
+      message: 'One stamp-card reward will be used.\nThis can’t be undone.',
+      confirmLabel: 'Apply',
+      cancelLabel: 'Cancel',
+    }))) return
 
     setRedeeming(true)
     setFailedScanId(null)
