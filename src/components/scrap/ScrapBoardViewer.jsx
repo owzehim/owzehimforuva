@@ -147,7 +147,11 @@ export default function ScrapBoardViewer({ board, darkMode = false }) {
       {zoomed && (
         <button
           type="button"
-          onClick={resetZoom}
+          onClick={(event) => {
+            // Resetting the zoom must not also open the full-screen view.
+            event.stopPropagation()
+            resetZoom()
+          }}
           className="scrap-pill absolute right-2.5 top-2.5 z-10 flex h-7 w-7 items-center justify-center"
           aria-label="원래 크기로"
         >
