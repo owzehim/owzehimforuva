@@ -15,6 +15,7 @@ import {
   getRestaurantCommercialLabelType,
 } from '../lib/restaurantCommercialLabel'
 import { MapPinSimple } from '@phosphor-icons/react'
+import { useFeedback } from './feedback/feedbackContext.js'
 
 if (typeof window !== 'undefined' && !document.getElementById('map-view-performance-style')) {
   const style = document.createElement('style')
@@ -121,6 +122,7 @@ function isDarkMode() {
 }
 
 export default function MapView({ restaurants, selected, onSelect, active = true }) {
+  const { notice } = useFeedback()
   const mapContainer = useRef(null)
   const map = useRef(null)
   const markersRef = useRef(new Map())
@@ -669,7 +671,11 @@ export default function MapView({ restaurants, selected, onSelect, active = true
 
   const toggleLocationTracking = () => {
     if (!map.current || !navigator.geolocation) {
-      alert('현재 위치 기능을 사용할 수 없어요.')
+      void notice({
+        icon: 'location',
+        title: '이 기기에서는 현재 위치를 쓸 수 없어요',
+        message: '지도와 장소 정보는 그대로 사용할 수 있어요.',
+      })
       return
     }
 
@@ -690,7 +696,11 @@ export default function MapView({ restaurants, selected, onSelect, active = true
           (nextPosition) => handlePosition(nextPosition, false),
           () => {
             stopLocationTracking()
-            alert('위치를 가져올 수 없어요. 위치 권한을 허용해주세요.')
+            void notice({
+              icon: 'location',
+              title: '내 위치를 보려면 권한이 필요해요',
+              message: '휴대폰 설정에서 이 앱(또는 브라우저)의 위치 접근을 허용해 주세요.\niPhone: 설정 → 개인정보 보호 및 보안 → 위치 서비스\nAndroid: 설정 → 위치 → 앱 위치 권한',
+            })
           },
           { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 },
         )
@@ -698,7 +708,11 @@ export default function MapView({ restaurants, selected, onSelect, active = true
         setIsTrackingLocation(true)
       },
       () => {
-        alert('위치를 가져올 수 없어요. 위치 권한을 허용해주세요.')
+        void notice({
+          icon: 'location',
+          title: '내 위치를 보려면 권한이 필요해요',
+          message: '휴대폰 설정에서 이 앱(또는 브라우저)의 위치 접근을 허용해 주세요.\niPhone: 설정 → 개인정보 보호 및 보안 → 위치 서비스\nAndroid: 설정 → 위치 → 앱 위치 권한',
+        })
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 },
     )

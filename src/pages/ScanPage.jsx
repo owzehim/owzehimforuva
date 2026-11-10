@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ClockCounterClockwise } from '@phosphor-icons/react'
+import { ArrowLeft, ClockCounterClockwise, X } from '@phosphor-icons/react'
 import { logRedemption } from '../lib/redemption'
 import ScanPageStampBox from '../features/stampCard/components/ScanPageStampBox'
 
@@ -85,13 +85,14 @@ export default function ScanPage() {
       } else {
         setTestMode(result.testMode === true)
         setState(STATE.ERROR)
-        setErrorMsg(result.message || 'Check-IN을 기록할 수 없습니다. 다시 시도해주세요.')
+        setErrorMsg(result.message || '체크인을 기록하지 못했어요. 다시 시도해 주세요.')
       }
     } catch (err) {
       console.error('handleScan error:', err)
       setTestMode(false)
       setState(STATE.ERROR)
-      setErrorMsg('오류가 발생했습니다: ' + (err?.message || '알 수 없는 오류'))
+      // Technical details stay in the console / Sentry; members get a plain next step.
+      setErrorMsg('인터넷 연결을 확인하고 다시 시도해 주세요.')
     }
 
     handlingRef.current = false
@@ -363,13 +364,13 @@ export default function ScanPage() {
         )}
 
         {state === STATE.ERROR && (
-          <div className="flex flex-col items-center gap-4 mt-8 text-center max-w-xs">
-            <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
-              <span className="text-red-500 text-4xl">✕</span>
+          <div role="alert" className="scan-error flex flex-col items-center mt-8 text-center max-w-xs">
+            <div className="scan-error-icon flex h-[88px] w-[88px] items-center justify-center rounded-full bg-red-50 dark:bg-red-500/15">
+              <X size={44} weight="bold" className="text-red-500" aria-hidden="true" />
             </div>
 
-            <h2 className="font-bold text-gray-900 text-xl">
-              {testMode ? 'TEST MODE — SCAN FAILED' : 'Check-IN 실패'}
+            <h2 className="mt-5 text-2xl font-bold text-gray-900 dark:text-white">
+              {testMode ? 'TEST MODE — SCAN FAILED' : '체크인하지 못했어요'}
             </h2>
 
             {testMode && (
@@ -378,7 +379,7 @@ export default function ScanPage() {
               </p>
             )}
 
-            <p className="text-gray-500 text-sm">{errorMsg}</p>
+            <p className="mt-2 whitespace-pre-line break-keep text-[15px] leading-relaxed text-gray-500 dark:text-gray-400">{errorMsg}</p>
 
           </div>
         )}
@@ -386,7 +387,7 @@ export default function ScanPage() {
 
       {(state === STATE.SUCCESS || state === STATE.ALREADY_CHECKED_IN || state === STATE.ERROR) && (
         <div
-          className="fixed left-4 right-4 z-20 flex flex-col gap-4"
+          className={`fixed left-4 right-4 z-20 flex flex-col gap-4 ${state === STATE.ERROR ? 'scan-error-actions' : ''}`}
           // Match the onboarding screen's "다음" button placement.
           style={{ bottom: '90px' }}
         >

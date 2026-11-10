@@ -44,15 +44,15 @@ test('LEG-07: the collapsed SpotCard shows the 할인 제공 / 유료 광고 lab
   assert.match(source, /getRestaurantCommercialLabel\(commercialLabelType\)/)
   // Outside the sheet, above its top-left corner, in the map marker's badge style.
   assert.match(source, /spot-card-label-anchor/)
-  assert.match(source, /bottom: 'calc\(100% \+ 6px\)'/)
-  assert.match(source, /getCommercialLabelStyle\(commercialLabelType, darkMode\)/)
+  assert.match(source, /bottom: 'calc\(100% \+ 8px\)'/)
+  assert.match(source, /getCommercialLabelStyle\(commercialLabelType, darkMode, 'card'\)/)
   const mapView = await readFile('src/components/MapView.jsx', 'utf8')
   assert.match(mapView, /getCommercialLabelStyle\(commercialLabelType, dark\)/)
 })
 
 test('SpotCard: Google Maps button slides with the sheet and keeps its place between markers', async () => {
   const source = await readFile('src/components/SpotCard.jsx', 'utf8')
-  assert.match(source, /'transform 0\.35s cubic-bezier\(0\.4,0,0\.2,1\), opacity 0\.2s ease'/)
+  assert.match(source, /'transform 0\.35s cubic-bezier\(0\.4,0,0\.2,1\), opacity 0\.2s ease, top 0\.25s ease'/)
   const effect = source.slice(source.indexOf('// Keep the current position while another marker'), source.indexOf('const scheduleMeasure'))
   assert.ok(!effect.includes('setGoogleMapsButtonCenterY(null)\n    let'), 'must not reset before measuring')
 })
@@ -83,4 +83,69 @@ test('SEC-15: sign-up answers an already registered address like a new one', asy
   assert.equal((body.match(/return \{ userId: null \}/g) || []).length, 2)
   const page = await readFile('src/pages/RegistrationPage.jsx', 'utf8')
   assert.match(page, /이미 가입된 주소라면 메일이 발송되지 않습니다/)
+})
+
+test('No browser alert()/confirm() popups; the in-app feedback components are used instead', async () => {
+  const { readdir } = await import('node:fs/promises')
+  const files = []
+  const walk = async (dir) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = `${dir}/${entry.name}`
+      if (entry.isDirectory()) await walk(full)
+      else if (/\.(jsx?|tsx?)$/.test(entry.name)) files.push(full)
+    }
+  }
+  await walk('src')
+  for (const file of files) {
+    const source = await readFile(file, 'utf8')
+    const code = source.replace(/\/\/.*$/gm, '')
+    // Browser popups: alert(...), window.confirm(...), or confirm('text').
+    assert.ok(!/(^|[^.\w])(window\.)?alert\(|window\.confirm\(|(^|[^.\w])confirm\(\s*['"`]/m.test(code), file)
+  }
+  const eslint = await readFile('eslint.config.js', 'utf8')
+  assert.match(eslint, /'no-alert': 'error'/)
+  const main = await readFile('src/main.jsx', 'utf8')
+  assert.match(main, /<FeedbackProvider>/)
+})
+
+test('SpotCard: compact cards reuse the tall card button position (no jump between markers)', async () => {
+  const source = await readFile('src/components/SpotCard.jsx', 'utf8')
+  assert.match(source, /let rememberedButtonAnchor = /)
+  assert.match(source, /rememberButtonAnchor\(nextCenter\)/)
+  assert.match(source, /top: `\$\{buttonAnchorY\}px`/)
+})
+
+test('Commercial label: card size is larger than the marker badge', async () => {
+  const { getCommercialLabelStyle } = await import('../src/lib/restaurantCommercialLabel.js')
+  const marker = getCommercialLabelStyle('paid_ad', false)
+  const card = getCommercialLabelStyle('paid_ad', false, 'card')
+  assert.equal(marker.fontSize, '8px')
+  assert.ok(parseInt(card.fontSize, 10) > parseInt(marker.fontSize, 10))
+  assert.equal(card.background, marker.background)
+})
+
+test('Admin: sticky header and tabs; 수정 opens in a popup', async () => {
+  const source = await readFile('src/pages/AdminPage.jsx', 'utf8')
+  assert.match(source, /admin-sticky-header sticky top-0/)
+  assert.match(source, /overflow-x-clip/)
+  for (const label of ['멤버 수정', '이벤트 수정', '장소 수정']) assert.match(source, new RegExp(`<EditPopup label="${label}"`))
+  const popup = await readFile('src/components/EditPopup.jsx', 'utf8')
+  assert.match(popup, /onCloseRef\.current\(\)/, 'Esc closes without re-running the effect on each render')
+  assert.match(popup, /transform: shown \? undefined/, 'no transform at rest (keeps fixed children on screen)')
+})
+
+test('SpotCard switching: no entrance replay, content crossfade, button frozen while open', async () => {
+  const source = await readFile('src/components/SpotCard.jsx', 'utf8')
+  assert.match(source, /function SpotCardSheet\(/)
+  assert.match(source, /contentVisible=\{!switching\}/)
+  const effect = source.slice(source.indexOf('// Another marker while the card is open'), source.indexOf('// Updating the selected record'))
+  assert.ok(effect.includes('return') && !effect.includes('setIsVisible(false)'), 'switching must not hide and re-show the sheet')
+  assert.match(source, /sessionAnchorRef/)
+  assert.match(source, /uvain:spot-card-button-anchor/)
+})
+
+test('Admin page is sized to the visible screen (no scroll when not needed)', async () => {
+  const source = await readFile('src/pages/AdminPage.jsx', 'utf8')
+  assert.match(source, /min-h-\[100dvh\] bg-gray-50 overflow-x-clip/)
+  assert.ok(!source.includes('min-h-screen bg-gray-50'))
 })

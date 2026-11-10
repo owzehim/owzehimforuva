@@ -6,6 +6,8 @@ import { getPastelColor } from '../lib/avatarColor'
 import { loadNoteAuthorPhotos } from '../lib/noteAuthorPhotos'
 import AdminBadge from './AdminBadge'
 import { useModalFocus } from '../hooks/useModalFocus'
+import { useFeedback } from './feedback/feedbackContext.js'
+import { InlineAlert } from './feedback/FieldError.jsx'
 
 const MAX_NOTE_LENGTH = 200
 
@@ -58,6 +60,7 @@ export function GoodToKnowNotesPanel({
   isAdmin,
   mutedAccentColor,
 }) {
+  const { confirm, toast } = useFeedback()
   const [notes, setNotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [composerOpen, setComposerOpen] = useState(false)
@@ -100,7 +103,7 @@ export function GoodToKnowNotesPanel({
       .limit(10)
 
     if (loadError) {
-      setError('Could not load notes.')
+      setError('한마디를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')
     } else {
       // SEC-56: author photo links come from the server; the view no longer
       // exposes storage paths. Without a photo the colour avatar is shown.
@@ -255,7 +258,13 @@ export function GoodToKnowNotesPanel({
   }
 
   const deleteNote = async (noteId) => {
-    if (!window.confirm('이 한마디를 삭제할까요?')) return
+    if (!(await confirm({
+      icon: 'trash',
+      title: '이 한마디를 삭제할까요?',
+      message: '삭제하면 되돌릴 수 없어요.',
+      confirmLabel: '삭제',
+      tone: 'danger',
+    }))) return
     const note = notes.find((item) => item.id === noteId)
     if (note?.source_redemption_id && note?.source_store_id) {
       try {
@@ -328,7 +337,7 @@ export function GoodToKnowNotesPanel({
     else if (reportError) setError('신고하지 못했어요. 잠시 후 다시 시도해 주세요.')
     else {
       setReportTarget(null)
-      setError('신고가 접수되었습니다. 검토 결과는 계정 이메일로 안내됩니다.')
+      toast.success('신고를 접수했어요', { message: '검토 결과는 계정 이메일로 안내돼요.' })
     }
   }
 
@@ -487,7 +496,7 @@ export function GoodToKnowNotesPanel({
         })}
       </div>
 
-      {error && <p className="mt-2 text-center text-[11px] text-red-500">{error}</p>}
+      {error && <div className="mt-2"><InlineAlert title={error} /></div>}
       {!canComment && userId && (
         <p className="mt-2 text-center text-[11px] text-gray-400">활성 회원만 한마디를 남길 수 있어요.</p>
       )}

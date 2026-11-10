@@ -16,6 +16,9 @@ import {
   getRestaurantCommercialLabelType,
   RESTAURANT_COMMERCIAL_LABEL_TYPES,
 } from '../lib/restaurantCommercialLabel'
+import { useFeedback } from '../components/feedback/feedbackContext.js'
+import { FieldError, invalidFieldClass } from '../components/feedback/FieldError.jsx'
+import EditPopup from '../components/EditPopup.jsx'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -231,14 +234,18 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <LoadingIndicator />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+    // overflow-x-clip (not hidden) so the sticky header below still sticks.
+    <div className="min-h-[100dvh] bg-gray-50 overflow-x-clip">
+      {/* Header and tabs stay at the top (including the safe area) while the
+          tab content scrolls underneath. */}
+      <div className="admin-sticky-header sticky top-0 z-40 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)]">
       {/* Header */}
       <div
         className="bg-white border-b border-gray-100 px-4 pb-3 flex items-center justify-between"
@@ -290,6 +297,7 @@ export default function AdminPage() {
           </button>
         ))}
       </div>
+      </div>
 
       <div className="w-full px-4 py-6">
         <div className="max-w-3xl mx-auto">
@@ -304,6 +312,7 @@ export default function AdminPage() {
 }
 
 function ReportsTab() {
+  const { confirm } = useFeedback()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -530,7 +539,14 @@ function ReportsTab() {
 
     if (item.status === 'resolved' && selectedDecision === item.decision) {
       if (canCancelLegacyDeletion) return
-      if (!window.confirm('처리 완료를 취소하시겠습니까? 이미 발송된 이메일은 회수되지 않습니다.')) return
+      if (!(await confirm({
+        icon: 'warning',
+        title: '처리 완료를 취소할까요?',
+        message: '이미 보낸 안내 이메일은 회수되지 않아요.',
+        confirmLabel: '처리 취소',
+        cancelLabel: '닫기',
+        tone: 'danger',
+      }))) return
       await cancelNoteReportDecision(item)
       return
     }
@@ -539,7 +555,7 @@ function ReportsTab() {
       setError('숨김 처리 또는 조치 없음을 먼저 선택해 주세요.')
       return
     }
-    if (!window.confirm('신고를 처리하시겠습니까?')) return
+    if (!(await confirm({ title: '신고를 처리할까요?', confirmLabel: '처리' }))) return
     await saveNoteReportDecision(item, selectedDecision)
   }
 
@@ -1209,6 +1225,7 @@ async function getFunctionErrorMessage(error) {
 }
 
 function MembersTab() {
+  const { toast } = useFeedback()
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
   const [adminUserIds, setAdminUserIds] = useState(() => new Set())
@@ -1274,7 +1291,7 @@ function MembersTab() {
     )
 
     if (Object.keys(updates).length === 0) {
-      alert('변경한 내용이 없습니다.')
+      toast.info('바뀐 내용이 없어요')
       return
     }
 
@@ -1285,7 +1302,7 @@ function MembersTab() {
     const membershipValidUntil = normalizeMemberEditValue('membership_valid_until', form.membership_valid_until)
     if (touchesMembership && form.is_member &&
         (!membershipValidUntil || (todayAmsterdam && membershipValidUntil < todayAmsterdam))) {
-      alert('멤버십을 활성화하려면 오늘 이후의 유효기간을 먼저 설정해 주세요.')
+      toast.warning('유효기간을 먼저 설정해 주세요', { message: '멤버십을 활성화하려면 오늘 이후의 유효기간이 필요해요.' })
       return
     }
 
@@ -1297,14 +1314,19 @@ function MembersTab() {
     })
 
     if (error || !data?.success) {
-      alert('수정 실패: ' + (data?.message || await getFunctionErrorMessage(error)))
+      toast.error('회원 정보를 수정하지 못했어요', { message: data?.message || await getFunctionErrorMessage(error) || '잠시 후 다시 시도해 주세요.' })
       return
     }
-    alert('수정 완료')
+    toast.success('회원 정보를 수정했어요')
     setEditTarget(null)
     setShowForm(false)
     fetchMembers()
   }
+
+  const closeEdit = useCallback(() => {
+    setShowForm(false)
+    setEditTarget(null)
+  }, [])
 
   const openEdit = (member) => {
     setEditTarget(member)
@@ -1398,6 +1420,7 @@ function MembersTab() {
               </div>
 
               {showForm && editTarget && editTarget.id === member.id && (
+                <EditPopup label="멤버 수정" onClose={closeEdit}>
                 <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4 mt-2">
                   <h3 className="font-medium text-gray-900">멤버 수정</h3>
 
@@ -1623,16 +1646,14 @@ function MembersTab() {
                       수정 완료
                     </button>
                     <button
-                      onClick={() => {
-                        setShowForm(false)
-                        setEditTarget(null)
-                      }}
+                      onClick={closeEdit}
                       className="flex-1 bg-gray-100 text-gray-700 rounded-lg py-2 text-sm"
                     >
                       취소
                     </button>
                   </div>
                 </div>
+                </EditPopup>
               )}
             </div>
           ))}
@@ -1647,6 +1668,8 @@ function MembersTab() {
 function EventForm({
   form,
   setForm,
+  fieldError,
+  clearFieldError,
   richEditorKey,
   editTarget,
   uploading,
@@ -1666,12 +1689,20 @@ function EventForm({
       <h3 className="font-medium text-gray-900">
         {editTarget ? '이벤트 수정' : '새 이벤트'}
       </h3>
-      <input
-        placeholder="이벤트 제목"
-        value={form.title}
-        onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-      />
+      <div>
+        <input
+          placeholder="이벤트 제목"
+          value={form.title}
+          onChange={(e) => {
+            setForm((f) => ({ ...f, title: e.target.value }))
+            if (fieldError) clearFieldError()
+          }}
+          aria-invalid={Boolean(fieldError)}
+          aria-describedby={fieldError ? 'event-title-error' : undefined}
+          className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm ${fieldError ? invalidFieldClass : ''}`}
+        />
+        <FieldError id="event-title-error">{fieldError}</FieldError>
+      </div>
       <div>
         <label className="text-sm text-gray-500 block mb-1">내용</label>
         <RichEditor
@@ -1905,6 +1936,8 @@ function EventForm({
 }
 
 function EventsTab() {
+  const { toast, confirm } = useFeedback()
+  const [fieldError, setFieldError] = useState('')
   const [events, setEvents] = useState([])
   const [archivedEvents, setArchivedEvents] = useState([])
   const [showForm, setShowForm] = useState(false)
@@ -1973,7 +2006,13 @@ function EventsTab() {
   }
 
   const handleRemoveExisting = async (url) => {
-    if (!confirm('이 사진을 삭제할까요?')) return
+    if (!(await confirm({
+      icon: 'trash',
+      title: '이 사진을 삭제할까요?',
+      message: '삭제하면 되돌릴 수 없어요.',
+      confirmLabel: '삭제',
+      tone: 'danger',
+    }))) return
     const fileName = url.split('/').pop()
     await supabase.storage.from('event-images').remove([fileName])
     const idx = (editTarget?.image_urls || []).indexOf(url)
@@ -2022,10 +2061,11 @@ function EventsTab() {
   }
 
   const handleSave = async () => {
-    if (!form.title) {
-      alert('제목을 입력해주세요.')
+    if (!form.title?.trim()) {
+      setFieldError('이벤트 제목을 입력해 주세요')
       return
     }
+    setFieldError('')
     setUploading(true)
     const eventDates = Array.from(new Set((form.eventDates || [form.eventDate]).filter(Boolean))).sort()
     const primaryDate = eventDates[0] || form.eventDate
@@ -2043,7 +2083,8 @@ function EventsTab() {
         if (oldFileName) await supabase.storage.from('event-images').remove([oldFileName])
         image_urls[idx] = imageUrl
       } catch (error) {
-        alert('이미지 업로드 실패: ' + (error?.message || '이미지 파일을 처리하지 못했습니다.'))
+        console.error('Image upload failed:', error?.message || error)
+        toast.error('이미지를 올리지 못했어요', { message: 'JPG·PNG·WebP 이미지인지, 인터넷 연결이 되어 있는지 확인해 주세요.' })
         setUploading(false)
         return
       }
@@ -2053,7 +2094,8 @@ function EventsTab() {
       try {
         image_urls = [...image_urls, await uploadSanitizedPublicImage('event-images', file)]
       } catch (error) {
-        alert('이미지 업로드 실패: ' + (error?.message || '이미지 파일을 처리하지 못했습니다.'))
+        console.error('Image upload failed:', error?.message || error)
+        toast.error('이미지를 올리지 못했어요', { message: 'JPG·PNG·WebP 이미지인지, 인터넷 연결이 되어 있는지 확인해 주세요.' })
         setUploading(false)
         return
       }
@@ -2089,7 +2131,10 @@ function EventsTab() {
     }
 
     if (saveError) {
-      alert('저장 실패: ' + saveError.message)
+      toast.error('이벤트를 저장하지 못했어요', {
+        message: '잠시 후 다시 시도해 주세요.',
+        action: { label: '다시 시도', onClick: () => { void handleSave() } },
+      })
       setUploading(false)
       return
     }
@@ -2100,7 +2145,13 @@ function EventsTab() {
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('삭제할까요?')) return
+    if (!(await confirm({
+      icon: 'trash',
+      title: '이 이벤트를 삭제할까요?',
+      message: '삭제하면 되돌릴 수 없어요.',
+      confirmLabel: '삭제',
+      tone: 'danger',
+    }))) return
     await supabase.from('events').delete().eq('id', id)
     fetchEvents()
     fetchArchivedEvents()
@@ -2191,6 +2242,8 @@ function EventsTab() {
   const formProps = {
     form,
     setForm,
+    fieldError,
+    clearFieldError: () => setFieldError(''),
     richEditorKey,
     editTarget,
     uploading,
@@ -2281,7 +2334,9 @@ function EventsTab() {
         </div>
       </div>
       {showForm && editTarget && editTarget.id === event.id && (
-        <EventForm {...formProps} />
+        <EditPopup label="이벤트 수정" onClose={formProps.resetForm}>
+          <EventForm {...formProps} />
+        </EditPopup>
       )}
     </div>
   )
@@ -2381,6 +2436,8 @@ const SPOT_CATEGORIES = [
 function RestaurantForm({
   form,
   setForm,
+  fieldError,
+  clearFieldError,
   richEditorKey,
   editTarget,
   uploading,
@@ -2402,12 +2459,20 @@ function RestaurantForm({
       <h3 className="font-medium text-gray-900">
         {editTarget ? '장소 수정' : '새 장소 추가'}
       </h3>
-      <input
-        placeholder="장소 이름"
-        value={form.name}
-        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
-      />
+      <div>
+        <input
+          placeholder="장소 이름"
+          value={form.name}
+          onChange={(e) => {
+            setForm((f) => ({ ...f, name: e.target.value }))
+            if (fieldError) clearFieldError()
+          }}
+          aria-invalid={Boolean(fieldError)}
+          aria-describedby={fieldError ? 'place-name-error' : undefined}
+          className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm ${fieldError ? invalidFieldClass : ''}`}
+        />
+        <FieldError id="place-name-error">{fieldError}</FieldError>
+      </div>
       <input
         placeholder="지도 표시 이름"
         value={form.map_label}
@@ -2763,6 +2828,8 @@ function RestaurantForm({
 }
 
 function RestaurantsTab() {
+  const { toast, confirm } = useFeedback()
+  const [fieldError, setFieldError] = useState('')
   const [restaurants, setRestaurants] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
@@ -2843,7 +2910,13 @@ function RestaurantsTab() {
   }
 
   const handleRemoveExisting = async (url) => {
-    if (!confirm('이 사진을 삭제할까요?')) return
+    if (!(await confirm({
+      icon: 'trash',
+      title: '이 사진을 삭제할까요?',
+      message: '삭제하면 되돌릴 수 없어요.',
+      confirmLabel: '삭제',
+      tone: 'danger',
+    }))) return
     const fileName = url.split('/').pop()
     await supabase.storage.from('place-images').remove([fileName])
     const idx = (editTarget?.image_urls || []).indexOf(url)
@@ -2901,10 +2974,11 @@ function RestaurantsTab() {
   }
 
   const handleSave = async () => {
-    if (!form.name) {
-      alert('장소 이름을 입력해주세요.')
+    if (!form.name?.trim()) {
+      setFieldError('장소 이름을 입력해 주세요')
       return
     }
+    setFieldError('')
     setUploading(true)
     let image_urls = [...(editTarget?.image_urls || [])]
 
@@ -2916,7 +2990,8 @@ function RestaurantsTab() {
         if (oldFileName) await supabase.storage.from('place-images').remove([oldFileName])
         image_urls[idx] = imageUrl
       } catch (error) {
-        alert('이미지 업로드 실패: ' + (error?.message || '이미지 파일을 처리하지 못했습니다.'))
+        console.error('Image upload failed:', error?.message || error)
+        toast.error('이미지를 올리지 못했어요', { message: 'JPG·PNG·WebP 이미지인지, 인터넷 연결이 되어 있는지 확인해 주세요.' })
         setUploading(false)
         return
       }
@@ -2927,7 +3002,8 @@ function RestaurantsTab() {
       try {
         image_urls = [...image_urls, await uploadSanitizedPublicImage('place-images', file)]
       } catch (error) {
-        alert('이미지 업로드 실패: ' + (error?.message || '이미지 파일을 처리하지 못했습니다.'))
+        console.error('Image upload failed:', error?.message || error)
+        toast.error('이미지를 올리지 못했어요', { message: 'JPG·PNG·WebP 이미지인지, 인터넷 연결이 되어 있는지 확인해 주세요.' })
         setUploading(false)
         return
       }
@@ -2973,7 +3049,10 @@ function RestaurantsTab() {
     }
 
     if (saveError) {
-      alert('저장 실패: ' + saveError.message)
+      toast.error('장소를 저장하지 못했어요', {
+        message: '잠시 후 다시 시도해 주세요.',
+        action: { label: '다시 시도', onClick: () => { void handleSave() } },
+      })
       setUploading(false)
       return
     }
@@ -2991,7 +3070,7 @@ function RestaurantsTab() {
       .select('id')
       .maybeSingle()
     if (error || !data) {
-      alert('매장을 복원하지 못했습니다: ' + (error?.message || '매장을 찾을 수 없습니다.'))
+      toast.error('장소를 복원하지 못했어요', { message: '잠시 후 다시 시도해 주세요.' })
       return
     }
     fetchRestaurants()
@@ -3076,6 +3155,8 @@ function RestaurantsTab() {
   const formProps = {
     form,
     setForm,
+    fieldError,
+    clearFieldError: () => setFieldError(''),
     richEditorKey,
     editTarget,
     uploading,
@@ -3205,7 +3286,9 @@ function RestaurantsTab() {
                     </div>
                   </div>
                   {showForm && editTarget && editTarget.id === r.id && (
-                    <RestaurantForm {...formProps} />
+                    <EditPopup label="장소 수정" onClose={resetForm}>
+                      <RestaurantForm {...formProps} />
+                    </EditPopup>
                   )}
                 </div>
               ))}
