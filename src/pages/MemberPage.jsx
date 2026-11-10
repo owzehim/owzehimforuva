@@ -22,6 +22,7 @@ import { isMembershipActive } from '../domain/member/membershipStatus'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { useDevInteractionLock } from '../lib/devInteractionLock'
 import { useModalFocus } from '../hooks/useModalFocus'
+import { getPlaceReviewCriteria } from '../domain/reviewCriteria'
 
 const MapView = lazy(() => import('../components/MapView'))
 const QRScanner = lazy(() => import('../components/QRScanner'))
@@ -87,6 +88,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
   // Review prompt hook
   const {
     open: reviewOpen,
+    prompt: reviewPrompt,
     storeName,
     rating,
     tags,
@@ -100,6 +102,10 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
     submitReview,
     skipReview,
   } = useReviewPrompt(sessionUserId)
+  // The review panel shows the visited place's own 멤버 평가 criteria.
+  const reviewCriteria = getPlaceReviewCriteria(
+    restaurants.find((place) => place.partnership_id && place.partnership_id === reviewPrompt?.store_id),
+  )
 
   // Load user, member, events, restaurants
   useEffect(() => {
@@ -241,6 +247,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin }
       <ReviewModal
         open={reviewOpen}
         storeName={storeName}
+        criteria={reviewCriteria}
         rating={rating}
         tags={tags}
         comment={comment}

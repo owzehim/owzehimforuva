@@ -4,6 +4,7 @@ import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
 import { sheetText } from '../_shared/sheetText.js'
+import { reviewCriteriaForSheet } from '../_shared/reviewCriteriaSheet.js'
 import { readJsonBody, RequestBodyTooLargeError } from '../_shared/readJsonBody.js'
 import { getAllowedAppsScriptUrl, withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
 import { getPartnerAppsScriptSecret } from '../_shared/partnerAppsScriptSecret.js'
@@ -195,6 +196,16 @@ Deno.serve(async (req) => {
     const tags = Array.isArray(review.tags)
       ? review.tags.filter((tag: unknown) => typeof tag === 'string' && validTags.has(tag)).slice(0, 4)
       : []
+    // The place's own 멤버 평가 names (default: the restaurant criteria), so
+    // the sheets can label the 4 tag columns for this place.
+    const { data: placeRows, error: placeError } = await admin
+      .from('restaurants')
+      .select('review_criteria')
+      .eq('partnership_id', redemption.store_id)
+      .order('is_archived', { ascending: true })
+      .limit(1)
+    if (placeError) console.warn('Review criteria lookup failed; using default names')
+    const { criteria, tag_labels } = reviewCriteriaForSheet(placeRows?.[0]?.review_criteria ?? null, tags)
     const now = new Date()
     const reviewPayload = {
       type: 'review',
@@ -203,6 +214,8 @@ Deno.serve(async (req) => {
       redemption_id: String(redemption_id),
       rating,
       tags,
+      criteria,
+      tag_labels,
       comment: sheetText(review.comment || '', 2000),
       review_submitted_at_date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' }),
       review_submitted_at_time: now.toLocaleTimeString('en-GB', {
@@ -230,6 +243,8 @@ Deno.serve(async (req) => {
           redemption_id: String(redemption_id),
           rating,
           tags,
+          criteria,
+          tag_labels,
           review_submitted_at_date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' }),
         },
         'partner',

@@ -5,17 +5,13 @@
 // this component is purely presentational.
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from 'react'
-import { Star, StarHalf, BowlSteam, HandHeart, Wine, CoinVertical, X } from '@phosphor-icons/react'
-import { REVIEW_TAGS } from '../domain/reviewTypes'
+import { Star, StarHalf, X } from '@phosphor-icons/react'
+import { getPlaceReviewCriteria } from '../domain/reviewCriteria'
+import PlaceIcon from './icons/PlaceIcon'
 import { useModalFocus } from '../hooks/useModalFocus'
 import { FieldError, InlineAlert } from './feedback/FieldError.jsx'
 
-const TAG_ICONS = {
-  BowlSteam,
-  HandHeart,
-  Wine,
-  CoinVertical,
-}
+const DEFAULT_CRITERIA = getPlaceReviewCriteria(null)
 
 // ── Star row ─────────────────────────────────────────────────
 // rating can be a whole number (1–5) or a half (0.5–4.5).
@@ -71,7 +67,6 @@ function StarRow({ rating, onSelect, error }) {
 
 // ── Tag chip ─────────────────────────────────────────────────
 function TagChip({ tag, selected, onToggle }) {
-  const IconComponent = TAG_ICONS[tag.icon]
   return (
     <button
       onClick={() => onToggle(tag.key)}
@@ -85,13 +80,12 @@ function TagChip({ tag, selected, onToggle }) {
         }
       `}
     >
-      {IconComponent && (
-        <IconComponent
-          size={16}
-          weight={selected ? 'fill' : 'regular'}
-          color={selected ? '#ffffff' : '#9ca3af'}
-        />
-      )}
+      <PlaceIcon
+        name={tag.icon}
+        size={16}
+        weight={selected ? 'fill' : 'regular'}
+        color={selected ? '#ffffff' : '#9ca3af'}
+      />
       {tag.label}
     </button>
   )
@@ -101,6 +95,7 @@ function TagChip({ tag, selected, onToggle }) {
 export default function ReviewModal({
   open,
   storeName,
+  criteria = DEFAULT_CRITERIA,
   rating,
   tags,
   comment,
@@ -230,7 +225,7 @@ export default function ReviewModal({
               <span className="text-gray-400 font-normal ml-1">(복수 선택 가능)</span>
             </p>
             <div className="grid grid-cols-2 gap-2">
-              {REVIEW_TAGS.map((tag) => (
+              {criteria.map((tag) => (
                 <TagChip
                   key={tag.key}
                   tag={tag}

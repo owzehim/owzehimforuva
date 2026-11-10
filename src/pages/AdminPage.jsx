@@ -19,6 +19,8 @@ import {
 import { useFeedback } from '../components/feedback/feedbackContext.js'
 import { FieldError, invalidFieldClass } from '../components/feedback/FieldError.jsx'
 import EditPopup from '../components/EditPopup.jsx'
+import ReviewCriteriaEditor from '../components/admin/ReviewCriteriaEditor.jsx'
+import { criteriaEqual, normalizeReviewCriteria } from '../domain/reviewCriteria'
 import ScrapBoardEditor from '../components/scrap/ScrapBoardEditor.jsx'
 import ScrapBoardViewer from '../components/scrap/ScrapBoardViewer.jsx'
 import {
@@ -2876,6 +2878,12 @@ function RestaurantForm({
 
 <ReviewBoxSettings form={form} setForm={setForm} onOpenScrapEditor={onOpenScrapEditor} />
 
+<ReviewCriteriaEditor
+  value={form.review_criteria}
+  onChange={(review_criteria) => setForm((f) => ({ ...f, review_criteria }))}
+  changed={Boolean(editTarget) && !criteriaEqual(form.review_criteria, editTarget.review_criteria)}
+/>
+
       <div>
         <label className="text-sm text-gray-500 block mb-1">사진</label>
         <ImageUploadPanel
@@ -2942,6 +2950,7 @@ function RestaurantsTab() {
     spot_card_height: 'compact',
     review_box_type: REVIEW_BOX_TYPES.USULLANG,
     scrap_board: emptyScrapBoard(),
+    review_criteria: null,
   })
 
   const [imageFiles, setImageFiles] = useState([])
@@ -3055,6 +3064,7 @@ function RestaurantsTab() {
       spot_card_height: 'compact',
       review_box_type: REVIEW_BOX_TYPES.USULLANG,
       scrap_board: emptyScrapBoard(),
+      review_criteria: null,
     })
     setImageFiles([])
     setImagePreviews([])
@@ -3091,6 +3101,20 @@ function RestaurantsTab() {
     if (!form.name?.trim()) {
       setFieldError('장소 이름을 입력해 주세요')
       return
+    }
+    if (Array.isArray(form.review_criteria) && form.review_criteria.some((entry) => !entry.label?.trim())) {
+      toast.warning('멤버 평가 항목 이름을 채워 주세요', { message: '4개 항목 모두 이름이 있어야 해요.' })
+      return
+    }
+    if (editTarget && !criteriaEqual(form.review_criteria, editTarget.review_criteria)) {
+      const ok = await confirm({
+        icon: 'warning',
+        title: '멤버 평가 항목을 바꿀까요?',
+        message: '저장하면 이 장소의 멤버 평가 수가 0부터 다시 시작돼요. 지난 리뷰와 시트 기록은 그대로 남아요.',
+        confirmLabel: '바꾸고 저장',
+        cancelLabel: '취소',
+      })
+      if (!ok) return
     }
     setFieldError('')
     setUploading(true)
@@ -3173,6 +3197,7 @@ function RestaurantsTab() {
         form.spot_card_height === 'full' ? 'full' : 'compact',
       review_box_type: getReviewBoxType(form),
       scrap_board,
+      review_criteria: normalizeReviewCriteria(form.review_criteria),
       image_urls,
     }
 
@@ -3257,6 +3282,7 @@ function RestaurantsTab() {
       spot_card_height: r.spot_card_height === 'full' ? 'full' : 'compact',
       review_box_type: getReviewBoxType(r),
       scrap_board: normalizeScrapBoard(r.scrap_board, { prefix: PLACE_IMAGE_PREFIX }),
+      review_criteria: normalizeReviewCriteria(r.review_criteria),
     })
 
     setRichEditorKey((k) => k + 1)
@@ -3294,6 +3320,7 @@ function RestaurantsTab() {
       spot_card_height: 'compact',
       review_box_type: REVIEW_BOX_TYPES.USULLANG,
       scrap_board: emptyScrapBoard(),
+      review_criteria: null,
     })
     setRichEditorKey((k) => k + 1)
     setImageFiles([])
