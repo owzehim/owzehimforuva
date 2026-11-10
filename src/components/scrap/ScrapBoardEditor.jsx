@@ -6,9 +6,11 @@ import {
   ArrowsOutLineVertical,
   CaretDown,
   CaretUp,
+  Eraser,
   ImageSquare,
   Minus,
   PencilSimple,
+  PencilSimpleLine,
   Plus,
   TextB,
   TextT,
@@ -22,14 +24,23 @@ import {
   SCRAP_IMAGE_MAX,
   SCRAP_IMAGE_MIN,
   SCRAP_LINE,
+  SCRAP_MAX_BOARD_CHARS,
   SCRAP_MAX_HEIGHT,
+  SCRAP_MAX_STROKES,
   SCRAP_MAX_ITEMS,
   SCRAP_MIN_HEIGHT,
+  SCRAP_PEN_WIDTHS,
   SCRAP_TEXT_MAX,
   SCRAP_TEXT_MIN_WIDTH,
   SCRAP_WIDTH,
+  buildDrawing,
+  drawingStrokesOnBoard,
   normalizeScrapBoard,
+  scrapBoardSize,
   scrapContentBottom,
+  simplifyPoints,
+  strokeHit,
+  strokePath,
 } from '../../domain/scrapBoard'
 import { useFeedback } from '../feedback/feedbackContext.js'
 import { ScrapItem } from './ScrapPaper'
@@ -107,6 +118,14 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
   const [editingId, setEditingId] = useState(null)
   const [zoom, setZoom] = useState(1)
   const [fitWidth, setFitWidth] = useState(SCRAP_WIDTH)
+  const [tool, setTool] = useState('select')
+  const [penColor, setPenColor] = useState(SCRAP_COLORS[0])
+  const [penWidth, setPenWidth] = useState(SCRAP_PEN_WIDTHS[1])
+  const [liveStroke, setLiveStroke] = useState(null)
+  const layerRef = useRef(null)
+  const strokeRef = useRef(null)
+  const strokeFrameRef = useRef(0)
+  const drawingSessionRef = useRef(null)
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
   const filesRef = useRef(new Map())
@@ -327,7 +346,7 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
         x: clamp(start.x + dx, -(item.w - 16), SCRAP_WIDTH - 16),
         y: clamp(start.y + dy, 0, board.h - 16),
       })))
-    } else if (start.t === 'img') {
+    } else if (start.t !== 'text') {
       const ratio = start.h / start.w
       const w = clamp(start.w + dx, SCRAP_IMAGE_MIN, Math.min(SCRAP_IMAGE_MAX, SCRAP_IMAGE_MAX / ratio))
       replace(updateItem(drag.id, () => ({ w, h: Math.max(SCRAP_IMAGE_MIN, w * ratio) })))
@@ -380,13 +399,33 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
         replace(() => dragRef.current.before)
         dragRef.current = null
       }
-      pinchRef.current = { distance: dist(event.touches), zoom: zoomRef.current }
+      if (strokeRef.current) {
+        // A second finger means pan/zoom, not drawing.
+        if (strokeRef.current.mode === 'erase') replace(() => strokeRef.current.before)
+        strokeRef.current = null
+        setLiveStroke(null)
+      }
+      const m = mid(event.touches)
+      pinchRef.current = {
+        distance: dist(event.touches),
+        zoom: zoomRef.current,
+        contentX: element.scrollLeft + m.x,
+        contentY: element.scrollTop + m.y,
+      }
     }
     const onTouchMove = (event) => {
-      if (!pinchRef.current || event.touches.length !== 2) return
+      const pinch = pinchRef.current
+      if (!pinch || event.touches.length !== 2) return
       event.preventDefault()
-      const next = pinchRef.current.zoom * (dist(event.touches) / pinchRef.current.distance)
-      setZoomAround(next, mid(event.touches))
+      const m = mid(event.touches)
+      const next = clamp(pinch.zoom * (dist(event.touches) / pinch.distance), MIN_ZOOM, MAX_ZOOM)
+      const ratio = next / pinch.zoom
+      pendingScrollRef.current = { left: pinch.contentX * ratio - m.x, top: pinch.contentY * ratio - m.y }
+      zoomRef.current = next
+      setZoom(next)
+      // Pure two-finger panning does not re-render, so scroll right away too.
+      element.scrollLeft = Math.max(0, pendingScrollRef.current.left)
+      element.scrollTop = Math.max(0, pendingScrollRef.current.top)
     }
     const onTouchEnd = (event) => {
       if (event.touches.length < 2) pinchRef.current = null
@@ -414,6 +453,107 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
   const zoomBy = (factor) => {
     const element = canvasRef.current
     setZoomAround(zoomRef.current * factor, element ? { x: element.clientWidth / 2, y: element.clientHeight / 2 } : null)
+  }
+
+  // ── Pen and eraser ───────────────────────────────────────────
+  const chooseTool = (next) => {
+    if (editingId) finishEditing()
+    setSelectedId(null)
+    drawingSessionRef.current = null
+    setTool((current) => (current === next ? 'select' : next))
+  }
+
+  const boardPoint = (event) => {
+    const rect = layerRef.current.getBoundingClientRect()
+    return [
+      clamp((event.clientX - rect.left) / scale, 0, SCRAP_WIDTH),
+      clamp((event.clientY - rect.top) / scale, 0, board.h),
+    ]
+  }
+
+  const eraseAt = (point) => {
+    const radius = 10 / scale
+    replace((b) => {
+      let changed = false
+      const items = []
+      b.items.forEach((item) => {
+        if (item.t !== 'draw') {
+          items.push(item)
+          return
+        }
+        const kept = item.s.filter((_, index) => !strokeHit(item, index, point[0], point[1], radius))
+        if (kept.length === item.s.length) {
+          items.push(item)
+          return
+        }
+        changed = true
+        if (kept.length) items.push({ ...item, s: kept })
+      })
+      return changed ? { ...b, items } : b
+    })
+  }
+
+  const onLayerPointerDown = (event) => {
+    if (tool === 'select' || pinchRef.current || strokeRef.current) return
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    const point = boardPoint(event)
+    strokeRef.current = { pointerId: event.pointerId, mode: tool === 'eraser' ? 'erase' : 'draw', points: [point], before: board }
+    if (tool === 'eraser') eraseAt(point)
+    else setLiveStroke([point])
+  }
+
+  const onLayerPointerMove = (event) => {
+    const stroke = strokeRef.current
+    if (!stroke || stroke.pointerId !== event.pointerId) return
+    const events = event.nativeEvent.getCoalescedEvents?.() || [event]
+    events.forEach((entry) => {
+      const point = boardPoint(entry)
+      const last = stroke.points[stroke.points.length - 1]
+      if (Math.hypot(point[0] - last[0], point[1] - last[1]) * scale < 1.5) return
+      stroke.points.push(point)
+      if (stroke.mode === 'erase') eraseAt(point)
+    })
+    if (stroke.mode === 'draw' && !strokeFrameRef.current) {
+      strokeFrameRef.current = window.requestAnimationFrame(() => {
+        strokeFrameRef.current = 0
+        if (strokeRef.current) setLiveStroke([...strokeRef.current.points])
+      })
+    }
+  }
+
+  const onLayerPointerUp = (event) => {
+    const stroke = strokeRef.current
+    if (!stroke || stroke.pointerId !== event.pointerId) return
+    strokeRef.current = null
+    setLiveStroke(null)
+    if (stroke.mode === 'erase') {
+      commit(stroke.before)
+      return
+    }
+    const points = simplifyPoints(stroke.points, 0.5 / Math.max(1, zoomRef.current))
+    const newStroke = { c: penColor, sw: penWidth, points }
+    const session = board.items.find((item) => item.id === drawingSessionRef.current && item.t === 'draw')
+    const canMerge = session && session.s.length < SCRAP_MAX_STROKES
+    if (!canMerge && board.items.length >= SCRAP_MAX_ITEMS) {
+      roomForItem()
+      return
+    }
+    const drawing = buildDrawing(
+      canMerge ? session.id : newId(),
+      canMerge ? [...drawingStrokesOnBoard(session), newStroke] : [newStroke],
+    )
+    if (!drawing) return
+    const next = canMerge
+      ? { ...board, items: board.items.map((item) => (item.id === session.id ? drawing : item)) }
+      : { ...board, items: [...board.items, drawing] }
+    if (scrapBoardSize(next) > SCRAP_MAX_BOARD_CHARS) {
+      toast.warning('더 그릴 수 없어요', { message: '낙서장에 담을 수 있는 양을 넘었어요. 그림 일부를 지우거나 사진으로 넣어 주세요.' })
+      return
+    }
+    drawingSessionRef.current = drawing.id
+    apply(() => next)
   }
 
   // ── Close / finish ───────────────────────────────────────────
@@ -492,6 +632,12 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
           <p className="text-[15px] font-bold leading-tight text-gray-900">낙서장 편집</p>
           <p className="truncate text-xs text-gray-500">{placeName || '새 장소'}</p>
         </div>
+        <button type="button" onClick={undo} disabled={!history.past.length} className="flex h-9 w-9 items-center justify-center rounded-full text-gray-600 active:bg-gray-100 disabled:opacity-30" aria-label="되돌리기">
+          <ArrowArcLeft size={19} />
+        </button>
+        <button type="button" onClick={redo} disabled={!history.future.length} className="flex h-9 w-9 items-center justify-center rounded-full text-gray-600 active:bg-gray-100 disabled:opacity-30" aria-label="다시 하기">
+          <ArrowArcRight size={19} />
+        </button>
         <button type="button" onClick={handleDone} className="h-9 rounded-full bg-orange-500 px-4 text-sm font-semibold text-white active:bg-orange-600">
           완료
         </button>
@@ -499,10 +645,10 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
 
       <div className="mx-3 flex flex-shrink-0 items-center justify-between rounded-2xl bg-white px-1 py-0.5 shadow-sm">
         <div className="flex">
-          <ToolButton icon={ImageSquare} label="사진" onClick={() => fileInputRef.current?.click()} />
-          <ToolButton icon={TextT} label="텍스트" onClick={addText} />
-          <ToolButton icon={ArrowArcLeft} label="취소" onClick={undo} disabled={!history.past.length} />
-          <ToolButton icon={ArrowArcRight} label="다시" onClick={redo} disabled={!history.future.length} />
+          <ToolButton icon={ImageSquare} label="사진" onClick={() => { drawingSessionRef.current = null; setTool('select'); fileInputRef.current?.click() }} />
+          <ToolButton icon={TextT} label="텍스트" onClick={() => { setTool('select'); drawingSessionRef.current = null; addText() }} />
+          <ToolButton icon={PencilSimpleLine} label="펜" active={tool === 'pen'} onClick={() => chooseTool('pen')} />
+          <ToolButton icon={Eraser} label="지우개" active={tool === 'eraser'} onClick={() => chooseTool('eraser')} />
         </div>
         <div className="flex items-center gap-0.5 pr-1">
           <button type="button" onClick={() => zoomBy(1 / 1.25)} className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 active:bg-gray-100" aria-label="축소"><Minus size={16} weight="bold" /></button>
@@ -525,8 +671,9 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
       <div
         ref={canvasRef}
         className="relative mt-2 min-h-0 flex-1 overflow-auto overscroll-contain"
-        style={{ touchAction: 'pan-x pan-y' }}
+        style={{ touchAction: tool === 'select' ? 'pan-x pan-y' : 'none' }}
         onPointerDown={(event) => {
+          if (tool !== 'select') return
           if (event.target === event.currentTarget || event.target.dataset?.scrapBackground) {
             if (editingId) finishEditing()
             setSelectedId(null)
@@ -539,9 +686,22 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
             style={{ width: SCRAP_WIDTH * scale, height: board.h * scale }}
           >
             <div
+              ref={layerRef}
               data-scrap-background="true"
               className="absolute left-0 top-0"
-              style={{ width: SCRAP_WIDTH, height: board.h, transform: `scale(${scale})`, transformOrigin: '0 0', ...scrapPaperBackground() }}
+              onPointerDown={onLayerPointerDown}
+              onPointerMove={onLayerPointerMove}
+              onPointerUp={onLayerPointerUp}
+              onPointerCancel={onLayerPointerUp}
+              style={{
+                width: SCRAP_WIDTH,
+                height: board.h,
+                transform: `scale(${scale})`,
+                transformOrigin: '0 0',
+                touchAction: tool === 'select' ? 'pan-x pan-y' : 'none',
+                cursor: tool === 'pen' ? 'crosshair' : tool === 'eraser' ? 'cell' : undefined,
+                ...scrapPaperBackground(),
+              }}
             >
               {board.items.map((item) => {
                 const isSelected = item.id === selectedId
@@ -550,12 +710,15 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
                   <ScrapItem
                     key={item.id}
                     item={item}
+                    hitArea={item.t === 'draw' && tool === 'select' ? 18 / scale : 0}
                     onPointerDown={(event) => onItemPointerDown(event, item)}
                     onPointerMove={onItemPointerMove}
                     onPointerUp={onItemPointerUp}
                     onPointerCancel={onItemPointerUp}
                     style={{
                       touchAction: 'none',
+                      // A drawing is picked by its lines only, so photos under its empty box stay tappable.
+                      pointerEvents: tool !== 'select' || (item.t === 'draw' && !isSelected) ? 'none' : undefined,
                       cursor: isEditing ? 'text' : 'move',
                       outline: isSelected ? `${2 / scale}px solid #3b82f6` : item.t === 'text' && !item.text ? `${1 / scale}px dashed #93c5fd` : 'none',
                       outlineOffset: 3 / scale,
@@ -600,6 +763,11 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
                   </ScrapItem>
                 )
               })}
+              {liveStroke && (
+                <svg className="pointer-events-none absolute left-0 top-0" width={SCRAP_WIDTH} height={board.h} aria-hidden="true">
+                  <path d={strokePath(liveStroke)} fill="none" stroke={penColor} strokeWidth={penWidth} strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
             </div>
           </div>
           <p className="mt-2 text-center text-[11px] text-gray-400">페이지 끝 · 위아래로 스크롤해서 보여요</p>
@@ -607,7 +775,40 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
       </div>
 
       <div className="flex-shrink-0 border-t border-gray-200 bg-white px-3 py-2">
-        {selected ? (
+        {tool === 'pen' ? (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 pl-1">
+            {SCRAP_COLORS.map((color) => (
+              <button
+                key={color}
+                type="button"
+                aria-label={`펜 색 ${color}`}
+                aria-pressed={penColor === color}
+                onClick={() => setPenColor(color)}
+                className="h-6 w-6 flex-shrink-0 rounded-full"
+                style={{ background: color, boxShadow: penColor === color ? `0 0 0 2px #fff, 0 0 0 4px ${color}` : 'none' }}
+              />
+            ))}
+            <span className="mx-1 h-6 w-px flex-shrink-0 bg-gray-200" />
+            {SCRAP_PEN_WIDTHS.map((width) => (
+              <button
+                key={width}
+                type="button"
+                aria-label={`펜 굵기 ${width}`}
+                aria-pressed={penWidth === width}
+                onClick={() => setPenWidth(width)}
+                className={'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ' + (penWidth === width ? 'bg-gray-900' : 'bg-gray-100')}
+              >
+                <span className="rounded-full" style={{ width: width + 2, height: width + 2, background: penWidth === width ? '#fff' : penColor }} />
+              </button>
+            ))}
+            <span className="ml-auto pl-1"><BarButton label="그리기 끝" tone="active" onClick={() => chooseTool('pen')}>끝</BarButton></span>
+          </div>
+        ) : tool === 'eraser' ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">지울 선을 문질러요 · 두 손가락으로 이동·확대</span>
+            <BarButton label="지우기 끝" tone="active" onClick={() => chooseTool('eraser')}>끝</BarButton>
+          </div>
+        ) : selected ? (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
             {selected.t === 'text' && (
               <>
