@@ -110,8 +110,8 @@ test('No browser alert()/confirm() popups; the in-app feedback components are us
 
 test('SpotCard: compact cards reuse the tall card button position (no jump between markers)', async () => {
   const source = await readFile('src/components/SpotCard.jsx', 'utf8')
-  assert.match(source, /let rememberedButtonAnchor = null/)
-  assert.match(source, /rememberedButtonAnchor = \{ key: viewportKey\(\), y: nextCenter \}/)
+  assert.match(source, /let rememberedButtonAnchor = /)
+  assert.match(source, /rememberButtonAnchor\(nextCenter\)/)
   assert.match(source, /top: `\$\{buttonAnchorY\}px`/)
 })
 
@@ -132,4 +132,20 @@ test('Admin: sticky header and tabs; 수정 opens in a popup', async () => {
   const popup = await readFile('src/components/EditPopup.jsx', 'utf8')
   assert.match(popup, /onCloseRef\.current\(\)/, 'Esc closes without re-running the effect on each render')
   assert.match(popup, /transform: shown \? undefined/, 'no transform at rest (keeps fixed children on screen)')
+})
+
+test('SpotCard switching: no entrance replay, content crossfade, button frozen while open', async () => {
+  const source = await readFile('src/components/SpotCard.jsx', 'utf8')
+  assert.match(source, /function SpotCardSheet\(/)
+  assert.match(source, /contentVisible=\{!switching\}/)
+  const effect = source.slice(source.indexOf('// Another marker while the card is open'), source.indexOf('// Updating the selected record'))
+  assert.ok(effect.includes('return') && !effect.includes('setIsVisible(false)'), 'switching must not hide and re-show the sheet')
+  assert.match(source, /sessionAnchorRef/)
+  assert.match(source, /uvain:spot-card-button-anchor/)
+})
+
+test('Admin page is sized to the visible screen (no scroll when not needed)', async () => {
+  const source = await readFile('src/pages/AdminPage.jsx', 'utf8')
+  assert.match(source, /min-h-\[100dvh\] bg-gray-50 overflow-x-clip/)
+  assert.ok(!source.includes('min-h-screen bg-gray-50'))
 })
