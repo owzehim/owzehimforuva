@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Image as ImageIcon, MapPin, Ticket, Star, StarFour } from '@phosphor-icons/react'
+import { ArrowsOutSimple, Image as ImageIcon, MapPin, Ticket, Star, StarFour } from '@phosphor-icons/react'
 import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, formatAverageRating } from '../domain/reviewDomain'
 import { REVIEW_TAGS } from '../domain/reviewTypes'
 import { REVIEW_BOX_TYPES, getReviewBoxType, isScrapReviewBox, normalizeScrapBoard, placeImagePrefix } from '../domain/scrapBoard'
 import ScrapBoardViewer from './scrap/ScrapBoardViewer'
+import ScrapBoardFullscreen from './scrap/ScrapBoardFullscreen'
 import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
 import { sanitizeRichText } from '../lib/sanitizeHtml'
 import { useModalFocus } from '../hooks/useModalFocus'
@@ -782,6 +783,8 @@ function SpotCardSheet({
   const cardRef = useRef(null)
   const previousSpotRef = useRef(null)
   const reviewBoxTouchStartRef = useRef(null)
+  // 낙서장 full screen: remembers which place it was opened for.
+  const [scrapFullscreenId, setScrapFullscreenId] = useState(null)
   const contentScrollTouchRef = useRef(null)
 
   const imgs = selected?.image_urls || EMPTY_IMAGE_URLS
@@ -1281,6 +1284,20 @@ function SpotCardSheet({
   const scrapBoard = isScrapReviewBox(reviewBoxType)
     ? normalizeScrapBoard(selected.scrap_board, { prefix: SCRAP_IMAGE_PREFIX })
     : null
+  const scrapFullscreenOpen = Boolean(scrapBoard && scrapFullscreenId === selected.id && !isCollapsed)
+  // A tap on the 낙서장 opens it full screen (scrolling and pinching do not).
+  const scrapOpenProps = {
+    role: 'button',
+    tabIndex: 0,
+    'aria-label': '낙서장 크게 보기',
+    onClick: () => setScrapFullscreenId(selected.id),
+    onKeyDown: (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        setScrapFullscreenId(selected.id)
+      }
+    },
+  }
   const averageRating = ratingSummary?.average_rating ?? 0
   const usullangStarCount = Math.max(
     0,
@@ -1619,15 +1636,18 @@ function SpotCardSheet({
                 }}
               >
                 {reviewBoxType === REVIEW_BOX_TYPES.SCRAP ? (
-                  <div className="spot-card-scrap-panel relative w-1/2 flex-shrink-0 overflow-hidden">
+                  <div
+                    className="spot-card-scrap-panel relative w-1/2 flex-shrink-0 cursor-pointer overflow-hidden"
+                    {...scrapOpenProps}
+                  >
                     <ScrapBoardViewer board={scrapBoard} darkMode={darkMode} />
-                    <span className="scrap-pill pointer-events-none absolute left-2.5 top-2.5 z-10 px-[11px] py-[5px] text-xs font-semibold">낙서장</span>
+                    <span className="scrap-pill pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1 px-[11px] py-[5px] text-xs font-semibold">낙서장<ArrowsOutSimple size={11} weight="bold" aria-hidden="true" /></span>
                   </div>
                 ) : reviewBoxType === REVIEW_BOX_TYPES.SCRAP_RATING ? (
                   <div className="spot-card-scrap-panel flex w-1/2 flex-shrink-0 flex-col overflow-hidden">
-                    <div className="relative min-h-0 flex-1 overflow-hidden">
+                    <div className="relative min-h-0 flex-1 cursor-pointer overflow-hidden" {...scrapOpenProps}>
                       <ScrapBoardViewer board={scrapBoard} darkMode={darkMode} />
-                      <span className="scrap-pill pointer-events-none absolute left-2.5 top-2.5 z-10 px-[11px] py-[5px] text-xs font-semibold">낙서장</span>
+                      <span className="scrap-pill pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1 px-[11px] py-[5px] text-xs font-semibold">낙서장<ArrowsOutSimple size={11} weight="bold" aria-hidden="true" /></span>
                     </div>
                     <div className="spot-card-landscape-member-evaluation flex-shrink-0 px-4">
                       <TagBarChart
@@ -1686,6 +1706,14 @@ function SpotCardSheet({
                 } />
               </div>
               </section>
+            )}
+            {scrapFullscreenOpen && (
+              <ScrapBoardFullscreen
+                board={scrapBoard}
+                placeName={selected.name}
+                darkMode={darkMode}
+                onClose={() => setScrapFullscreenId(null)}
+              />
             )}
           </div>
 

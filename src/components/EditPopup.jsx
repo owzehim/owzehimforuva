@@ -74,7 +74,7 @@ export default function EditPopup({ label, onClose, children }) {
           </button>
         </div>
         <div
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4"
+          className="admin-edit-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
         >
           {children}

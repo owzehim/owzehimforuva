@@ -247,8 +247,8 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center">
-        <LoadingIndicator />
+      <div className="min-h-[100dvh]">
+        <LoadingIndicator fullScreen />
       </div>
     )
   }
@@ -1651,7 +1651,7 @@ function MembersTab() {
                     />
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="admin-edit-actions flex gap-2">
                     <button
                       onClick={handleEdit}
                       className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm hover:bg-blue-700 font-medium"
@@ -1929,7 +1929,7 @@ function EventForm({
           onReorder={handleReorderImages}
         />
       </div>
-      <div className="flex gap-2 pt-1">
+      <div className="admin-edit-actions flex gap-2 pt-1">
         <button
           onClick={handleSave}
           disabled={uploading}
@@ -2475,13 +2475,28 @@ function ReviewBoxSettings({ form, setForm, onOpenScrapEditor }) {
       )}
       {isScrapReviewBox(type) && (
         <div className="mt-2 space-y-2">
-          <div className="relative h-[200px] overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="낙서장 전체 화면으로 편집"
+            onClick={onOpenScrapEditor}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onOpenScrapEditor()
+              }
+            }}
+            className="relative h-[200px] cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+          >
             <ScrapBoardViewer board={board} />
             {board.items.length === 0 && (
               <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-gray-400">
-                아직 비어 있어요
+                아직 비어 있어요 · 눌러서 꾸미기
               </p>
             )}
+            <span className="scrap-pill pointer-events-none absolute bottom-2.5 right-2.5 z-10 px-2.5 py-1 text-[11px] font-semibold">
+              눌러서 전체 화면 편집
+            </span>
           </div>
           <button
             type="button"
@@ -2875,7 +2890,7 @@ function RestaurantForm({
           onReorder={handleReorderImages}
         />
       </div>
-      <div className="flex gap-2 pt-1">
+      <div className="admin-edit-actions flex gap-2 pt-1">
         <button
           onClick={handleSave}
           disabled={uploading}
