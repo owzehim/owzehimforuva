@@ -2949,3 +2949,17 @@ select {
     animation: none;
   }
 }
+
+/* 낙서장 (Scrap paper): frosted pills keep the title and dots readable over the board. */
+.scrap-pill {
+  border-radius: 9999px;
+  color: #4b5563;
+  background: rgba(255, 253, 247, 0.7);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.spot-card-landscape-review-box .spot-card-review-pagination.spot-card-review-pagination-floating {
+  padding: 6px 10px !important;
+}
