@@ -1,12 +1,12 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useState, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { escapeIcsText, getSafeHttpsUrl, richTextToPlainText } from '../lib/sanitizeHtml'
 import { SpotCard, RichText } from '../components/SpotCard'
-import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
+import { CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
-import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, ArrowsVertical, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning, Image as ImageIcon, X } from '@phosphor-icons/react'
+import { QrCode, Calendar, Clock, MapPin, NavigationArrow, Door, InstagramLogo, Gear, UserCircle, List, SortAscending, SortDescending, CaretRight, CaretDoubleRight, CaretLeft, ArrowRight, CheckCircle, HandPointing, SealWarning, Image as ImageIcon } from '@phosphor-icons/react'
 import { useReviewPrompt } from '../hooks/useReviewPrompt'
 import ReviewModal from '../components/ReviewModal'
 import { MEMBER_CARD_WIDTH } from '../lib/memberCardWidth'
@@ -2284,40 +2284,6 @@ function QRTab({ member, isValid, previewOnly = false, scannerOpenSignal = 0, on
 }
 
 // Nav Button (not currently used, but kept for future)
-function NavBtn({ onClick, children, style = {} }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: 'rgba(30,30,30,0.7)',
-        border: 'none',
-        color: '#fff',
-        borderRadius: '999px',
-        width: '32px',
-        height: '32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '18px',
-        lineHeight: 1,
-        cursor: 'pointer',
-        backdropFilter: 'blur(4px)',
-        transition: 'background 0.15s',
-        flexShrink: 0,
-        ...style,
-      }}
-      onMouseEnter={(e) =>
-        (e.currentTarget.style.background = 'rgba(30,30,30,0.92)')
-      }
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.background = 'rgba(30,30,30,0.7)')
-      }
-    >
-      {children}
-    </button>
-  )
-}
-
 // Event Lightbox (SpotCard-style)
 function EventLightbox({ imgs, startIndex = 0, onClose, onIndexChange }) {
   const [index, setIndex] = useState(startIndex)
@@ -2683,9 +2649,9 @@ function EventsTab({ events }) {
   const initialEvent = nextEvent || allEvents[0] || null
 
   const [selectedEvent, setSelectedEvent] = useState(initialEvent)
-  const [previewEvent, setPreviewEvent] = useState(initialEvent)
-  const [isDragging, setIsDragging] = useState(false)
-  const [isTouching, setIsTouching] = useState(false)
+  const [, setPreviewEvent] = useState(initialEvent)
+  const [, setIsDragging] = useState(false)
+  const [, setIsTouching] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [slideIndexes, setSlideIndexes] = useState({})
   const [eventListOpen, setEventListOpen] = useState(getStoredEventListOpen)
@@ -2729,7 +2695,6 @@ function EventsTab({ events }) {
     return new Date(base.getFullYear(), base.getMonth(), 1)
   })
 
-  const containerRef = useRef(null)
   const eventListScrollRef = useRef(null)
   const eventListWheelLockedRef = useRef(false)
   const eventSwipeStartX = useRef(null)
@@ -2803,7 +2768,8 @@ function EventsTab({ events }) {
     setCalMonth(new Date(d.getFullYear(), d.getMonth(), 1))
   }, [selectedEvent])
 
-  const resetEventPhotoZoom = () => {
+  // Uses only refs and state setters, so it never changes between renders.
+  const resetEventPhotoZoom = useCallback(() => {
     if (eventPhotoZoomResetTimer.current) {
       window.clearTimeout(eventPhotoZoomResetTimer.current)
       eventPhotoZoomResetTimer.current = null
@@ -2818,7 +2784,7 @@ function EventsTab({ events }) {
     setEventPhotoZoomOffset({ x: 0, y: 0 })
     setEventPhotoIsPinching(false)
     setEventPhotoZoomBounds(null)
-  }
+  }, [])
 
   const animateEventPhotoZoomBack = () => {
     eventPinchStartDistance.current = null
@@ -2845,13 +2811,13 @@ function EventsTab({ events }) {
     }
   }, [])
 
-  const setSlide = (id, idx) => {
+  const setSlide = useCallback((id, idx) => {
     resetEventPhotoZoom()
     setSlideIndexes((p) => ({
       ...p,
       [id]: idx,
     }))
-  }
+  }, [resetEventPhotoZoom])
 
   const markEventPreviewImageLoaded = (url) => {
     setLoadedEventPreviewImages((prev) => ({
@@ -2945,7 +2911,7 @@ function EventsTab({ events }) {
   useEffect(() => {
     if (!selectedEvent?.id) return
     setSlide(selectedEvent.id, 0)
-  }, [selectedEvent?.id])
+  }, [selectedEvent?.id, setSlide])
 
   useEffect(() => {
     let cancelled = false
@@ -2957,9 +2923,6 @@ function EventsTab({ events }) {
       cancelled = true
     }
   }, [selectedEvent?.id])
-
-  const isPortrait = (aspectRatio) =>
-    aspectRatio >= 0.75 && aspectRatio <= 0.85
 
   // Keyboard nav for image slider in expanded cards
   useEffect(() => {
@@ -2982,13 +2945,9 @@ function EventsTab({ events }) {
 
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
-  }, [expandedId, slideIndexes, events])
+  }, [expandedId, slideIndexes, events, setSlide])
 
-  // Vertical drag between events in header
-  const pointerStartY = useRef(null)
-  const dragBaseIdxRef = useRef(0)
-  const currentDragIdxRef = useRef(0)
-  const activePointerIdRef = useRef(null)
+  // Latest events and selection, read by the gesture handlers below
   const allEventsRef = useRef(allEvents)
   const selectedEventRef = useRef(selectedEvent)
 
@@ -2998,8 +2957,6 @@ function EventsTab({ events }) {
   const activeEventIndex = currentEventIndex >= 0
     ? currentEventIndex
     : Math.max(0, allEvents.findIndex((ev) => ev.id === initialEvent?.id))
-  const scrollProgress = 0
-
   useEffect(() => {
     allEventsRef.current = allEvents
     selectedEventRef.current = selectedEvent
@@ -3017,79 +2974,6 @@ function EventsTab({ events }) {
       img.src = currentImageUrl
     }
   }, [allEvents, activeEventIndex])
-
-  const resetDragState = () => {
-    pointerStartY.current = null
-    dragBaseIdxRef.current = activeEventIndex
-    currentDragIdxRef.current = activeEventIndex
-    activePointerIdRef.current = null
-    setIsDragging(false)
-    setIsTouching(false)
-    setPreviewEvent(selectedEventRef.current)
-  }
-
-  const finalizeDrag = () => {
-    if (pointerStartY.current == null) return
-    resetDragState()
-  }
-
-  const updateDraggedEvent = (clientY) => {
-    if (pointerStartY.current == null) return
-    const eventsNow = allEventsRef.current
-    if (!eventsNow.length) return
-
-    const dy = pointerStartY.current - clientY
-    const delta =
-      dy > 0 ? Math.floor(dy / 60) : dy < 0 ? Math.ceil(dy / 60) : 0
-    const idx = Math.max(
-      0,
-      Math.min(dragBaseIdxRef.current + delta, eventsNow.length - 1),
-    )
-
-    if (idx === currentDragIdxRef.current) return
-
-    currentDragIdxRef.current = idx
-    const nextEvent = eventsNow[idx]
-    selectedEventRef.current = nextEvent
-    setSelectedEvent(nextEvent)
-    setPreviewEvent(nextEvent)
-  }
-
-  const handleContainerPointerDown = (e) => {
-    if (!e.isPrimary || e.button !== 0) return
-    if (e.target.closest('button, a, input, textarea, select')) return
-
-    const rect = containerRef.current?.getBoundingClientRect()
-    // Avoid grabbing when finger starts too low (near calendar)
-    if (rect && e.clientY > rect.bottom - 60) return
-
-    activePointerIdRef.current = e.pointerId
-    pointerStartY.current = e.clientY
-    dragBaseIdxRef.current = activeEventIndex
-    currentDragIdxRef.current = activeEventIndex
-    setIsDragging(false)
-    setIsTouching(true)
-    setPreviewEvent(selectedEventRef.current)
-
-    e.currentTarget.setPointerCapture?.(e.pointerId)
-  }
-
-  const handleContainerPointerMove = (e) => {
-    if (e.pointerId !== activePointerIdRef.current) return
-    updateDraggedEvent(e.clientY)
-  }
-
-  const handleContainerPointerEnd = (e) => {
-    if (e.pointerId !== activePointerIdRef.current) return
-    e.currentTarget.releasePointerCapture?.(e.pointerId)
-    finalizeDrag()
-  }
-
-  const handleContainerPointerCancel = (e) => {
-    if (e.pointerId !== activePointerIdRef.current) return
-    e.currentTarget.releasePointerCapture?.(e.pointerId)
-    finalizeDrag()
-  }
 
   useEffect(() => {
     const previewElement = eventPreviewRef.current
@@ -3298,16 +3182,6 @@ function EventsTab({ events }) {
     }
   }
 
-  const formatTopTime = (dateStr) => {
-    if (!dateStr) return ''
-    const d = new Date(dateStr)
-    let h = d.getHours()
-    const m = String(d.getMinutes()).padStart(2, '0')
-    const ampm = h >= 12 ? 'PM' : 'AM'
-    h = h % 12 || 12
-    return `${String(h).padStart(2, '0')}:${m} ${ampm}`
-  }
-
   const formatTimeRange = (ev) => {
     const startDate = getPrimaryEventDateTime(ev)
     if (!startDate) return ''
@@ -3392,20 +3266,7 @@ function EventsTab({ events }) {
   }
 
   const W = 'var(--member-screen-width, min(calc(100vw - 32px), 398px))'
-  const fs = {
-    day: `calc(${W} * 0.06)`,
-    date: `calc(${W} * 0.24)`,
-    month: `calc(${W} * 0.255)`,
-    guide: `calc(${W} * 0.032)`, // same as MY tab guide
-  }
   // Events hero alignment knobs:
-  // - eventHeroThumbSize locks the lightbox square size.
-  // - eventDateTopNudge/eventDateBottomNudge tune the visible font edges.
-  // - eventDateNumberStretch stretches the number row downward toward the month.
-  const eventHeroThumbSize = `calc(${W} * 0.46)`
-  const eventDateTopNudge = '-4px'
-  const eventDateBottomNudge = '6px'
-  const eventDateNumberStretch = 1.35
   const eventDateTop = '1px'
   const eventDetailsTop = `calc(${W} * 0.467)`
   const eventCollapsedCardHeight = `calc(${W} * 0.653)`
@@ -3414,11 +3275,6 @@ function EventsTab({ events }) {
     : `calc(100% - ${eventCollapsedCardHeight})`
   const displayEvent = selectedEvent
   const safeInstagramUrl = getSafeHttpsUrl(displayEvent?.instagram_url)
-  const eventIndicatorRows = Array.from(
-    { length: Math.ceil(allEvents.length / 5) },
-    (_, rowIndex) => allEvents.slice(rowIndex * 5, rowIndex * 5 + 5),
-  )
-
   const eventsByDate = {}
   datedEvents.forEach((ev) => {
     getEventDates(ev).forEach((key) => {
@@ -3447,18 +3303,6 @@ function EventsTab({ events }) {
     ),
   ]
   while (cells.length < 42) cells.push(null)
-
-  const handleDayPress = async (day) => {
-    if (!day) return
-    const key = `${calYear}-${String(calMonthIdx + 1).padStart(
-      2,
-      '0',
-    )}-${String(day).padStart(2, '0')}`
-    const dayEvents = eventsByDate[key]
-    if (!dayEvents?.length) return
-    await ensureEventFirstImageRatio(dayEvents[0])
-    setSelectedEvent(dayEvents[0])
-  }
 
   const closeEventList = () => {
     window.sessionStorage.removeItem(MEMBER_EVENT_LIST_OPEN_KEY)
@@ -3731,162 +3575,6 @@ function EventsTab({ events }) {
     return () => window.cancelAnimationFrame(frame)
   }, [eventListOpen, eventListNewestFirst, allEvents.length])
 
-  const renderEvent = (ev) => {
-    if (!ev) return null
-    const isExpanded = expandedId === ev.id
-    const imgs = ev.image_urls || []
-    // Only plain https links (no javascript: or other schemes) become links.
-    const instaUrl = getSafeHttpsUrl(ev.instagram_url)
-    const currentSlide = slideIndexes[ev.id] || 0
-
-    return (
-      <div
-        key={ev.id}
-        className="bg-white rounded-2xl border border-gray-100 overflow-hidden dark:border-[#2c2c2e] dark:bg-[#111111]"
-      >
-        <button
-          onClick={() => setExpandedId(isExpanded ? null : ev.id)}
-          className="w-full text-left p-5"
-        >
-          <div className="flex items-center justify-between">
-            <p className="font-semibold text-gray-900 dark:text-white">{ev.title}</p>
-            <span className="text-gray-400 text-sm ml-2 dark:text-gray-500">
-              {isExpanded ? '-' : '+'}
-            </span>
-          </div>
-          {getPrimaryEventDate(ev) && (
-            <div className="flex items-center gap-1.5 text-sm text-orange-500 mt-1">
-              <Calendar size={14} weight="fill" />
-              <span>
-                {new Date(getPrimaryEventDateTime(ev)).toLocaleString('ko-KR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })} {formatTimeRange(ev)}
-              </span>
-            </div>
-          )}
-          {ev.location && (
-            <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5 dark:text-gray-400">
-              <MapPin size={14} weight="fill" />
-              <span>{plainText(ev.location)}</span>
-            </div>
-          )}
-        </button>
-
-        {isExpanded && (
-          <div>
-            {imgs.length > 0 && (
-              <div className="px-4">
-                <div
-                  className="md:hidden"
-                  onTouchStart={(e) => {
-                    e.currentTarget._sx = e.touches[0].clientX
-                  }}
-                  onTouchEnd={(e) => {
-                    const dx =
-                      e.changedTouches[0].clientX - e.currentTarget._sx
-                    if (dx < -40 && currentSlide < imgs.length - 1)
-                      setSlide(ev.id, currentSlide + 1)
-                    else if (dx > 40 && currentSlide > 0)
-                      setSlide(ev.id, currentSlide - 1)
-                  }}
-                >
-                  <div
-                    className="relative rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800"
-                    style={{ aspectRatio: '1/1' }}
-                  >
-                    <div
-                      className="flex h-full"
-                      style={{
-                        transform: `translateX(-${
-                          currentSlide * 100
-                        }%)`,
-                        transition: 'transform 0.3s ease',
-                      }}
-                    >
-                      {imgs.map((url, i) => (
-                        <div
-                          key={i}
-                          className="w-full h-full flex-shrink-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800"
-                        >
-                          <img
-                            src={url}
-                            alt=""
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'contain',
-                            }}
-                                draggable={false}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    {imgs.length > 1 && (
-                      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
-                        {imgs.map((_, i) => (
-                          <div
-                            key={i}
-                            onClick={() => setSlide(ev.id, i)}
-                            className={
-                              'rounded-full cursor-pointer ' +
-                              (i === currentSlide
-                                ? 'bg-white w-2 h-2'
-                                : 'bg-white bg-opacity-50 w-1.5 h-1.5')
-                            }
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="px-5 pb-5">
-              {ev.description && (
-                <RichText
-                  text={ev.description}
-                  className="text-sm text-gray-600 mt-3 leading-relaxed block dark:text-gray-300"
-                />
-              )}
-              <div className="flex gap-2 mt-3">
-                {getPrimaryEventDate(ev) && (
-                  <button
-                    onClick={() => addToCalendar(ev)}
-                    className="flex-1 text-xs bg-gray-100 text-gray-700 px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 dark:bg-gray-800 dark:text-gray-200"
-                  >
-                    <Calendar size={14} weight="fill" />
-                    캘린더에 추가
-                  </button>
-                )}
-                {instaUrl && (
-                  <a
-                    href={instaUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 text-xs bg-orange-500 text-white px-3 py-2 rounded-lg text-center flex items-center justify-center gap-1.5"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zM5.838 12a6.162 6.162 0 1 1 12.324 0 6.162 6.162 0 0 1-12.324 0zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm4.965-10.322a1.44 1.44 0 1 1 2.881.001 1.44 1.44 0 0 1-2.881-.001z" />
-                    </svg>
-                    Instagram에서 열기
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   // First-panel image + color logic
   const displayImages = displayEvent?.image_urls || []
   const showParticipationButton = displayEvent?.show_participation_button !== false
@@ -3925,7 +3613,7 @@ function EventsTab({ events }) {
     if (displayImageSlide > displayImages.length - 1) {
       setSlide(displayEvent.id, displayImages.length - 1)
     }
-  }, [displayEvent, displayImages.length, displayImageSlide])
+  }, [displayEvent, displayImages.length, displayImageSlide, setSlide])
 
   useEffect(() => {
     if (!eventCardOpen && eventCardScrollRef.current) {
@@ -3933,26 +3621,8 @@ function EventsTab({ events }) {
     }
   }, [eventCardOpen, displayEvent?.id])
 
-  const PAST_DATE_COLOR = '#4b5563'
-const PAST_DARK_DATE_COLOR = '#BDBDBD'
-const DRAG_DATE_COLOR = '#9ca3af'
-
-const isPastSelected =
-  getEventStatus(displayEvent) === 'PAST'
 const isNextSelected =
   Boolean(nextEvent && displayEvent && displayEvent.id === nextEvent.id)
-
-const baseDateColor = isPastSelected ? PAST_DATE_COLOR : '#1f2937'
-
-const effectiveDateColor = isDragging
-  ? DRAG_DATE_COLOR
-  : isNextSelected
-    ? '#f97316'
-  : darkMode && isPastSelected
-    ? PAST_DARK_DATE_COLOR
-    : darkMode
-      ? '#F7F8F9'
-      : baseDateColor
 
   const eventListBg = darkMode ? '#303236' : '#f2f3f5'
   const eventListFade =
@@ -3976,7 +3646,6 @@ const effectiveDateColor = isDragging
   const eventListDividerColor = darkMode ? 'rgba(255,255,255,0.12)' : '#e5e7eb'
   const eventListChevronColor = darkMode ? 'rgba(255,255,255,0.76)' : '#111827'
 
-  const detailImages = displayEvent?.image_urls || []
   const eventDateParts = getPrimaryEventDate(displayEvent)
     ? formatTopDate(getPrimaryEventDate(displayEvent))
     : null
@@ -4086,57 +3755,6 @@ const effectiveDateColor = isDragging
           <>
             <div className="absolute inset-0 bg-white dark:bg-[#121212]" />
 
-            {false && eventIndicatorRows.length > 0 && (
-              <div
-                aria-label="Event position indicator"
-                style={{
-                  position: 'fixed',
-                  right: '24px',
-                  top: 'calc(env(safe-area-inset-top) + 62px)',
-                  zIndex: 96,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: '3px',
-                  pointerEvents: 'none',
-                  opacity: eventCardOpen || eventListOpen ? 0 : 1,
-                  transition: 'opacity 0.2s ease',
-                }}
-              >
-                {eventIndicatorRows.map((row, rowIndex) => (
-                  <div key={rowIndex} style={{ display: 'flex', height: '9px', alignItems: 'center', gap: '3px' }}>
-                    {row.map((event) => {
-                      const isDisplayed = event.id === displayEvent?.id
-                      const isUpcoming = event.id === nextEvent?.id
-                      return (
-                      <span
-                        key={event.id}
-                        style={{
-                          width: '9px',
-                          height: '9px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: isDisplayed ? '9px' : '6px',
-                            height: isDisplayed ? '9px' : '6px',
-                            borderRadius: '999px',
-                            background: isDisplayed
-                              ? (isUpcoming ? '#f97316' : (darkMode ? '#ffffff' : '#111827'))
-                              : (darkMode ? '#6b7280' : '#d1d5db'),
-                            transition: 'width 0.2s ease, height 0.2s ease',
-                          }}
-                        />
-                      </span>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
 
             {safeInstagramUrl && (
               <a
