@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Image as ImageIcon, MapPin, Ticket, Star, StarFour } from '@phosphor-icons/react'
-import { BowlSteam, HandHeart, Wine, CoinVertical } from '@phosphor-icons/react'
 import { useStoreReviewSummary } from '../hooks/useStoreReviewSummary'
 import { computeStarDisplay, formatAverageRating } from '../domain/reviewDomain'
-import { REVIEW_TAGS } from '../domain/reviewTypes'
+import { getPlaceReviewCriteria } from '../domain/reviewCriteria'
+import PlaceIcon from './icons/PlaceIcon'
 import { REVIEW_BOX_TYPES, getReviewBoxType, isScrapReviewBox, normalizeScrapBoard, placeImagePrefix } from '../domain/scrapBoard'
 import ScrapBoardViewer from './scrap/ScrapBoardViewer'
 import { GoodToKnowNotesPanel } from './GoodToKnowNotesPanel'
@@ -24,12 +24,7 @@ export function RichText({ text, className = '' }) {
   return <span className={className} dangerouslySetInnerHTML={{ __html: sanitizeRichText(text) }} />
 }
 
-const TAG_ICON_COMPONENTS = {
-  BowlSteam,
-  HandHeart,
-  Wine,
-  CoinVertical,
-}
+const DEFAULT_PLACE_CRITERIA = getPlaceReviewCriteria(null)
 
 const DARK_MUTED_ACCENT = '#374151'
 
@@ -97,8 +92,8 @@ function StarDisplay({
 
 // ?? Tag bar chart ???????????????????????????????????????????????
 
-function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
-  const displayTags = REVIEW_TAGS
+function TagBarChart({ tagCounts = {}, reviewCount = 0, criteria = DEFAULT_PLACE_CRITERIA }) {
+  const displayTags = criteria
     .map((tag) => ({
       ...tag,
       count: reviewCount > 0 ? Math.max(0, Number(tagCounts?.[tag.key]) || 0) : 0,
@@ -118,21 +113,13 @@ function TagBarChart({ tagCounts = {}, reviewCount = 0 }) {
 
         <div className="spot-card-tag-chart-rows flex flex-col gap-2.5 pl-4">
           {displayTags.map((tag) => {
-            const IconComponent = TAG_ICON_COMPONENTS[tag.icon]
             const pct =
               maxCount > 0 ? Math.round((tag.count / maxCount) * 100) : 0
 
             return (
               <div key={tag.key} className="spot-card-tag-chart-row flex items-center gap-2">
                 <div className="spot-card-tag-chart-label flex items-center gap-1 w-28 flex-shrink-0">
-                  {IconComponent && (
-                    <IconComponent size={13} weight="fill" color="#f97316" />
-                  )}
-                  {!IconComponent && (
-                    <span className="text-xs text-red-500">
-                      ❌ No icon for: {tag.icon}
-                    </span>
-                  )}
+                  <PlaceIcon name={tag.icon} size={13} weight="fill" color="#f97316" />
                   <span className="text-xs text-gray-600 truncate">
                     {tag.label}
                   </span>
@@ -1278,6 +1265,7 @@ function SpotCardSheet({
     : null
   const reviewCount = ratingSummary?.review_count ?? 0
   const reviewBoxType = getReviewBoxType(selected)
+  const placeCriteria = getPlaceReviewCriteria(selected)
   const scrapBoard = isScrapReviewBox(reviewBoxType)
     ? normalizeScrapBoard(selected.scrap_board, { prefix: SCRAP_IMAGE_PREFIX })
     : null
@@ -1633,6 +1621,7 @@ function SpotCardSheet({
                       <TagBarChart
                         tagCounts={ratingSummary?.tag_counts}
                         reviewCount={reviewCount}
+                        criteria={placeCriteria}
                       />
                     </div>
                   </div>
@@ -1643,6 +1632,7 @@ function SpotCardSheet({
                     <TagBarChart
                       tagCounts={ratingSummary?.tag_counts}
                       reviewCount={reviewCount}
+                      criteria={placeCriteria}
                     />
                   </div>
                 </div>

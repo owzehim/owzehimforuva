@@ -29,6 +29,19 @@ export default defineConfig({
       workbox: {
         skipWaiting: false,
         clientsClaim: false,
+        // 멤버 평가 icons (one small file each, 1,500+) are not pre-cached;
+        // the few a place uses are cached the first time they are shown.
+        globIgnores: ['**/assets/ph/**'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/assets/ph/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'place-icons',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+        ],
       },
       manifest: {
         name: 'UvA-IN 멤버십',
@@ -88,6 +101,14 @@ export default defineConfig({
         postBanner: (chunk) => (chunk.fileName.endsWith('.js')
           ? '/*! (c) 2026 Woojay Lim. Developed for UvA-IN. All rights reserved. Proprietary: no copying, reuse or AI training without written permission. */'
           : ''),
+        // On-demand 멤버 평가 icons and their name list go to assets/ph/
+        // (not pre-cached). Icons the app itself uses stay in assets/.
+        chunkFileNames: (chunk) => (
+          (chunk.isDynamicEntry && chunk.facadeModuleId?.includes('/@phosphor-icons/react/dist/csr/') && !chunk.isImplicitEntry)
+            || chunk.moduleIds.some((id) => id.includes('/components/icons/phosphorIconLoader'))
+            ? 'assets/ph/[name]-[hash].js'
+            : 'assets/[name]-[hash].js'
+        ),
         manualChunks(id) {
           if (id.includes('node_modules/@supabase')) {
             return 'vendor-supabase'
