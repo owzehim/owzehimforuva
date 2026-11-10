@@ -45,7 +45,8 @@ export function getCommercialLabelStyle(type, dark = false, size = 'marker') {
     background: type === RESTAURANT_COMMERCIAL_LABEL_TYPES.PAID_AD
       ? PAID_AD_LABEL_COLOR
       : MEMBER_DISCOUNT_LABEL_COLOR,
-    color: '#ffffff',
+    // Dark mode: black text, like the dark marker icon, so the badge does not glow.
+    color: dark ? '#121212' : '#ffffff',
     fontWeight: '700',
     whiteSpace: 'nowrap',
     ...(LABEL_SIZES[size] || LABEL_SIZES.marker),

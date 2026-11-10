@@ -253,7 +253,8 @@ export default function MapView({ restaurants, selected, onSelect, active = true
             ? '0 2px 10px rgba(0,0,0,0.55)'
             : '0 2px 6px rgba(0,0,0,0.15)'
     const displayName = r.map_label || r.name || ''
-    const iconColor = isPaidAd ? 'white' : isHighlighted ? (dark ? '#121212' : 'white') : '#f97316'
+    // 유료 광고 / 할인 제공 markers: white icon in light mode, black in dark mode.
+    const iconColor = isHighlighted ? (dark ? '#121212' : 'white') : '#f97316'
     const iconSvg = getMapIconSvg(r.category, iconColor)
 
     const el = document.createElement('div')
