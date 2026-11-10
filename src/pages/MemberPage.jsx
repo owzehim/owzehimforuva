@@ -307,8 +307,9 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin, 
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center bg-white dark:bg-[#121212] ${lockInteractions ? 'dev-no-selection' : ''}`} style={{ touchAction: lockInteractions ? 'pan-x pan-y pinch-zoom' : undefined }}>
-        <LoadingIndicator />
+      <div className={`min-h-[100dvh] bg-white dark:bg-[#121212] ${lockInteractions ? 'dev-no-selection' : ''}`} style={{ touchAction: lockInteractions ? 'pan-x pan-y pinch-zoom' : undefined }}>
+        {/* Same full-screen loader as app start, so nothing shifts when one replaces the other. */}
+        <LoadingIndicator fullScreen />
       </div>
     )
   }

@@ -2,7 +2,7 @@ export default function LoadingIndicator({ label = '로딩 중...', fullScreen =
   return (
     <div
       className={fullScreen
-        ? 'fixed inset-0 z-[5000] flex items-center justify-center bg-white dark:bg-[#121212]'
+        ? 'fixed inset-0 z-[5000] flex items-center justify-center gap-2.5 bg-white dark:bg-[#121212]'
         : 'flex w-full items-center justify-center gap-2.5'}
       role="status"
       aria-live="polite"
