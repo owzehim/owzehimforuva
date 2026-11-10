@@ -54,7 +54,6 @@ function errorMessage(error) {
 export function GoodToKnowNotesPanel({
   restaurantId,
   userId,
-  userEmail,
   username,
   canComment,
   isAdmin,
