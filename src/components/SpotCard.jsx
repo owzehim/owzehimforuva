@@ -691,6 +691,16 @@ function SpotImageThumbnail({ url, index, onTap, darkMode }) {
   )
 }
 
+// The Google Maps button's resting position under a tall card, remembered for
+// the session per viewport size. Compact cards reuse it so the button stays in
+// place when the member taps another marker (the compact card fits its text
+// above the button instead of moving the button).
+let rememberedButtonAnchor = null
+
+function viewportKey() {
+  return typeof window === 'undefined' ? '' : `${window.innerWidth}x${window.innerHeight}`
+}
+
 export function SpotCard({
   selected,
   onClose,
@@ -1106,11 +1116,21 @@ export function SpotCard({
     isCollapsed &&
     typeof window !== 'undefined' &&
     window.matchMedia('(orientation: portrait)').matches
+  const isPortraitViewport =
+    typeof window !== 'undefined' && window.matchMedia('(orientation: portrait)').matches
+  const rememberedAnchorY = rememberedButtonAnchor?.key === viewportKey() ? rememberedButtonAnchor.y : null
+  // Tall cards centre the button; compact cards (portrait) keep it where the
+  // last tall card put it.
+  const buttonAnchorY = googleMapsButtonCenterY ?? (
+    (shouldCenterGoogleMapsButtonInPortrait || (spotCardHeightMode !== 'full' && isPortraitViewport))
+      ? rememberedAnchorY
+      : null
+  )
   const shouldShowGoogleMapsButton =
     showFixedGoogleMapsButton &&
     isVisible &&
     !closing &&
-    (!shouldCenterGoogleMapsButtonInPortrait || googleMapsButtonCenterY != null)
+    (!shouldCenterGoogleMapsButtonInPortrait || buttonAnchorY != null)
 
   useEffect(() => {
     if (
@@ -1150,6 +1170,7 @@ export function SpotCard({
       const tabsTop = bottomTabs.getBoundingClientRect().top
       const nextCenter = Math.round((imageBottom + tabsTop) / 2)
       if (Number.isFinite(nextCenter)) {
+        rememberedButtonAnchor = { key: viewportKey(), y: nextCenter }
         setGoogleMapsButtonCenterY((current) => (current === nextCenter ? current : nextCenter))
       }
     }
@@ -1644,9 +1665,9 @@ export function SpotCard({
           <span
             className="spot-card-commercial-label absolute"
             style={{
-              ...getCommercialLabelStyle(commercialLabelType, darkMode),
+              ...getCommercialLabelStyle(commercialLabelType, darkMode, 'card'),
               left: 16,
-              bottom: 'calc(100% + 6px)',
+              bottom: 'calc(100% + 8px)',
               opacity: isCollapsed && isVisible && !closing ? 1 : 0,
               transition: 'opacity 0.2s ease',
             }}
@@ -1668,17 +1689,17 @@ export function SpotCard({
             // Same timing as the sheet, so the button slides up and down with it.
             transition: isDragging
               ? 'opacity 0.2s ease'
-              : 'transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.2s ease',
-            ...(googleMapsButtonCenterY == null
+              : 'transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.2s ease, top 0.25s ease',
+            ...(buttonAnchorY == null
               ? { bottom: 'calc(env(safe-area-inset-bottom) + 115px)' }
-              : { top: `${googleMapsButtonCenterY}px`, bottom: 'auto' }),
+              : { top: `${buttonAnchorY}px`, bottom: 'auto' }),
             zIndex: 1020,
             transform:
               closing || !isVisible
-                ? googleMapsButtonCenterY == null
+                ? buttonAnchorY == null
                   ? `translateY(${fixedButtonHiddenOffset}px)`
                   : `translateY(calc(-50% + ${fixedButtonHiddenOffset}px))`
-                : googleMapsButtonCenterY == null
+                : buttonAnchorY == null
                   ? 'translateY(0)'
                   : 'translateY(-50%)',
             willChange: 'opacity, transform',
