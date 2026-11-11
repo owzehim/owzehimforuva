@@ -3,6 +3,7 @@ import { getCorsHeaders, isAllowedCorsOrigin } from '../_shared/cors.js'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 
+const RECOVERY_REQUEST_MAX_AGE_MS = 60 * 60 * 1000
 const SIGNAL_TTL_MS = 15 * 60 * 1000
 
 async function hashToken(token: string) {
@@ -83,6 +84,13 @@ Deno.serve(async (req) => {
       if (!bearerToken) return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders)
       const { data: { user }, error: authError } = await admin.auth.getUser(bearerToken)
       if (authError || !user || !isEmailLinkSession(bearerToken)) {
+        return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders)
+      }
+      // SEC-61: a reset must have been requested for this account in the last
+      // hour. A normal sign-in session of an account with no recent reset
+      // request cannot pose as a completed reset.
+      const recoverySentAt = Date.parse(String((user as { recovery_sent_at?: string }).recovery_sent_at || ''))
+      if (!Number.isFinite(recoverySentAt) || Date.now() - recoverySentAt > RECOVERY_REQUEST_MAX_AGE_MS) {
         return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders)
       }
 
