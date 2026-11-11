@@ -17,6 +17,9 @@ concurrency:
 jobs:
   retry:
     runs-on: ubuntu-latest
+    # SEC-64: RETENTION_JOB_SECRET lives in the `production-db` environment,
+    # which only the main branch may use (Settings > Environments > production-db).
+    environment: production-db
     timeout-minutes: 5
     steps:
       - name: Re-send queued Sheet rows
