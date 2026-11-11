@@ -61,6 +61,21 @@ function App() {
     setLegalConsentCheckKey((current) => current + 1)
   }, [])
 
+  // GDPR-21: an app that stays open must still notice new legal documents.
+  // Re-check when it comes back to the foreground (at most every 10 minutes).
+  useEffect(() => {
+    if (!userId) return undefined
+    let lastCheck = Date.now()
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - lastCheck < 10 * 60_000) return
+      lastCheck = Date.now()
+      refreshLegalConsent()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [userId, refreshLegalConsent])
+
   useEffect(() => {
     if (!userId || isOtpPending || !sessionClaimed) {
       setLegalConsentState(null)

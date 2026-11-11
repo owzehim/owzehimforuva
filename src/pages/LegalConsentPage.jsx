@@ -28,6 +28,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
         retry: '다시 확인',
         loadError: '동의 상태를 확인하지 못했습니다. 다시 시도해 주세요.',
         saveError: '동의 내용을 저장하지 못했습니다. 다시 시도해 주세요.',
+        updateRequired: '약관이 새로 바뀌었어요. 앱을 완전히 닫았다가 다시 열어 최신 버전으로 업데이트한 뒤 동의해 주세요.',
         working: '저장 중',
       }
     : {
@@ -43,6 +44,7 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
         retry: 'Check again',
         loadError: 'We could not check your consent status. Please try again.',
         saveError: 'We could not save your consent. Please try again.',
+        updateRequired: 'The documents have changed. Close the app completely and reopen it to update, then accept again.',
         working: 'Saving',
       }, [language])
   const allChecked = DOCUMENT_KEYS.every((key) => checked[key])
@@ -57,12 +59,19 @@ export default function LegalConsentPage({ onAccepted, onRetry, statusError = fa
     let invokeError
     try {
       ({ data, error: invokeError } = await supabase.functions.invoke('manage-legal-consent', {
-        body: { action: 'accept', documentKeys: DOCUMENT_KEYS },
+        body: { action: 'accept', documentKeys: DOCUMENT_KEYS, documentVersion: LEGAL_DOCUMENT_VERSION },
       }))
     } catch (requestError) {
       invokeError = requestError
     }
     setSubmitting(false)
+    // GDPR-21: the server refuses consent to an outdated text (409).
+    const mismatch = data?.code === 'version_mismatch' ||
+      (invokeError?.context?.status === 409)
+    if (mismatch) {
+      setError(labels.updateRequired)
+      return
+    }
     if (invokeError || data?.success !== true) {
       setError(labels.saveError)
       return

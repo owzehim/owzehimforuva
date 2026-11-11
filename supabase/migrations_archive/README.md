@@ -39,3 +39,9 @@ neither database).
 One change = one migration file, applied first to DEV and then to production **under the same
 version** (file + ledger row in one transaction), never a second copy with a new timestamp.
 See "Database changes and deployment" in the repository README.
+
+## Duplicate kept for history (archived 2026-11-11, CITS report v4 OPS-08)
+
+`20261015023458_func03_fix_stamp_card_cycle_ambiguity.sql` has the same SQL as
+`20261014004646_fix_stamp_card_cycle_ambiguity.sql` (still in `supabase/migrations/`). Production's
+ledger records it as `20261014004646`, DEV's as `20261015023458`; both databases have the change.

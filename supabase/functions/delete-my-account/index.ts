@@ -78,6 +78,14 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ success: false, message: '허용되지 않은 요청입니다.' }, 405)
 
   let stage = 'request_validation'
+
+  // FUNC-13: once the queue entry exists, a failure later on is finished by
+
+  // the daily retention job instead of leaving a half-deleted account.
+
+  let deletionQueued = false
+  let queueClient: ReturnType<typeof createClient> | null = null
+  let queuedUserId: string | null = null
   try {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
     const body = await req.json().catch(() => null)
@@ -150,6 +158,9 @@ Deno.serve(async (req) => {
         lease_until: new Date(Date.now() + 10 * 60_000).toISOString(),
       }, { onConflict: 'user_id' })
     if (sheetQueueError) throw new Error('Master Sheet anonymization could not be queued')
+    deletionQueued = true
+    queueClient = admin
+    queuedUserId = user.id
 
     stage = 'profile_image_cleanup'
     const { error: imageError } = await admin.storage
@@ -204,6 +215,7 @@ Deno.serve(async (req) => {
     stage = 'auth_user_deletion'
     const { error: deleteUserError } = await admin.auth.admin.deleteUser(user.id)
     if (deleteUserError) throw new Error('Auth account deletion failed')
+    deletionQueued = false
 
     // Database and Auth are done. Anonymize the Master Sheet now; on failure
     // the queued entry (no Auth foreign key) is retried by the daily job.
@@ -232,6 +244,19 @@ Deno.serve(async (req) => {
       stage,
       error: error instanceof Error ? error.message : 'Unknown error',
     })
+    if (deletionQueued && queueClient && queuedUserId) {
+      // FUNC-13: the member asked for deletion and some data is already gone.
+      // Let the daily retention job finish it (delete the account, clean the
+      // database, anonymize the Master Sheet) instead of only anonymizing.
+      const { error: handOverError } = await queueClient
+        .from('privacy_sheet_sync_queue')
+        .update({ delete_auth_user: true, sync_master_sheet: true, database_done: false, lease_until: null, next_attempt_at: new Date().toISOString() })
+        .eq('user_id', queuedUserId)
+      if (!handOverError) {
+        return json({ success: false, message: '계정 삭제를 마무리하지 못했어요. 남은 정리는 하루 안에 자동으로 끝나며, 그동안 다시 로그인하지 않아도 돼요.' }, 202)
+      }
+      console.error('Account deletion could not be handed to the daily job')
+    }
     return json({ success: false, message: '계정 삭제가 완료되지 않았습니다. 데이터가 일부 남아 있을 수 있으니 관리자에게 문의해 주세요.' }, 500)
   }
 })

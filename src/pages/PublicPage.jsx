@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { SpotCard } from '../components/SpotCard'
 import { MAP_CATEGORIES, CATEGORY_ICONS_WHITE, CATEGORY_ICONS_ORANGE, CATEGORY_ICONS_BLACK } from '../lib/mapCategories'
 import { getVisibleMapCategories } from '../lib/mapCategoryVisibility'
-import { MapPin, Lock, ForkKnife, Calendar, CalendarDots, Users } from '@phosphor-icons/react'
+import { MapPin, Lock, ForkKnife, CalendarDots, Users } from '@phosphor-icons/react'
 import { primeStoreReviewSummaries } from '../hooks/useStoreReviewSummary'
 import { useDevInteractionLock } from '../lib/devInteractionLock'
 
@@ -638,6 +638,10 @@ function MembershipCarousel() {
         >
           로그인
         </button>
+        {/* LEG-02: the same statement as the Terms, visible on the public page. */}
+        <p className="membership-not-affiliated pointer-events-none absolute left-0 right-0 mx-auto max-w-sm break-keep px-5 text-center text-[10px] leading-[13px] text-gray-500 dark:text-gray-400" style={{ top: 'calc(100% + 6px)' }}>
+          UvA-IN은 암스테르담 대학교(UvA)의 공식 단체가 아니며 대학교와 제휴 관계가 없습니다.
+        </p>
       </div>
     </div>
   )
@@ -716,73 +720,6 @@ function MembershipImageLayer({
 }
 
 // eslint-disable-next-line no-unused-vars
-function MembershipTab() {
-  const navigate = useNavigate()
-  return (
-    <div className="h-full overflow-y-auto flex items-center justify-center bg-white no-highlight-zone">
-      <div
-        className="py-8"
-        style={{ width: 'calc(100% - 32px)', maxWidth: '368px' }}
-      >
-        <div className="membership-heading text-center mb-8">
-          <h2 className="mb-2 text-3xl font-bold text-gray-900">완벽한 캠퍼스 라이프를 위한 시작</h2>
-          <p className="text-sm font-normal leading-relaxed text-gray-400">
-            UvA-IN Membership
-          </p>
-          <p className="text-gray-500 text-sm leading-relaxed">UvA-IN Membership</p>
-        </div>
-
-        <div className="space-y-3 mb-8">
-          <Benefit icon={<ForkKnife size={24} weight="fill" color="#f97316" />} title="로컬 맛집 & 카페 제휴 할인">
-            암스테르담 곳곳의 제휴 매장 혜택
-          </Benefit>
-          <Benefit icon={<Calendar size={24} weight="fill" color="#3b82f6" />} title="캠퍼스 이벤트 참가비 할인">
-            UvA-IN 독점 이벤트 지원 혜택
-          </Benefit>
-          <Benefit icon={<Users size={24} weight="fill" color="#22c55e" />} title="글로벌 캠퍼스 네트워크">
-            네덜란드 유학생 커뮤니티 연결
-          </Benefit>
-        </div>
-
-        <button
-          onClick={() => navigate('/login')}
-          className="mb-3 w-full rounded-full bg-orange-500 py-3 font-semibold text-white transition-colors hover:bg-orange-600"
-        >
-          로그인
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate('/report-content')}
-          className="block w-full text-center text-xs text-gray-500 underline underline-offset-2"
-        >
-          콘텐츠 신고
-        </button>
-
-        <p className="mt-4 text-center text-[11px] leading-relaxed text-gray-500">
-          UvA-IN은 UvA 학생들이 운영하는 독립 학생 단체로, 암스테르담 대학교(UvA)의 공식 단체가 아니며 대학교와 제휴 관계가 없습니다.
-        </p>
-
-        <button
-  onClick={() => navigate('/register')}
-  style={{ display: 'none' }}
-  className="
-    w-full
-    font-semibold
-    py-3
-    rounded-full
-    transition-colors
-    bg-gray-200 text-gray-900 hover:bg-gray-300
-    dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700
-  "
->
-  회원가입
-</button>
-      </div>
-    </div>
-  )
-}
-
 function Benefit({ icon, title, children }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-start gap-3">
