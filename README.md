@@ -85,8 +85,9 @@ the same commit to `dev`.
 
 ## Backups
 
-`.github/workflows/backup-production-db.yml` runs daily at 02:30 UTC (before the 03:15 retention
-job) and on demand. It dumps roles, schema, data and the migration ledger, checks them, encrypts
+`.github/workflows/backup-production-db.yml` runs daily at 02:30 UTC and on demand. The privacy
+retention job runs only after a successful backup (OPS-18), so a fresh backup always exists just
+before data is deleted. It dumps roles, schema, data and the migration ledger, checks them, encrypts
 them with [age](https://age-encryption.org) and keeps the encrypted archive as a workflow artifact
 for 30 days. Only the encrypted file leaves the runner; this repository is public.
 
@@ -108,6 +109,18 @@ for 30 days. Only the encrypted file leaves the runner; this repository is publi
 
   Tested 2026-11-05: a workflow-format archive decrypted, passed its checksums and restored into an
   empty local Supabase stack in about 2 seconds with all row counts matching production.
+
+- **After a restore, re-apply the deletions made since the backup (OPS-18).** A backup still
+  contains members who later deleted their account or whose retention period ended, so restoring
+  it would bring them back. Before opening the restored database to the app:
+  1. Note the backup time (the `<stamp>` in the file name, UTC).
+  2. In the *old* project (if still reachable), list what happened after that time:
+     `select action, executed_at, record_count, details from public.privacy_action_log where executed_at > '<stamp>';`
+     and the Auth users that existed in the backup but no longer exist in the old project.
+  3. In the restored project, delete those Auth users again (dashboard → Authentication, or the
+     Admin API), then run the retention job once by hand (Actions → *Daily privacy retention* →
+     Run workflow) so expired members are anonymized and queued Master Sheet steps run again.
+  4. Write down in `supabase/baselines/` what was restored and re-applied, with the date.
 
 ## Security
 

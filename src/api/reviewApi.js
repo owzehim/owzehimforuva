@@ -254,14 +254,14 @@ async function syncReviewCommentToRestaurantNotes({
 
   // Author fields (username, photo, colour) are set by the server from the
   // note owner's profile (SEC-55); members may only update body/is_anonymous.
-  const notePayload = {
-    body: trimmedComment,
-    is_anonymous: !username,
-  }
+  // GDPR-23: editing a review only changes the note text. A note that is
+  // anonymous (for example after the username was removed) stays anonymous
+  // even if the member sets a new username later.
   const result = existingNote
-    ? await supabase.from('restaurant_notes').update(notePayload).eq('id', existingNote.id)
+    ? await supabase.from('restaurant_notes').update({ body: trimmedComment }).eq('id', existingNote.id)
     : await supabase.from('restaurant_notes').insert({
-        ...notePayload,
+        body: trimmedComment,
+        is_anonymous: !username,
         username: username || '익명',
         restaurant_id: restaurant.id,
         user_id: userId,

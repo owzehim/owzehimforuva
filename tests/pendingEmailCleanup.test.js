@@ -98,7 +98,7 @@ async function runRegistration(f, body = {}) {
     createClient: () => f.admin, getCorsHeaders: () => ({}), isAllowedCorsOrigin: () => true,
     getSupabaseServiceKey: () => 'synthetic', apiKeyOnlyFetch: () => undefined,
     finalizePendingEmail: (admin, verifiedUser) => finalizePendingEmail(admin, verifiedUser, async () => {}),
-    getConsentAcceptedAt, getConsentReceiptRows, getStudentNumberRegistrationFields,
+    CURRENT_LEGAL_DOCUMENT_VERSION: 'test-version', getConsentAcceptedAt, getConsentReceiptRows, getStudentNumberRegistrationFields,
     Response, Date, console: { error() {} },
   })
   const response = await handler(new Request('https://example.invalid', {

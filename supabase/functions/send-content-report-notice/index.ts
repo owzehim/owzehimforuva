@@ -157,6 +157,20 @@ Deno.serve(async (req) => {
       new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([recipient, subject, text])))),
       (byte) => byte.toString(16).padStart(2, '0'),
     ).join('').slice(0, 32)
+    // SEC-62: claim this exact notice first; if it was already sent, stop.
+    const { error: claimError } = await admin
+      .from('content_report_notice_log')
+      .insert({ report_id: report.id, recipient_kind: recipientKind, content_digest: contentDigest })
+    if (claimError) {
+      if (claimError.code === '23505') return json({ success: true, alreadySent: true })
+      console.error('Moderation email send log failed')
+      return json({ success: false, message: '이메일 발송 기록을 저장하지 못했습니다.' }, 500)
+    }
+    const releaseClaim = () => admin
+      .from('content_report_notice_log')
+      .delete()
+      .match({ report_id: report.id, recipient_kind: recipientKind, content_digest: contentDigest })
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -168,6 +182,8 @@ Deno.serve(async (req) => {
     })
     if (!response.ok) {
       console.error('Resend rejected moderation email:', response.status)
+      // Not sent: allow a later retry.
+      await releaseClaim()
       return json({ success: false, message: `이메일 발송에 실패했습니다. (Resend ${response.status})` }, 502)
     }
 
