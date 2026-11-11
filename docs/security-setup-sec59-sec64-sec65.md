@@ -55,33 +55,77 @@ account that requested a reset in the last hour.
 
 ---
 
-## SEC-64 — production database password only for the `main` branch
+## SEC-64 — production secrets only for the `main` branch
 
-**Why:** today any branch's workflow can read `SUPABASE_PROD_DB_URL` (full database access).
+**Why:** today any branch's workflow can read `SUPABASE_PROD_DB_URL` (full database access) and
+`RETENTION_JOB_SECRET`. After these steps only workflows running on `main` can.
 
-The backup, retention and permission-check workflows already use a GitHub Environment called
-`production-db`. Until you create it, GitHub uses the existing repository secrets, so nothing breaks.
+Four workflows use the environment `production-db`: *Encrypted production database backup*,
+*Database permission check*, *Daily privacy retention* and *Sheet sync retry*.
+Scheduled jobs always run the version on `main`, so steps A–C can be done any time, but step D
+(deleting the repository secrets) only **after this change is on `main`** (the next production
+release). Before that, `main` still reads the repository secrets.
+Leave the existing `Production` / `Preview` environments alone: Vercel uses them.
 
-Do **not** reuse the existing `Production` / `Preview` environments: Vercel creates those for its
-deployment records, and branch rules or secrets there would mix with Vercel's deployments.
+### A. Create the environment
 
-1. GitHub → repository → **Settings → Environments → New environment** → name `production-db`.
-2. **Deployment branches and tags** → *Selected branches and tags* → add rule `main`.
-3. **Required reviewers**: leave **off**. The backup runs every night and the retention job right
-   after it; a required approval would stop them until someone clicks approve.
-   (Branch-only access already blocks the risk the report describes: another branch's workflow
-   reading the password. Changes to `main` itself go through reviewed pull requests.)
-4. **Environment secrets** → add:
-   - `SUPABASE_PROD_DB_URL` — Supabase (production) → **Connect → Session pooler** connection
-     string, with the database password filled in. If nobody has the password, reset it in
-     **Project Settings → Database → Reset database password**; only these GitHub workflows use it.
-   - `RETENTION_JOB_SECRET` — the same value as the Edge Function secret of the same name in
-     production. If nobody has it, make a new one (`openssl rand -hex 32`), set it in **Supabase →
-     Edge Functions → Secrets** (production) *and* here, at the same time.
-5. **Settings → Secrets and variables → Actions → Repository secrets** → delete
-   `SUPABASE_PROD_DB_URL` and `RETENTION_JOB_SECRET` (the environment copies replace them).
-6. **Actions** → run *Encrypted production database backup* and *Database permission check*
-   once from `main`. The retention job then starts by itself after the backup. All three should be green.
+1. GitHub → repository → **Settings → Environments → New environment**.
+2. Name: `production-db` → **Configure environment**.
+3. **Required reviewers**: leave unticked. **Wait timer**: leave unticked.
+4. **Deployment branches and tags**: change *No restriction* to **Selected branches and tags** →
+   **Add deployment branch or tag rule** →
+   - **Ref type: Branch**
+   - **Name pattern: `main`**
+   - **Add rule**.
+
+### B. Secret 1 — `SUPABASE_PROD_DB_URL`
+
+GitHub never shows stored secret values, so you enter it again.
+
+1. Supabase → project **UvA-IN app** (`npvcghdzrtqrlliprtnw`) → **Connect** (top bar) →
+   **Connection String** tab → **Type: URI**, **Method: Session pooler** → copy the string. It looks like:
+   `postgresql://postgres.npvcghdzrtqrlliprtnw:[YOUR-PASSWORD]@aws-…-eu-west-1.pooler.supabase.com:5432/postgres`
+   Copy the host exactly as Supabase shows it (`aws-0-…` or `aws-1-…`), and keep port **5432**
+   (session pooler; 6543 is the transaction pooler and does not work for backups).
+2. Replace `[YOUR-PASSWORD]` (including the brackets) with the database password.
+   - Don't know it? **Project Settings → Database → Reset database password** → set a new one.
+     Only these GitHub workflows use it; the app and Edge Functions do not.
+   - If the password has special characters (`@ : / ? # % &`), either pick a password of only
+     letters and digits, or URL-encode those characters (for example `@` → `%40`).
+3. GitHub → **Settings → Environments → production-db → Environment secrets → Add environment secret**
+   → Name `SUPABASE_PROD_DB_URL` → Value: the full string from step 2 → **Add secret**.
+
+### C. Secret 2 — `RETENTION_JOB_SECRET`
+
+This must be the **same value** in two places: the Supabase Edge Function secret (production) and
+GitHub. Neither shows the old value, so make a new one and set it in both, a few minutes apart at most.
+
+1. Make a random value of 64 letters/digits, for example:
+   - Terminal: `openssl rand -hex 32`
+   - or a password manager's generator: length 64, letters and digits only (no symbols).
+   Keep it only in your password manager.
+2. Supabase → project **UvA-IN app** → **Edge Functions → Secrets** → find `RETENTION_JOB_SECRET`
+   → edit (or add a secret with the same name, which replaces it) → paste the new value → **Save**.
+3. GitHub → **Settings → Environments → production-db → Add environment secret** →
+   Name `RETENTION_JOB_SECRET` → the same value → **Add secret**.
+   (Between steps 2 and 3, a sheet-retry run may fail and open an alert issue; close it afterwards.)
+4. Do **not** touch `DEV_RETENTION_JOB_SECRET` (the DEV job keeps using it).
+
+### D. Remove the old repository copies (only after the change is on `main`)
+
+**Settings → Secrets and variables → Actions → Repository secrets** → delete
+`SUPABASE_PROD_DB_URL` and `RETENTION_JOB_SECRET`. Keep `SUPABASE_ACCESS_TOKEN`,
+`DEV_RETENTION_JOB_SECRET` and the others.
+
+### E. Check
+
+**Actions** tab, run each from branch `main` (**Run workflow**):
+
+1. *Encrypted production database backup* → green. *Daily privacy retention* then starts by itself → green.
+2. *Database permission check* → green.
+3. *Sheet sync retry* → green.
+
+If one fails with "Set … in GitHub Actions secrets", that secret is missing from `production-db`.
 
 Later (report step 2, optional): separate read-only database roles for backup and the check.
 

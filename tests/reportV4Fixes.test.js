@@ -105,7 +105,7 @@ test('SEC-59 / SEC-61 / SEC-64: one-time reset code, recent reset request, produ
   const signal = read('supabase/functions/password-reset-return-signal/index.ts')
   assert.match(signal, /recovery_sent_at/)
   assert.match(signal, /RECOVERY_REQUEST_MAX_AGE_MS = 60 \* 60 \* 1000/)
-  for (const file of ['backup-production-db.yml', 'database-permission-check.yml', 'privacy-retention-sync.yml']) {
+  for (const file of ['backup-production-db.yml', 'database-permission-check.yml', 'privacy-retention-sync.yml', 'sheet-sync-retry.yml']) {
     assert.match(read(`.github/workflows/${file}`), /environment: production-db$/m, file)
   }
 })
