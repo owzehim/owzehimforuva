@@ -19,7 +19,10 @@ export function getConsentAcceptedAt(authUser, preservedServerTimestamp = null) 
   return new Date().toISOString()
 }
 
-export function getConsentReceiptRows(userId, registration, acceptedAt) {
+// GDPR-21: pass currentVersion when saving. Sign-up consent is recorded only
+// if the app showed the current documents; otherwise nothing is recorded for
+// them and the member is asked to accept the current version after login.
+export function getConsentReceiptRows(userId, registration, acceptedAt, currentVersion = null) {
   if (!userId || !registration || typeof registration !== 'object' || Array.isArray(registration)) {
     return null
   }
@@ -40,12 +43,14 @@ export function getConsentReceiptRows(userId, registration, acceptedAt) {
   if (!DOCUMENT_KEYS.every((key) => normalizedVersions[key] !== null)) return null
   if (legacyPrivacyVersion !== normalizedVersions.privacy) return null
 
-  const documentReceipts = DOCUMENT_KEYS.map((documentKey) => ({
-    user_id: userId,
-    document_key: documentKey,
-    document_version: normalizedVersions[documentKey],
-    accepted_at: acceptedAt,
-  }))
+  const documentReceipts = DOCUMENT_KEYS
+    .filter((documentKey) => currentVersion === null || normalizedVersions[documentKey] === currentVersion)
+    .map((documentKey) => ({
+      user_id: userId,
+      document_key: documentKey,
+      document_version: normalizedVersions[documentKey],
+      accepted_at: acceptedAt,
+    }))
 
   if (registration.age_16_plus_confirmed !== true) return documentReceipts
 

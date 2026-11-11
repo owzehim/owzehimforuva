@@ -306,6 +306,16 @@ export default function ScanPage() {
               @{storeName}
             </p>
 
+            {/* SEC-63: staff must be able to tell a test scan from a real one. */}
+            {testMode && (
+              <div role="alert" className="w-full rounded-2xl border-2 border-red-500 bg-red-50 px-4 py-3 text-left">
+                <p className="text-sm font-extrabold text-red-600">TEST MODE — 혜택 없음</p>
+                <p className="mt-0.5 text-xs leading-5 text-red-700">
+                  시험용 계정의 체크인이에요. 할인이나 혜택을 제공하지 마세요. No benefit was redeemed.
+                </p>
+              </div>
+            )}
+
             <p className="text-base font-bold text-orange-500">
               이 <span className="text-orange-600 font-extrabold">화면과 학생증</span>을 함께 직원에게 제시해 주세요
             </p>

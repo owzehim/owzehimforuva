@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import {
+  CURRENT_LEGAL_DOCUMENT_VERSION,
   getConsentAcceptedAt,
   getConsentReceiptRows,
 } from '../_shared/legalConsent.js'
@@ -154,13 +155,15 @@ Deno.serve(async (req) => {
     }
     if (existingMember) {
       if (isValidRegistration(registration)) {
-        const receipts = getConsentReceiptRows(user.id, registration, consentAcceptedAt)
-        const { error: receiptError } = await admin
-          .from('legal_consent_receipts')
-          .upsert(receipts, {
-            onConflict: 'user_id,document_key,document_version',
-            ignoreDuplicates: true,
-          })
+        const receipts = getConsentReceiptRows(user.id, registration, consentAcceptedAt, CURRENT_LEGAL_DOCUMENT_VERSION)
+        const { error: receiptError } = await (Array.isArray(receipts) && receipts.length === 0
+          ? Promise.resolve({ error: null })
+          : admin
+            .from('legal_consent_receipts')
+            .upsert(receipts, {
+              onConflict: 'user_id,document_key,document_version',
+              ignoreDuplicates: true,
+            }))
         if (receiptError) {
           console.error('Existing member consent receipt recovery failed')
           return json({ success: false, message: '동의 기록을 저장하지 못했습니다.' }, 500)
@@ -221,13 +224,15 @@ Deno.serve(async (req) => {
           .eq('user_id', user.id)
           .maybeSingle()
         if (!raceLookupError && racedMember) {
-          const receipts = getConsentReceiptRows(user.id, registration, consentAcceptedAt)
-          const { error: receiptError } = await admin
-            .from('legal_consent_receipts')
-            .upsert(receipts, {
-              onConflict: 'user_id,document_key,document_version',
-              ignoreDuplicates: true,
-            })
+          const receipts = getConsentReceiptRows(user.id, registration, consentAcceptedAt, CURRENT_LEGAL_DOCUMENT_VERSION)
+          const { error: receiptError } = await (Array.isArray(receipts) && receipts.length === 0
+            ? Promise.resolve({ error: null })
+            : admin
+              .from('legal_consent_receipts')
+              .upsert(receipts, {
+                onConflict: 'user_id,document_key,document_version',
+                ignoreDuplicates: true,
+              }))
           if (receiptError) {
             console.error('Raced member consent receipt recovery failed')
             return json({ success: false, message: '동의 기록을 저장하지 못했습니다.' }, 500)
@@ -249,13 +254,15 @@ Deno.serve(async (req) => {
       return json({ success: false, message: '회원 정보를 저장하지 못했습니다.' }, 500)
     }
 
-    const receipts = getConsentReceiptRows(user.id, registration, consentAcceptedAt)
-    const { error: receiptError } = await admin
-      .from('legal_consent_receipts')
-      .upsert(receipts, {
-        onConflict: 'user_id,document_key,document_version',
-        ignoreDuplicates: true,
-      })
+    const receipts = getConsentReceiptRows(user.id, registration, consentAcceptedAt, CURRENT_LEGAL_DOCUMENT_VERSION)
+    const { error: receiptError } = await (Array.isArray(receipts) && receipts.length === 0
+      ? Promise.resolve({ error: null })
+      : admin
+        .from('legal_consent_receipts')
+        .upsert(receipts, {
+          onConflict: 'user_id,document_key,document_version',
+          ignoreDuplicates: true,
+        }))
     if (receiptError) {
       console.error('Member consent receipt insert failed')
       return json({ success: false, message: '동의 기록을 저장하지 못했습니다.' }, 500)

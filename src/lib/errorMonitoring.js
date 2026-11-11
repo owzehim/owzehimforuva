@@ -23,7 +23,7 @@ export function initErrorMonitoring() {
   })
   if (!dsn || !environment || sentryPromise) return
 
-  sentryPromise = import('@sentry/react')
+  sentryPromise = import('./sentryLite.js')
     .then((Sentry) => {
       Sentry.init({
         dsn,

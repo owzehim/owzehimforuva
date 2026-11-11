@@ -1,8 +1,8 @@
 name: Encrypted production database backup
 
 # OPS-02 (CITS report): daily off-platform backup of the production database.
-# Runs before the 03:15 UTC privacy retention job, which deletes data
-# irreversibly.
+# The privacy retention job (which deletes data irreversibly) starts only
+# after this backup has succeeded (OPS-18, see privacy-retention-sync.yml).
 #
 # This repository is public: only the age-ENCRYPTED archive leaves the runner,
 # nothing from the database is printed to the log, and plaintext dumps are
@@ -39,7 +39,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq age
 
       - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: ${{ env.SUPABASE_CLI_VERSION }}
 
@@ -64,7 +64,8 @@ jobs:
           supabase db dump --db-url "$DB_URL" --data-only --use-copy -f data.sql
           supabase db dump --db-url "$DB_URL" --data-only --schema supabase_migrations -f migration_history.sql
 
-          # Completeness checks (counts only; no data is printed).
+          # Completeness checks. Nothing about people is printed (SEC-65): not
+          # even user or member counts.
           for f in roles.sql data.sql migration_history.sql; do
             grep -v '^[[:space:]]*$' "$f" | tail -n 1 | grep -qx 'RESET ALL;' || { echo "::error::$f is incomplete"; exit 1; }
           done
@@ -73,8 +74,6 @@ jobs:
             grep -q "^COPY $table " data.sql || { echo "::error::data.sql has no $table"; exit 1; }
           done
           echo "tables in dump: $(grep -c '^COPY ' data.sql)"
-          echo "auth users: $(awk '/^COPY "auth"."users" /{t=1;next} t&&/^\\\.$/{print n+0; exit} t{n++}' data.sql)"
-          echo "members: $(awk '/^COPY "public"."members" /{t=1;next} t&&/^\\\.$/{print n+0; exit} t{n++}' data.sql)"
 
           sha256sum roles.sql schema.sql data.sql migration_history.sql > SHA256SUMS.txt
           stamp="$(date -u +%Y%m%dT%H%MZ)"
@@ -89,7 +88,7 @@ jobs:
           echo "BACKUP_NAME=${archive%.tar.gz.age}" >> "$GITHUB_ENV"
 
       - name: Keep encrypted archive for 30 days
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ env.BACKUP_NAME }}
           path: ${{ env.BACKUP_DIR }}/*.age

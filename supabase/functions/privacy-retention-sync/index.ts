@@ -351,6 +351,13 @@ Deno.serve(async (req) => {
       )
     }
 
+    // FUNC-11: entries that failed 7+ times need a person to look at them.
+    const { count: stalledQueueCount, error: stalledQueueError } = await admin
+      .from('privacy_sheet_sync_queue')
+      .select('user_id', { count: 'exact', head: true })
+      .gte('attempts', 7)
+    if (stalledQueueError) console.error('Stalled privacy queue count failed')
+
     const overdueRecordCount = Number(overdueData) || 0
     const remainingQueueCount = Number(pendingQueueCount) || 0
     const success = failedCount === 0 && expiredSignupFailedCount === 0 && pendingEmailCleanup.failed === 0 &&
@@ -376,6 +383,7 @@ Deno.serve(async (req) => {
         sheet_failed_count: failedCount,
         overdue_record_count: overdueRecordCount,
         pending_sync_count: remainingQueueCount,
+        stalled_sync_count: Number(stalledQueueCount) || 0,
         historical_archive_updated: false,
       }),
       {
