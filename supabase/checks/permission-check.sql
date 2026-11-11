@@ -119,14 +119,14 @@ BEGIN
         FROM pg_attribute AS a
         WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
           AND has_column_privilege(x.role_name, c.oid, a.attnum, x.priv)
-      ), '') END AS found
+      ), '') END AS actual_entry
     FROM expected AS x
     JOIN pg_class AS c ON c.relname = x.table_name
     JOIN pg_namespace AS n ON n.oid = c.relnamespace AND n.nspname = 'public'
   )
-  SELECT string_agg(found || ' (expected ' || entry || ')', ', ' ORDER BY entry)
+  SELECT string_agg(actual_entry || ' (expected ' || entry || ')', ', ' ORDER BY entry)
     INTO unexpected
-  FROM actual WHERE found <> entry;
+  FROM actual WHERE actual_entry <> entry;
   IF unexpected IS NOT NULL THEN problems := problems || ('column privileges differ: ' || unexpected); END IF;
 
   WITH f AS (
