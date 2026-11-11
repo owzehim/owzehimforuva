@@ -55,9 +55,33 @@ export function useReviewPrompt(userId) {
     // ⚠️ TEST MODE: show after 10 seconds instead of waiting for prompt_at
     // To revert: change to checkForPrompt()
     if (isProductionEnv) {
+      // PERF-16: poll every 60 s only while the app is on screen; check once
+      // right away when it comes back to the foreground.
+      let intervalId = null
+      const start = () => {
+        if (intervalId !== null || document.visibilityState === 'hidden') return
+        intervalId = setInterval(checkForPrompt, 60_000)
+      }
+      const stop = () => {
+        if (intervalId === null) return
+        clearInterval(intervalId)
+        intervalId = null
+      }
+      const onVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          stop()
+        } else {
+          checkForPrompt()
+          start()
+        }
+      }
       checkForPrompt()
-      const intervalId = setInterval(checkForPrompt, 60_000)
-      return () => clearInterval(intervalId)
+      start()
+      document.addEventListener('visibilitychange', onVisibilityChange)
+      return () => {
+        stop()
+        document.removeEventListener('visibilitychange', onVisibilityChange)
+      }
     }
 
     const timerId = setTimeout(checkForPrompt, 10_000)

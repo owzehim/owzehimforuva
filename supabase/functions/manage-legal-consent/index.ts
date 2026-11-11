@@ -59,6 +59,16 @@ Deno.serve(async (req) => {
     if (body?.action !== 'accept' || !Array.isArray(body.documentKeys)) {
       return json({ success: false, message: '요청을 확인할 수 없습니다.' }, 400)
     }
+    // GDPR-21: record consent only for the version the app actually showed.
+    // An older app (no version, or a different one) must update first.
+    if (body.documentVersion !== CURRENT_LEGAL_DOCUMENT_VERSION) {
+      return json({
+        success: false,
+        code: 'version_mismatch',
+        requiredVersion: CURRENT_LEGAL_DOCUMENT_VERSION,
+        message: '약관이 새로 바뀌었어요. 앱을 최신 버전으로 업데이트한 뒤 다시 동의해 주세요.',
+      }, 409)
+    }
     const submitted = [...new Set(body.documentKeys)]
     if (submitted.length !== REQUIRED_DOCUMENT_KEYS.length ||
       REQUIRED_DOCUMENT_KEYS.some((key) => !submitted.includes(key))) {

@@ -1,8 +1,13 @@
 name: Daily privacy retention
 
 on:
-  schedule:
-    - cron: '15 3 * * *'
+  # OPS-18: run right after a successful production backup, so there is always
+  # a fresh backup taken just before data is deleted. If the backup fails, the
+  # retention job waits for the next good backup (the backup alerts on failure).
+  workflow_run:
+    workflows: ['Encrypted production database backup']
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -10,7 +15,11 @@ permissions:
 
 jobs:
   retention:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    # SEC-64: production secrets live in the `production-db` environment, which
+    # only the main branch may use (Settings > Environments > production-db).
+    environment: production-db
     timeout-minutes: 5
     steps:
       - name: Run the privacy retention job
@@ -33,7 +42,7 @@ jobs:
             --data '{}')"
 
           echo "$response" | jq -e '.success == true' >/dev/null
-          echo "$response" | jq '{success, newly_queued_count, attempted_count, expired_signup_accounts_deleted_count, expired_signup_accounts_failed_count, orphaned_pending_email_mappings_deleted_count, expired_partner_rewards_deleted_count, sheet_synced_count, auth_accounts_deleted_count, sheet_failed_count, overdue_record_count, pending_sync_count}'
+          echo "$response" | jq '{success, newly_queued_count, attempted_count, expired_signup_accounts_deleted_count, expired_signup_accounts_failed_count, orphaned_pending_email_mappings_deleted_count, expired_partner_rewards_deleted_count, sheet_synced_count, auth_accounts_deleted_count, sheet_failed_count, overdue_record_count, pending_sync_count, stalled_sync_count}'
 
   # OPS-10: a failed run opens (or comments on) one GitHub issue, so the
   # failure is visible and emailed to repository watchers. The repository is

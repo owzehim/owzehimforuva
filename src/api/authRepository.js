@@ -242,6 +242,9 @@ export async function sendPasswordResetEmail(email, captchaToken, returnToken) {
   const redirectTo = typeof window !== 'undefined'
     ? new URL('/reset-password', window.location.origin)
     : undefined
+  // SEC-59: the reset email template appends `&token_hash=…&type=recovery` to
+  // this address, so it always carries a query string.
+  if (redirectTo) redirectTo.searchParams.set('flow', 'recovery')
   if (redirectTo && returnToken) redirectTo.searchParams.set('returnToken', returnToken)
 
   const { error } = await passwordRecoverySupabase.auth.resetPasswordForEmail(email, {

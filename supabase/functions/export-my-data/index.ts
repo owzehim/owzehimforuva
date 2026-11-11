@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
-import { collectMemberData, referencedPlaceIds, referencedStoreIds } from '../_shared/memberDataExport.js'
+import { collectMemberData, exportableAuthMetadata, referencedPlaceIds, referencedStoreIds } from '../_shared/memberDataExport.js'
 
 async function sha256Hex(value: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
@@ -89,11 +89,13 @@ Deno.serve(async (req) => {
           account_created_at: user.created_at ?? null,
           email_confirmed_at: user.email_confirmed_at ?? null,
           last_sign_in_at: user.last_sign_in_at ?? null,
+          // Sign-up and consent details stored with the account (GDPR-24).
+          signup_details: exportableAuthMetadata(user.user_metadata),
         },
         ...data,
         place_names: Object.fromEntries((placesResult.data || []).map((row: { id: string; name: string }) => [row.id, row.name])),
         store_names: Object.fromEntries((storesResult.data || []).map((row: { id: string; name: string }) => [row.id, row.name])),
-        note: 'This file contains the personal data UvA-IN holds about you in the app database. Internal Google Sheets records are copies of the same data. Questions: uvaksa16@gmail.com',
+        note: 'This file contains the personal data about you in the UvA-IN app database and your account sign-up details. Not included, available on request: your profile photo file, the copies of your check-ins in our internal Google Sheets, and internal processing logs. Questions or requests: uvaksa16@gmail.com',
       },
     })
   } catch (error) {

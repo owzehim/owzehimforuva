@@ -12,6 +12,11 @@ export async function postToAppsScript(
 ): Promise<SheetSendResult> {
   // A Sheet that is intentionally not connected (no URL) is not a failure (FUNC-09).
   if (!url) return { ok: false, skipped: true }
+  // FUNC-12: a partner Sheet that has an address but whose secret is not
+  // switched on is a real failure (kept for retry and alerted), not a skip.
+  if (target === 'partner' && (typeof partnerSecret !== 'string' || partnerSecret.length < 32)) {
+    return { ok: false, errorCode: 'partner_secret_disabled' }
+  }
   const endpoint = getAllowedAppsScriptUrl(url)
   if (!endpoint) return { ok: false, errorCode: 'invalid_endpoint' }
   const controller = new AbortController()

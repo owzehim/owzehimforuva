@@ -27,7 +27,7 @@ DECLARE
     'authenticated|partnerships|S',
     'authenticated|redemptions|S',
     'authenticated|restaurant_comment_reports|SIU',
-    'authenticated|restaurant_comments|SIUD',
+    'authenticated|restaurant_comments|S',
     'authenticated|restaurant_comments_safe|S',
     'authenticated|restaurant_note_reports|SIU',
     'authenticated|restaurant_notes|SIUD',
@@ -38,6 +38,24 @@ DECLARE
     'authenticated|stamp_card_config|SIU',
     'authenticated|stamp_card_rewards|S',
     'authenticated|stamp_card_visits|S'
+  ];
+  -- OPS-19: for tables where members may only touch some columns, the exact
+  -- INSERT/UPDATE column lists ('*' = whole table). A table-wide grant
+  -- creeping back (e.g. SEC-55 regression on notes) fails the check.
+  expected_column_privileges text[] := ARRAY[
+    'authenticated|members|INSERT|',
+    'authenticated|members|UPDATE|profile_image_url,tutorial_completed_at,username',
+    'authenticated|restaurant_comment_reports|INSERT|comment_id,reporter_id',
+    'authenticated|restaurant_comment_reports|UPDATE|reviewed_at,reviewed_by',
+    'authenticated|restaurant_comments|INSERT|',
+    'authenticated|restaurant_comments|UPDATE|',
+    'authenticated|restaurant_note_reports|INSERT|explanation,good_faith,note_id,reason,reporter_id,reporter_name',
+    'authenticated|restaurant_note_reports|UPDATE|decision,reviewed_at,reviewed_by,status',
+    'authenticated|restaurant_notes|INSERT|body,is_anonymous,restaurant_id,source_rating,source_redemption_id,source_review_id,source_store_id,source_tags,user_id,username',
+    'authenticated|restaurant_notes|UPDATE|body,hidden_at,is_anonymous',
+    'authenticated|review_prompts|INSERT|',
+    'authenticated|review_prompts|UPDATE|status',
+    'authenticated|reviews|UPDATE|'
   ];
   expected_anon_functions text[] := ARRAY[
     'get_store_review_summaries'
@@ -87,6 +105,29 @@ BEGIN
   INTO unexpected, absent;
   IF unexpected IS NOT NULL THEN problems := problems || ('unexpected table privileges: ' || unexpected); END IF;
   IF absent IS NOT NULL THEN problems := problems || ('expected table privileges missing: ' || absent); END IF;
+
+  WITH expected AS (
+    SELECT e AS entry, split_part(e, '|', 1) AS role_name, split_part(e, '|', 2) AS table_name, split_part(e, '|', 3) AS priv
+    FROM unnest(expected_column_privileges) AS e
+  ),
+  actual AS (
+    SELECT x.entry,
+      x.role_name || '|' || x.table_name || '|' || x.priv || '|' ||
+      CASE WHEN has_table_privilege(x.role_name, c.oid, x.priv) THEN '*'
+      ELSE coalesce((
+        SELECT string_agg(a.attname, ',' ORDER BY a.attname)
+        FROM pg_attribute AS a
+        WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+          AND has_column_privilege(x.role_name, c.oid, a.attnum, x.priv)
+      ), '') END AS found
+    FROM expected AS x
+    JOIN pg_class AS c ON c.relname = x.table_name
+    JOIN pg_namespace AS n ON n.oid = c.relnamespace AND n.nspname = 'public'
+  )
+  SELECT string_agg(found || ' (expected ' || entry || ')', ', ' ORDER BY entry)
+    INTO unexpected
+  FROM actual WHERE found <> entry;
+  IF unexpected IS NOT NULL THEN problems := problems || ('column privileges differ: ' || unexpected); END IF;
 
   WITH f AS (
     SELECT p.oid, p.proname

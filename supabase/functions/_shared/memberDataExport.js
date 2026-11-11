@@ -28,17 +28,49 @@ export const MEMBER_EXPORT_SECTIONS = [
   { key: 'pending_email_change', table: 'pending_email_changes', filter: 'old_user_id', columns: 'new_email, state, created_at', order: 'created_at' },
 ]
 
+// GDPR-24: the API returns at most 1,000 rows per request, so lists are read
+// page by page instead of being cut off silently.
+export const EXPORT_PAGE_SIZE = 1000
+
 /** Collect one member's data with the service-role client. Throws on errors. */
-export async function collectMemberData(admin, userId) {
+export async function collectMemberData(admin, userId, pageSize = EXPORT_PAGE_SIZE) {
   const data = {}
   for (const section of MEMBER_EXPORT_SECTIONS) {
-    let query = admin.from(section.table).select(section.columns).eq(section.filter, userId)
-    if (section.order) query = query.order(section.order, { ascending: true })
-    const { data: rows, error } = section.single ? await query.maybeSingle() : await query
-    if (error) throw new Error(`Export of ${section.key} failed`)
-    data[section.key] = rows ?? (section.single ? null : [])
+    const buildQuery = () => {
+      let query = admin.from(section.table).select(section.columns).eq(section.filter, userId)
+      if (section.order) query = query.order(section.order, { ascending: true })
+      return query
+    }
+    if (section.single) {
+      const { data: row, error } = await buildQuery().maybeSingle()
+      if (error) throw new Error(`Export of ${section.key} failed`)
+      data[section.key] = row ?? null
+      continue
+    }
+    const rows = []
+    for (let from = 0; ; from += pageSize) {
+      const { data: page, error } = await buildQuery().range(from, from + pageSize - 1)
+      if (error) throw new Error(`Export of ${section.key} failed`)
+      rows.push(...(page || []))
+      if (!page || page.length < pageSize) break
+    }
+    data[section.key] = rows
   }
   return data
+}
+
+/** Account sign-up details kept by Auth, without anything secret-looking. */
+export function exportableAuthMetadata(metadata) {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {}
+  const SECRET_KEY = /token|secret|password|hash|otp/i
+  const clean = (value) => {
+    if (Array.isArray(value)) return value.map(clean)
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).filter(([key]) => !SECRET_KEY.test(key)).map(([key, inner]) => [key, clean(inner)]))
+    }
+    return value
+  }
+  return clean(metadata)
 }
 
 /** Names for the places referenced in the export, so the file is readable. */
