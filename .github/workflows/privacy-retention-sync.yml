@@ -17,9 +17,9 @@ jobs:
   retention:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    # SEC-64: production secrets live in the `production` environment, which
-    # only the main branch may use (Settings > Environments > production).
-    environment: production
+    # SEC-64: production secrets live in the `production-db` environment, which
+    # only the main branch may use (Settings > Environments > production-db).
+    environment: production-db
     timeout-minutes: 5
     steps:
       - name: Run the privacy retention job

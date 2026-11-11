@@ -29,9 +29,9 @@ concurrency:
 jobs:
   backup:
     runs-on: ubuntu-24.04
-    # SEC-64: production secrets live in the `production` environment, which
-    # only the main branch may use (Settings > Environments > production).
-    environment: production
+    # SEC-64: production secrets live in the `production-db` environment, which
+    # only the main branch may use (Settings > Environments > production-db).
+    environment: production-db
     timeout-minutes: 20
     env:
       # age public key (safe to publish). Private key: association key vault.

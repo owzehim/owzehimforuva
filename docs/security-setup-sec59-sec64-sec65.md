@@ -60,9 +60,12 @@ account that requested a reset in the last hour.
 **Why:** today any branch's workflow can read `SUPABASE_PROD_DB_URL` (full database access).
 
 The backup, retention and permission-check workflows already use a GitHub Environment called
-`production`. Until you create it, GitHub uses the existing repository secrets, so nothing breaks.
+`production-db`. Until you create it, GitHub uses the existing repository secrets, so nothing breaks.
 
-1. GitHub → repository → **Settings → Environments → New environment** → name `production`.
+Do **not** reuse the existing `Production` / `Preview` environments: Vercel creates those for its
+deployment records, and branch rules or secrets there would mix with Vercel's deployments.
+
+1. GitHub → repository → **Settings → Environments → New environment** → name `production-db`.
 2. **Deployment branches and tags** → *Selected branches and tags* → add rule `main`.
 3. **Required reviewers**: leave **off**. The backup runs every night and the retention job right
    after it; a required approval would stop them until someone clicks approve.
@@ -111,7 +114,7 @@ Check these first:
 
 Ask Claude to move the encrypted backup out of GitHub artifacts into private storage owned by
 the association (for example a private Google Drive folder or an S3-compatible bucket). That
-needs credentials for that storage, set as `production` environment secrets.
+needs credentials for that storage, set as `production-db` environment secrets.
 
 ### Key handling (both cases)
 
