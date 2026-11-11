@@ -84,7 +84,8 @@ Deno.serve(async (req) => {
   // the daily retention job instead of leaving a half-deleted account.
 
   let deletionQueued = false
-  let queueClient: ReturnType<typeof createClient> | null = null
+  // deno-lint-ignore no-explicit-any
+  let queueClient: any = null
   let queuedUserId: string | null = null
   try {
     const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
