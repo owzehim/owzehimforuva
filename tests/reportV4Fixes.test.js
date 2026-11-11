@@ -18,6 +18,8 @@ test('SEC-66 / SEC-67 / FUNC-11: migration closes comment writes, limits review 
   assert.match(check, /'authenticated\|restaurant_comments\|S',/)
   assert.match(check, /'authenticated\|review_prompts\|UPDATE\|status'/)
   assert.match(check, /has_column_privilege\(x\.role_name/)
+  // Inside the DO block, a column named "found" clashes with PL/pgSQL's FOUND.
+  assert.doesNotMatch(check, /\bAS found\b|\bfound <>|string_agg\(found\b/i)
   const job = read('supabase/functions/privacy-retention-sync/index.ts')
   assert.match(job, /stalled_sync_count/)
 })
