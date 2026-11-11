@@ -22,6 +22,12 @@ export function getConsentAcceptedAt(authUser, preservedServerTimestamp = null) 
 // GDPR-21: pass currentVersion when saving. Sign-up consent is recorded only
 // if the app showed the current documents; otherwise nothing is recorded for
 // them and the member is asked to accept the current version after login.
+/**
+ * @param {string} userId
+ * @param {any} registration
+ * @param {string} acceptedAt
+ * @param {string | null} [currentVersion]
+ */
 export function getConsentReceiptRows(userId, registration, acceptedAt, currentVersion = null) {
   if (!userId || !registration || typeof registration !== 'object' || Array.isArray(registration)) {
     return null
