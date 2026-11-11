@@ -16,6 +16,29 @@ function formatEmailForWrapping(email) {
 let recoveryExchangeCode = null
 let recoveryExchangePromise = null
 
+// SEC-59: once the reset email uses a one-time token hash (see
+// docs/sec59-password-reset-setup.md), set VITE_RECOVERY_TOKEN_HASH_ONLY=true
+// in Vercel. Then this page only accepts a session it created itself from
+// that one-time code, and ignores tokens pasted into the address bar.
+const TOKEN_HASH_ONLY = import.meta.env.VITE_RECOVERY_TOKEN_HASH_ONLY === 'true'
+const VERIFIED_RECOVERY_KEY = 'uvain-recovery-verified-user'
+
+function rememberVerifiedRecovery(userId) {
+  try { window.sessionStorage.setItem(VERIFIED_RECOVERY_KEY, userId) } catch { /* private mode */ }
+}
+
+function isVerifiedHere(userId) {
+  try { return Boolean(userId) && window.sessionStorage.getItem(VERIFIED_RECOVERY_KEY) === userId } catch { return false }
+}
+
+let tokenHashVerification = null
+function verifyTokenHashOnce(tokenHash) {
+  if (tokenHashVerification?.tokenHash === tokenHash) return tokenHashVerification.promise
+  const promise = passwordRecoverySupabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+  tokenHashVerification = { tokenHash, promise }
+  return promise
+}
+
 function exchangeRecoveryCodeOnce(code) {
   if (recoveryExchangeCode === code && recoveryExchangePromise) {
     return recoveryExchangePromise
@@ -37,7 +60,9 @@ async function getVerifiedRecoverySession() {
   const { data: { user }, error } = await passwordRecoverySupabase.auth.getUser()
   if (error || user?.id !== session.user?.id) return null
   // SEC-59: never treat a normal sign-in session as a reset session.
-  return isEmailLinkSession(session.access_token) ? session : null
+  if (!isEmailLinkSession(session.access_token)) return null
+  if (TOKEN_HASH_ONLY && !isVerifiedHere(user.id)) return null
+  return session
 }
 
 export default function ResetPasswordPage() {
@@ -68,11 +93,30 @@ export default function ResetPasswordPage() {
       try {
         const url = new URL(window.location.href)
         returnTokenRef.current = url.searchParams.get('returnToken') || ''
+
+        // SEC-59: the reset email's one-time code. Only this page turns it into
+        // a session, so a sign-in token pasted into a link is never accepted.
+        const tokenHash = url.searchParams.get('token_hash')
+        if (tokenHash && url.searchParams.get('type') === 'recovery') {
+          const { data: verified, error: verifyError } = await verifyTokenHashOnce(tokenHash)
+          url.searchParams.delete('token_hash')
+          url.searchParams.delete('type')
+          window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`)
+          if (verifyError || !verified?.session) {
+            console.error('Password recovery code check failed:', verifyError?.message || 'no session')
+            if (active) setRecoveryReady(false)
+            return
+          }
+          rememberVerifiedRecovery(verified.session.user.id)
+          if (active) setRecoveryReady(true)
+          return
+        }
+
         const hash = new URLSearchParams(url.hash.slice(1))
         const accessToken = hash.get('access_token')
         const refreshToken = hash.get('refresh_token')
 
-        if (hash.get('type') === 'recovery' && accessToken && refreshToken) {
+        if (!TOKEN_HASH_ONLY && hash.get('type') === 'recovery' && accessToken && refreshToken) {
           const { data: sessionData, error: sessionError } =
             await passwordRecoverySupabase.auth.setSession({
               access_token: accessToken,
@@ -101,7 +145,7 @@ export default function ResetPasswordPage() {
 
         // Keep handling reset links issued before the callback switched to
         // implicit flow. Those links still require their original PKCE verifier.
-        const code = url.searchParams.get('code')
+        const code = TOKEN_HASH_ONLY ? null : url.searchParams.get('code')
         if (code) {
           const { data: exchangeData, error: exchangeError } = await exchangeRecoveryCodeOnce(code)
           if (exchangeError) {
@@ -128,7 +172,7 @@ export default function ResetPasswordPage() {
     void verifyRecoverySession()
 
     const { data: { subscription } } = passwordRecoverySupabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+      if (event === 'PASSWORD_RECOVERY' && !TOKEN_HASH_ONLY) {
         setRecoveryReady(true)
       } else if (event === 'SIGNED_OUT') {
         setRecoveryReady(false)

@@ -94,3 +94,18 @@ test('SEC-65 / SEC-64 / OPS-18: no people counts in the backup log, pinned actio
   assert.match(retention, /github\.event\.workflow_run\.conclusion == 'success'/)
   assert.doesNotMatch(retention, /cron:/)
 })
+
+test('SEC-59 / SEC-61 / SEC-64: one-time reset code, recent reset request, production environment', () => {
+  const page = read('src/pages/ResetPasswordPage.jsx')
+  assert.match(page, /verifyOtp\(\{ token_hash: tokenHash, type: 'recovery' \}\)/)
+  assert.match(page, /VITE_RECOVERY_TOKEN_HASH_ONLY === 'true'/)
+  assert.match(page, /!TOKEN_HASH_ONLY && hash\.get\('type'\) === 'recovery'/)
+  assert.match(read('src/api/authRepository.js'), /redirectTo\.searchParams\.set\('flow', 'recovery'\)/)
+  assert.match(read('docs/email-templates/reset-password.html'), /\{\{ \.RedirectTo \}\}&token_hash=\{\{ \.TokenHash \}\}&type=recovery/)
+  const signal = read('supabase/functions/password-reset-return-signal/index.ts')
+  assert.match(signal, /recovery_sent_at/)
+  assert.match(signal, /RECOVERY_REQUEST_MAX_AGE_MS = 60 \* 60 \* 1000/)
+  for (const file of ['backup-production-db.yml', 'database-permission-check.yml', 'privacy-retention-sync.yml', 'sheet-sync-retry.yml']) {
+    assert.match(read(`.github/workflows/${file}`), /environment: production-db$/m, file)
+  }
+})
