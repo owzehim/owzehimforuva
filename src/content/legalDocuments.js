@@ -22,7 +22,7 @@ UvA-IN is the membership app of UvA-IN, an independent student association run b
 
 2. Eligibility
 
-To create an account, you must provide accurate and complete registration information, satisfy the membership eligibility requirements, and agree to these Terms and the UvA-IN Privacy Policy.
+To create an account, you must provide accurate and complete registration information, satisfy the membership eligibility requirements, agree to these Terms, and confirm that you have read the UvA-IN Privacy Policy.
 
 UvA-IN may verify your eligibility at any time.
 
@@ -108,7 +108,7 @@ UvA-IN
 Website: www.uva-in.nl
 Email: uvaksa16@gmail.com
 
-By creating an account, you confirm that you have read, understood, and agree to these Terms and Conditions together with the UvA-IN Privacy Policy and Community Guidelines.`,
+By creating an account, you confirm that you have read and understood these Terms and Conditions, the UvA-IN Privacy Policy and the Community Guidelines, and that you agree to these Terms and Conditions and the Community Guidelines.`,
     ko: legalDocumentsKo.terms,
   },
   privacy: {
@@ -134,7 +134,7 @@ Privacy contact: uvaksa16@gmail.com
 
 2. Information We Collect
 
-When creating an account, we collect your email address, first and last name, and student number. We may also collect your Korean name, university, education level, year of study, major, username, profile photo, and optional year of birth, country of origin, and gender. Authentication credentials are managed by Supabase Auth, which stores your password only in hashed form. UvA-IN does not store your password. A few account actions (changing your email address during sign-up, or an administrator creating an account for you) pass the password through our server functions only to complete that action; it is not saved or logged.
+When creating an account, we collect your email address, first and last name, student number, university, education level, year of study (where your programme has one) and major; these are required to register. We may also collect your Korean name, username, profile photo, and optional year of birth, country of origin, and gender. Authentication credentials are managed by Supabase Auth, which stores your password only in hashed form. UvA-IN does not store your password. A few account actions (changing your email address during sign-up, or an administrator creating an account for you) pass the password through our server functions only to complete that action; it is not saved or logged.
 
 To operate your membership, we may collect membership validity period, membership status, student verification status, and membership history.
 
@@ -179,7 +179,7 @@ The App calculates location-level star-rating and selected-tag summaries from su
 
 6. Information Sharing
 
-We share information with participating partner businesses for reward administration, transaction verification, and the visit-level review feedback described in Section 4; with service providers that support the App; and with competent public authorities where required by law. Current service providers include Supabase for account authentication, database and file storage; Vercel for hosting and delivery of the App; Resend for account and email-verification messages; Cloudflare for Turnstile security checks; Google services for internal administrative records and partner-specific transaction and review records; and MapTiler for map display. We also use Sentry (EU region) to find and fix app errors. When an error occurs, the error message, the address of the screen where it happened (without search parameters or tokens), the browser and device type, and the app version are sent to Sentry. Names, email addresses, student numbers and account identifiers are not sent, Sentry is set not to store IP addresses, and error reports are deleted after 30 days. The internal administrative records sent through Google services can include the member identity and profile fields listed in Section 2, together with visit, reward, and review records. Access to internal records is limited to authorised UvA-IN administrators. Partner-specific files are shared with the relevant business as view-only access; each business must only have access to its own file, not another partner's or the internal Master records. Partner files do not include member names, student numbers, account identifiers, or the full profile fields listed in Section 2. MapTiler receives map requests when you use a map feature. Fonts are served with the App and are not loaded from Google Fonts. We do not currently use the retired translation or comment-moderation features to send member content to Google Cloud Translation or OpenAI.
+We share information with participating partner businesses for reward administration, transaction verification, and the visit-level review feedback described in Section 4; with service providers that support the App; and with competent public authorities where required by law. Current service providers include Supabase for account authentication, database and file storage; Vercel for hosting and delivery of the App; Resend for account and email-verification messages and for emails about the outcome of content reports (sent to the reporter, who may not be a member, and where content is hidden or removed, to its author); GitHub for storing encrypted daily backups of the App database (see Section 7); Cloudflare for Turnstile security checks; Google services for internal administrative records and partner-specific transaction and review records; and MapTiler for map display. We also use Sentry (EU region) to find and fix app errors. When an error occurs, the error message and its technical details (the stack trace), the address of the screen where it happened (without search parameters or tokens), the browser and device type, the app version, and a short record of the steps just before the error (screens visited, the names of buttons pressed, and the address, method and result of network requests, also without search parameters or tokens) are sent to Sentry. Text you type is not included. Names, email addresses, student numbers and account identifiers are not sent, Sentry is set not to store IP addresses, and error reports are deleted after 30 days. The internal administrative records sent through Google services can include the member identity and profile fields listed in Section 2, together with visit, reward, and review records. Access to internal records is limited to authorised UvA-IN administrators. Partner-specific files are shared with the relevant business as view-only access; each business must only have access to its own file, not another partner's or the internal Master records. Partner files do not include member names, student numbers, account identifiers, or the full profile fields listed in Section 2. MapTiler receives map requests when you use a map feature. Fonts are served with the App and are not loaded from Google Fonts. We do not currently use the retired translation or comment-moderation features to send member content to Google Cloud Translation or OpenAI.
 
 The role of each provider depends on the service: a provider may process data on our instructions, or may independently process technical request information under its own privacy notice. The production Supabase project is hosted in the EU. Resend stores service data in the United States. Other providers or their subprocessors may process information outside the European Economic Area. Where the GDPR requires a transfer mechanism, we rely on the mechanism applicable to that provider and processing, such as an adequacy decision or appropriate contractual safeguards. You can contact us for information about the safeguards relevant to a specific provider.
 
@@ -193,15 +193,17 @@ When you request account deletion, we delete or anonymize information directly l
 
 Content report records are kept while they are being handled and for up to 12 months after a decision. A report record can retain the reported text and decision so that the moderation action can be reviewed. If a reporter or content author deletes their account, we remove their account link and direct email from the report record. Resolved report records are then deleted when the 12-month period ends.
 
-The minimum partner transaction records needed to verify rewards and handle related questions, fraud, or disputes are retained for no more than 12 months from the transaction date. Partner businesses are instructed to delete or irreversibly anonymize these records when that period ends. If a specific record must be retained to meet a legal accounting obligation, only the necessary record is kept separately, with restricted access, for the legally required period.
+The minimum partner transaction records needed to verify rewards and handle related questions, fraud, or disputes are retained for no more than 12 months from the transaction date. Partner files are kept in UvA-IN's account and shared with the partner as view-only; an automatic daily job in each partner file deletes records once they are older than 12 months. If a partner keeps its own copy of these records, it must delete or irreversibly anonymize that copy when the period ends. If a specific record must be retained to meet a legal accounting obligation, only the necessary record is kept separately, with restricted access, for the legally required period.
 
 If a partner relationship ends, any unredeemed in-App reward expires immediately. Reward records are retained for 12 months after the partnership ends and then deleted. Ending a partnership does not itself delete the related stamp-visit, review, or note history.
+
+The App database is backed up once a day. Each backup is encrypted before it is stored, can be opened only by authorised UvA-IN administrators, and is used only to restore the App after a failure. Backups are deleted automatically after 30 days, so information deleted from the App can remain in a backup for up to 30 days. If a backup is restored, deletions made after that backup are applied again.
 
 Records that have been irreversibly anonymized so that a person can no longer reasonably be identified may be retained for statistical purposes.
 
 8. Automatic Anonymization
 
-At the end of an applicable retention period, personal information is deleted or irreversibly anonymized. Anonymization removes or permanently replaces information that could reasonably identify or be linked back to an individual. Partner businesses are responsible for applying the agreed 12-month limit to the transaction records they receive.
+At the end of an applicable retention period, personal information is deleted or irreversibly anonymized. Anonymization removes or permanently replaces information that could reasonably identify or be linked back to an individual. For partner files, the 12-month limit is applied by the automatic job described in Section 7; a partner that keeps its own copy is responsible for applying the same limit to it.
 
 9. Security
 
