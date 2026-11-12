@@ -20,6 +20,7 @@ import { useFeedback } from '../components/feedback/feedbackContext.js'
 import { FieldError, invalidFieldClass } from '../components/feedback/FieldError.jsx'
 import EditPopup from '../components/EditPopup.jsx'
 import ReviewCriteriaEditor from '../components/admin/ReviewCriteriaEditor.jsx'
+import PartnerSheetLinkWarning from '../components/admin/PartnerSheetLinkWarning.jsx'
 import { criteriaEqual, normalizeReviewCriteria } from '../domain/reviewCriteria'
 import ScrapBoardEditor from '../components/scrap/ScrapBoardEditor.jsx'
 import ScrapBoardViewer from '../components/scrap/ScrapBoardViewer.jsx'
@@ -318,7 +319,7 @@ export default function AdminPage() {
         <div className="max-w-3xl mx-auto">
           {activeTab === 'members' && <MembersTab />}
           {activeTab === 'events' && <EventsTab />}
-          {activeTab === 'restaurants' && <RestaurantsTab />}
+          {activeTab === 'restaurants' && <><PartnerSheetLinkWarning /><RestaurantsTab /></>}
           {activeTab === 'reports' && <ReportsTab />}
         </div>
       </div>
