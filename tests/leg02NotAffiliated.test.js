@@ -23,5 +23,5 @@ test('LEG-02: the public page actually shows the not-affiliated line (in the ren
   assert.ok(!page.includes('function MembershipTab('))
   const carousel = page.slice(page.indexOf('function MembershipCarousel('))
   assert.ok(carousel.includes('<MembershipCarousel') || page.includes('<MembershipCarousel />'))
-  assert.ok(carousel.includes('암스테르담 대학교(UvA)의 공식 단체가 아니며 대학교와 제휴 관계가 없습니다.'))
+  assert.ok(carousel.includes('UvA-IN은 암스테르담 대학교(UvA)와 제휴를 맺지 않은 비공식 단체입니다'))
 })

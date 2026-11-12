@@ -90,9 +90,6 @@ export default function ChangePasswordPage() {
 
             <CaptchaChallenge onVerify={setCaptchaToken} resetKey={captchaResetKey} />
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            {success && <p className="text-sm leading-relaxed text-green-600">{success}</p>}
-
             <button
               type="submit"
               disabled={loading || (isCaptchaEnabled && !captchaToken)}
@@ -100,6 +97,15 @@ export default function ChangePasswordPage() {
             >
               {loading ? copy.changing : copy.submit}
             </button>
+
+            {/* Below the button and out of the layout flow, so a message never moves the button.
+                Always rendered (empty when there is nothing to say) so the spacing stays the same. */}
+            <p
+              aria-live="polite"
+              className={`settings-password-message absolute left-0 right-0 top-full !mt-3 break-keep text-center text-sm leading-relaxed ${error ? 'text-red-500' : 'text-green-600'}`}
+            >
+              {error || success}
+            </p>
           </div>
         </form>
       </div>
