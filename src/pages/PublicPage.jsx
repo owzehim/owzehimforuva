@@ -638,6 +638,10 @@ function MembershipCarousel() {
         >
           로그인
         </button>
+        {/* LEG-02: the same statement as the Terms, visible on the public page. */}
+        <p className="membership-not-affiliated pointer-events-none absolute left-0 right-0 mx-auto max-w-sm break-keep px-5 text-center text-[10px] leading-[13px] text-gray-500 dark:text-gray-400" style={{ top: 'calc(100% + 6px)' }}>
+          UvA-IN은 암스테르담 대학교(UvA)와 제휴를 맺지 않은 비공식 단체입니다
+        </p>
       </div>
     </div>
   )
