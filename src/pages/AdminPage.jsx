@@ -21,6 +21,7 @@ import { FieldError, invalidFieldClass } from '../components/feedback/FieldError
 import EditPopup from '../components/EditPopup.jsx'
 import ReviewCriteriaEditor from '../components/admin/ReviewCriteriaEditor.jsx'
 import PartnerSheetLinkWarning from '../components/admin/PartnerSheetLinkWarning.jsx'
+import CheckinReviewPanel from '../components/admin/CheckinReviewPanel.jsx'
 import { criteriaEqual, normalizeReviewCriteria } from '../domain/reviewCriteria'
 import ScrapBoardEditor from '../components/scrap/ScrapBoardEditor.jsx'
 import ScrapBoardViewer from '../components/scrap/ScrapBoardViewer.jsx'
@@ -1378,6 +1379,7 @@ function MembersTab() {
 
   return (
     <div className="space-y-4">
+      <CheckinReviewPanel />
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-gray-900">
           멤버 목록 ({members.length}명)

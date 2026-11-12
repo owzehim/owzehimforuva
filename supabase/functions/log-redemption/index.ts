@@ -7,6 +7,8 @@ import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginRespon
 import { queueCheckinSheetRows } from '../_shared/checkinSheetSync.ts'
 import { isMembershipActive } from '../_shared/membershipStatus.js'
 
+const DAILY_STORE_LIMIT_MESSAGE = '오늘은 이미 매장 3곳에서 Check-IN했어요. 내일 다시 이용해 주세요.'
+
 async function findStampRestaurant(admin: any, storeId: string) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(storeId)
   if (isUuid) {
@@ -170,6 +172,10 @@ Deno.serve(async (req) => {
     // supplies it, and it is only used to label the result screen.
     testMode = member.is_test_account === true
     const failedResult = (message: string) => ({ success: false, message, ...(testMode ? { testMode: true } : {}) })
+    const dailyStoreLimitResponse = () => new Response(
+      JSON.stringify({ ...failedResult(DAILY_STORE_LIMIT_MESSAGE), code: 'daily_store_limit' }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
 
     // ── Membership validity check ──────────────────────────────────────────
     const now = new Date()
@@ -252,6 +258,22 @@ Deno.serve(async (req) => {
       )
     }
 
+    // At most 3 different stores per member per day; a store already visited
+    // today still works. claim_redemption_window enforces the same limit under
+    // a lock, so simultaneous scans cannot get past it.
+    const { data: limitReached, error: limitError } = await admin.rpc(
+      'checkin_daily_store_limit_reached',
+      { p_user_id: user.id, p_store_id: storeId },
+    )
+    if (limitError) {
+      console.error('Daily store limit check failed:', limitError)
+      return new Response(
+        JSON.stringify(failedResult('매장 이용 기록을 처리하지 못했습니다.')),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+    if (limitReached === true) return dailyStoreLimitResponse()
+
     // Record (or safely recognize) today's visit before claiming the 15-minute
     // redemption window. If stamp persistence fails, return an error without
     // consuming the retry window; the unique daily index handles scan races.
@@ -272,6 +294,7 @@ Deno.serve(async (req) => {
       { p_user_id: user.id, p_store_id: storeId },
     )
 
+    if (claimError?.message?.includes('daily_store_limit')) return dailyStoreLimitResponse()
     if (claimError) {
       console.error('Redemption window claim failed:', claimError)
       return new Response(
