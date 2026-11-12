@@ -1985,7 +1985,7 @@ const registrationMotionCss = `
   --reg-text: #111827;
   --reg-subtext: #374151;
   --reg-muted: #6b7280;
-  --reg-soft-muted: #9ca3af;
+  --reg-soft-muted: #6b7280; /* LEG-10: small note text needs 4.5:1 on white */
   --reg-border: #d8dde5;
   --reg-soft-border: #e5e7eb;
   --reg-chip-border: #cfd4dc;

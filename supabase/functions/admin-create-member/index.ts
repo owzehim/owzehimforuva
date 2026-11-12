@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
       email,
       password,
       email_confirm: skipEmailConfirmation,
-      user_metadata: { first_name: firstName, last_name: lastName },
+      // GDPR-13: the name lives only in the members row, not in Auth metadata.
     })
     if (createUserError || !createdUser.user) {
       if (createUserError?.status === 422) {
