@@ -45,6 +45,8 @@ DECLARE
   expected_column_privileges text[] := ARRAY[
     'authenticated|members|INSERT|',
     'authenticated|members|UPDATE|profile_image_url,tutorial_completed_at,username',
+    -- partnerships also holds legacy Apps Script address columns: id and name only.
+    'authenticated|partnerships|SELECT|id,name',
     'authenticated|restaurant_comment_reports|INSERT|comment_id,reporter_id',
     'authenticated|restaurant_comment_reports|UPDATE|reviewed_at,reviewed_by',
     'authenticated|restaurant_comments|INSERT|',
@@ -61,12 +63,42 @@ DECLARE
     'get_store_review_summaries'
   ];
   expected_authenticated_functions text[] := ARRAY[
+    'admin_checkin_review',
     'admin_list_admin_user_ids',
+    'admin_partner_sheet_link_issues',
     'claim_single_device_session',
     'get_member_store_review_summaries',
     'get_store_review_summaries',
     'is_admin',
     'is_current_device_session'
+  ];
+  -- Views members may read. Views not listed here must not be readable.
+  expected_view_readers text[] := ARRAY[
+    'authenticated|restaurant_comments_safe',
+    'authenticated|restaurant_notes_safe'
+  ];
+  -- Views that run with the owner's rights on purpose (they show other
+  -- members' notes with safe columns only). Every other view must be
+  -- security_invoker.
+  expected_definer_views text[] := ARRAY['restaurant_comments_safe', 'restaurant_notes_safe'];
+  -- Storage: the exact policy set on storage.objects, and which buckets are public.
+  expected_storage_policies text[] := ARRAY[
+    'Require app login for profile images',
+    'SEC07 admin manage event images',
+    'SEC07 admin manage place images',
+    'SEC07 admin manage profile images',
+    'SEC07 admin manage stamp card wallpapers',
+    'SEC07 profile owner delete own avatar',
+    'SEC07 profile owner read own avatar',
+    'SEC07 profile owner replace own avatar',
+    'SEC07 profile owner upload own avatar'
+  ];
+  expected_buckets text[] := ARRAY[
+    'event-images|public',
+    'place-images|public',
+    'profile-images|private',
+    'public-assets|public',
+    'stamp-card-wallpapers|public'
   ];
   problems text[] := ARRAY[]::text[];
   missing_rls text;
@@ -141,6 +173,57 @@ BEGIN
   INTO unexpected, absent;
   IF unexpected IS NOT NULL THEN problems := problems || ('anon can run unexpected SECURITY DEFINER functions: ' || unexpected); END IF;
   IF absent IS NOT NULL THEN problems := problems || ('authenticated can run unexpected SECURITY DEFINER functions: ' || absent); END IF;
+
+  -- Sequences: anon/authenticated need none (only the server inserts rows).
+  SELECT string_agg(r.role_name || '|' || c.relname, ', ' ORDER BY c.relname)
+    INTO unexpected
+  FROM pg_class AS c
+  JOIN pg_namespace AS n ON n.oid = c.relnamespace AND n.nspname = 'public'
+  CROSS JOIN (VALUES ('anon'), ('authenticated')) AS r(role_name)
+  WHERE c.relkind = 'S'
+    AND (has_sequence_privilege(r.role_name, c.oid, 'USAGE')
+      OR has_sequence_privilege(r.role_name, c.oid, 'SELECT')
+      OR has_sequence_privilege(r.role_name, c.oid, 'UPDATE'));
+  IF unexpected IS NOT NULL THEN problems := problems || ('sequence privileges for anon/authenticated: ' || unexpected); END IF;
+
+  -- Views: who may read them, and which may bypass row-level security.
+  WITH v AS (
+    SELECT c.oid, c.relname, coalesce(c.reloptions::text[], ARRAY[]::text[]) AS opts
+    FROM pg_class AS c
+    JOIN pg_namespace AS n ON n.oid = c.relnamespace AND n.nspname = 'public'
+    WHERE c.relkind IN ('v', 'm')
+  ),
+  readers AS (
+    SELECT r.role_name || '|' || v.relname AS entry
+    FROM v CROSS JOIN (VALUES ('anon'), ('authenticated')) AS r(role_name)
+    WHERE has_table_privilege(r.role_name, v.oid, 'SELECT')
+  )
+  SELECT
+    (SELECT string_agg(entry, ', ' ORDER BY entry) FROM readers WHERE entry <> ALL (expected_view_readers)),
+    (SELECT string_agg(relname, ', ' ORDER BY relname) FROM v
+      WHERE NOT ('security_invoker=true' = ANY (opts) OR 'security_invoker=on' = ANY (opts))
+        AND relname <> ALL (expected_definer_views))
+  INTO unexpected, absent;
+  IF unexpected IS NOT NULL THEN problems := problems || ('unexpected view readers: ' || unexpected); END IF;
+  IF absent IS NOT NULL THEN problems := problems || ('views without security_invoker: ' || absent); END IF;
+
+  -- Storage policies and public buckets.
+  SELECT
+    (SELECT string_agg(policyname, ', ' ORDER BY policyname) FROM pg_policies
+      WHERE schemaname = 'storage' AND policyname <> ALL (expected_storage_policies)),
+    (SELECT string_agg(e, ', ' ORDER BY e) FROM unnest(expected_storage_policies) AS e
+      WHERE e NOT IN (SELECT policyname FROM pg_policies WHERE schemaname = 'storage'))
+  INTO unexpected, absent;
+  IF unexpected IS NOT NULL THEN problems := problems || ('unexpected storage policies: ' || unexpected); END IF;
+  IF absent IS NOT NULL THEN problems := problems || ('expected storage policies missing: ' || absent); END IF;
+
+  SELECT string_agg(entry, ', ' ORDER BY entry)
+    INTO unexpected
+  FROM (
+    SELECT b.id || '|' || CASE WHEN b.public THEN 'public' ELSE 'private' END AS entry FROM storage.buckets AS b
+  ) AS actual_buckets
+  WHERE entry <> ALL (expected_buckets);
+  IF unexpected IS NOT NULL THEN problems := problems || ('unexpected buckets or bucket visibility: ' || unexpected); END IF;
 
   IF cardinality(problems) > 0 THEN
     RAISE EXCEPTION 'Database permission check failed: %', array_to_string(problems, ' | ');
