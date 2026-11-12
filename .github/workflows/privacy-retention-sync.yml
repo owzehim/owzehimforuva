@@ -21,8 +21,11 @@ jobs:
     # only the main branch may use (Settings > Environments > production-db).
     environment: production-db
     timeout-minutes: 5
+    outputs:
+      stalled: ${{ steps.run.outputs.stalled }}
     steps:
       - name: Run the privacy retention job
+        id: run
         env:
           # Production-only by design (OPS-12); DEV uses privacy-retention-sync-dev.yml.
           SUPABASE_URL: https://npvcghdzrtqrlliprtnw.supabase.co
@@ -43,6 +46,8 @@ jobs:
 
           echo "$response" | jq -e '.success == true' >/dev/null
           echo "$response" | jq '{success, newly_queued_count, attempted_count, expired_signup_accounts_deleted_count, expired_signup_accounts_failed_count, orphaned_pending_email_mappings_deleted_count, expired_partner_rewards_deleted_count, sheet_synced_count, auth_accounts_deleted_count, sheet_failed_count, overdue_record_count, pending_sync_count, stalled_sync_count}'
+          # FUNC-11: entries that failed 7+ times need a person (alert job below).
+          echo "stalled=$(echo "$response" | jq -r '.stalled_sync_count // 0')" >> "$GITHUB_OUTPUT"
 
   # OPS-10: a failed run opens (or comments on) one GitHub issue, so the
   # failure is visible and emailed to repository watchers. The repository is
@@ -65,6 +70,32 @@ jobs:
           set -euo pipefail
           existing="$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == env.TITLE) | .number" | head -n 1)"
           body="The scheduled job failed on $(date -u +%Y-%m-%dT%H:%MZ). Run: $RUN_URL"
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$TITLE" --body "$body"
+          fi
+
+  # FUNC-11: queue entries that keep failing (7+ attempts) open one issue so a
+  # person looks at them. No count or member data in the public issue.
+  alert-on-stalled:
+    needs: retention
+    if: ${{ needs.retention.outputs.stalled != '' && needs.retention.outputs.stalled != '0' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the stalled-entries issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: "Privacy retention: entries keep failing"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          existing="$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == env.TITLE) | .number" | head -n 1)"
+          body="Some privacy retention entries have failed 7 or more times (usually the Master Sheet step). Check the run log and the Master Sheet address/secret. Run: $RUN_URL"
           if [[ -n "$existing" ]]; then
             gh issue comment "$existing" --body "$body"
           else

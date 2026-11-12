@@ -230,7 +230,8 @@ function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, res
               />
             </div>
             <div className="flex flex-col gap-1 flex-1">
-              <label className="text-xs text-gray-400">사유 (선택)</label>
+              {/* GDPR-24: the note is part of the member's own data (export, stamp history). */}
+              <label className="text-xs text-gray-400">사유 (선택 · 회원에게도 보여요)</label>
               <input
                 type="text"
                 placeholder="사유 입력"

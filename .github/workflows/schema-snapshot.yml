@@ -17,6 +17,8 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
+    # SEC-64: SUPABASE_PROD_DB_URL lives only in the `production-db` environment.
+    environment: production-db
     timeout-minutes: 10
     env:
       SUPABASE_CLI_VERSION: 2.122.0
