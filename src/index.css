@@ -1628,6 +1628,12 @@ html:not(.dark) .text-gray-400 {
     margin: 0 !important;
   }
 
+  /* Landscape: the button is fixed in the right half, so the message stays under the fields. */
+  .settings-password-fields > .settings-password-message {
+    position: static !important;
+    text-align: left !important;
+  }
+
   .settings-password-fields > .settings-password-submit {
     position: fixed !important;
     left: calc(50vw + var(--landscape-content-gutter)) !important;
