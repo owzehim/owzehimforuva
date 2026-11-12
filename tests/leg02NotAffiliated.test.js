@@ -17,10 +17,11 @@ test('public page does not call the community UvA-exclusive', () => {
   assert.ok(!page.includes('UvA 학생 전용'))
 })
 
-test('LEG-02: the not-affiliated statement lives in the Terms and Privacy Policy, not on the public page', () => {
+test('LEG-02: the public page actually shows the not-affiliated line (in the rendered carousel)', () => {
   const page = readFileSync('src/pages/PublicPage.jsx', 'utf8')
   // The unused MembershipTab component that used to hold the line is gone.
   assert.ok(!page.includes('function MembershipTab('))
-  // UvA-IN decided (2026-11-12) not to show the line under the public carousel.
-  assert.ok(!page.includes('membership-not-affiliated'))
+  const carousel = page.slice(page.indexOf('function MembershipCarousel('))
+  assert.ok(carousel.includes('<MembershipCarousel') || page.includes('<MembershipCarousel />'))
+  assert.ok(carousel.includes('UvA-IN은 암스테르담 대학교(UvA)와 무관한 비공식 단체입니다.'))
 })
