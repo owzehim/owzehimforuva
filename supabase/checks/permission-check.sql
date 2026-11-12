@@ -45,6 +45,8 @@ DECLARE
   expected_column_privileges text[] := ARRAY[
     'authenticated|members|INSERT|',
     'authenticated|members|UPDATE|profile_image_url,tutorial_completed_at,username',
+    -- partnerships also holds legacy Apps Script address columns: id and name only.
+    'authenticated|partnerships|SELECT|id,name',
     'authenticated|restaurant_comment_reports|INSERT|comment_id,reporter_id',
     'authenticated|restaurant_comment_reports|UPDATE|reviewed_at,reviewed_by',
     'authenticated|restaurant_comments|INSERT|',
@@ -61,6 +63,7 @@ DECLARE
     'get_store_review_summaries'
   ];
   expected_authenticated_functions text[] := ARRAY[
+    'admin_checkin_review',
     'admin_list_admin_user_ids',
     'admin_partner_sheet_link_issues',
     'claim_single_device_session',
