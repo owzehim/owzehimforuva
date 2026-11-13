@@ -6,6 +6,16 @@ const QR_BOX_SIZE = 176
 const QR_BOX_FRAME_RATIO = 0.64
 const QR_BOX_SCAN_RATIO = 0.72
 
+// html5-qrcode sets the camera video's onabort/onerror to handlers that
+// throw. Stopping the scanner (leaving /scan) aborts the video, so that throw
+// became an uncaught error in Sentry (160860482). Clear them before stopping.
+function silenceScannerVideo(scannerId) {
+  const video = document.querySelector(`#${scannerId} video`)
+  if (!video) return
+  video.onabort = null
+  video.onerror = null
+}
+
 export default function QRScanner({ onScan, darkMode = false }) {
   const scannerRef = useRef(null)
   const scannedRef = useRef(false)
@@ -56,6 +66,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
         )
 
         if (stopRequested) {
+          silenceScannerVideo(scannerId)
           try {
             await scanner.stop()
           } catch (err) {
@@ -75,6 +86,7 @@ export default function QRScanner({ onScan, darkMode = false }) {
     return () => {
       isMounted = false
       stopRequested = true
+      silenceScannerVideo(scannerId)
       const scanner = scannerRef.current
       if (scanner) {
         try {
