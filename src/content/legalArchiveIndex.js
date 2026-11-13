@@ -7,6 +7,7 @@
 // The "Earlier versions" button on the legal page appears once this list has
 // an entry.
 export const LEGAL_ARCHIVE = [
+  { version: '2026-11-13-01', available: true },
   { version: '2026-11-07-01', available: true },
 ]
 
