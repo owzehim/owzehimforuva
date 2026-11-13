@@ -1021,7 +1021,7 @@ function RichEditor({ value, onChange, placeholder, rows = 3 }) {
           unicodeBidi: 'plaintext',
         }}
       />
-      <style>{`[contenteditable]:empty:before{content:attr(data-placeholder);color:#9ca3af}`}</style>
+      <style>{`[contenteditable]:empty:before{content:attr(data-placeholder);color:#6b7280}`}</style>
     </div>
   )
 }

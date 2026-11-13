@@ -99,11 +99,12 @@ test('PERF-04 check-ins: log-redemption queues its Sheet rows and the retry job 
   assert.match(sql, /REVOKE ALL ON TABLE public\.checkin_sheet_queue FROM PUBLIC, anon, authenticated/)
   assert.match(sql, /REFERENCES public\.redemptions\(id\) ON DELETE CASCADE/)
   const job = await readFile('supabase/functions/privacy-retention-sync/index.ts', 'utf8')
-  assert.match(job, /retryCheckinSheetRows\(admin, \{ limit: 20, deadline: startedAt \+ 45_000 \}\)/)
+  assert.match(job, /retryCheckinSheetRows\(admin, \{ limit: 20, deadline: startedAt \+ 35_000 \}\)/)
 })
 
 test('GDPR-14: the Master sheet never receives the free-text review comment', async () => {
-  const source = await readFile('supabase/functions/sync-to-sheets/index.ts', 'utf8')
+  const source = await readFile('supabase/functions/_shared/reviewSheetPayload.js', 'utf8')
   assert.match(source, /comment: '',/)
-  assert.ok(!source.includes('sheetText(review.comment'))
+  assert.ok(!source.includes('review.comment'))
+  assert.ok(!(await readFile('supabase/functions/_shared/reviewSheetSync.ts', 'utf8')).includes('comment'))
 })

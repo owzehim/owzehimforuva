@@ -78,7 +78,8 @@ test('멤버 평가: DB resets counts when criteria change; sheet sync and app u
   assert.match(sql, /NEW\.review_criteria_since := OLD\.review_criteria_since/)
   assert.match(sql, /review\.created_at >= criteria_reset\.since/)
   assert.match(sql, /jsonb_array_length\(review_criteria\) = 4/)
-  const fn = await readFile('supabase/functions/sync-to-sheets/index.ts', 'utf8')
+  // FUNC-14: review rows are built in one place for the first send and retries.
+  const fn = await readFile('supabase/functions/_shared/reviewSheetPayload.js', 'utf8')
   assert.match(fn, /reviewCriteriaForSheet\(/)
   assert.equal((fn.match(/tag_labels,/g) || []).length, 2, 'master and partner payloads')
   const gs = await readFile('scripts/apps-script/partner-owner.gs', 'utf8')
