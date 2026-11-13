@@ -21,7 +21,7 @@ import { FieldError, invalidFieldClass } from '../components/feedback/FieldError
 import EditPopup from '../components/EditPopup.jsx'
 import ReviewCriteriaEditor from '../components/admin/ReviewCriteriaEditor.jsx'
 import PartnerSheetLinkWarning from '../components/admin/PartnerSheetLinkWarning.jsx'
-import CheckinReviewPanel from '../components/admin/CheckinReviewPanel.jsx'
+import CheckinReviewTab from '../components/admin/CheckinReviewTab.jsx'
 import { criteriaEqual, normalizeReviewCriteria } from '../domain/reviewCriteria'
 import ScrapBoardEditor from '../components/scrap/ScrapBoardEditor.jsx'
 import ScrapBoardViewer from '../components/scrap/ScrapBoardViewer.jsx'
@@ -202,7 +202,7 @@ function TimeInput({ value, onChange, className = '' }) {
 // ─── AdminPage ────────────────────────────────────────────────────────────────
 
 const ADMIN_ACTIVE_TAB_KEY = 'uvain_admin_active_tab'
-const ADMIN_TABS = ['members', 'events', 'restaurants', 'reports']
+const ADMIN_TABS = ['members', 'events', 'restaurants', 'reports', 'checkins']
 const PUBLIC_IMAGE_TYPES = 'image/jpeg,image/png,image/webp,image/avif'
 const PLACE_IMAGE_PREFIX = placeImagePrefix(import.meta.env.VITE_SUPABASE_URL)
 
@@ -295,6 +295,7 @@ export default function AdminPage() {
           { key: 'events', label: '이벤트' },
           { key: 'restaurants', label: '장소' },
           { key: 'reports', label: '신고 검토' },
+          { key: 'checkins', label: 'Check-IN 점검' },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -322,6 +323,7 @@ export default function AdminPage() {
           {activeTab === 'events' && <EventsTab />}
           {activeTab === 'restaurants' && <><PartnerSheetLinkWarning /><RestaurantsTab /></>}
           {activeTab === 'reports' && <ReportsTab />}
+          {activeTab === 'checkins' && <CheckinReviewTab />}
         </div>
       </div>
     </div>
@@ -1379,7 +1381,6 @@ function MembersTab() {
 
   return (
     <div className="space-y-4">
-      <CheckinReviewPanel />
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-gray-900">
           멤버 목록 ({members.length}명)
