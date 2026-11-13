@@ -56,6 +56,8 @@ Supersedes `production-main-20261006.md`.
 
 | SEC-58 (merged in PR #18 and #19; backup `uvain-backups/2026-11-06-pre-sec58` first) | `20261106010000_sec58_partner_apps_script_secrets` | DEV, then production | Same single-file + ledger-row method | `partnership_apps_script_secrets`: one 64-hex secret per partnership (created in the DB, new partnerships get one by trigger), RLS on, no anon/authenticated access, audited. Gyojasang and Northeast_Kitchen switched (`enabled = true`, check-in confirmed). `log-redemption`, `redeem-stamp-card-reward`, `sync-to-sheets` send only the partner's own secret; shared `PARTNER_APPS_SCRIPT_SECRET` removed from code and from both projects' Edge Function secrets. |
 
+| 2026-11-09, after backup run `42689735407` (GitHub Actions, success) | `20261109120000_sec25_newest_login_keeps_device` | DEV, then production | Same single-file + ledger-row method | `claim_single_device_session` gives the seat only to the caller who holds it, to a free seat / a seat whose session is gone, or to a newer login (`auth.sessions.created_at`); SECURITY DEFINER, EXECUTE for authenticated (not anon); ledger row present. DEV rolled-back test with real `auth.sessions` rows: older device ✓ → newer login ✓ → older device reopens ✗ (seat stays with the newer login), `is_current_device_session()` false for the older device. Production: 1 member seat held by a session that no longer exists (taken over on that member's next login). |
+
 Edge Functions deployed the same day (DEV from `dev`, then production from `main`; `verify_jwt`
 unchanged; downloaded code identical to the branch):
 
@@ -286,3 +288,38 @@ Frontend error monitoring (OPS-05, PR #15): Sentry EU, production reporting on f
 2026-11-06-01; live bundle carries the DSN, deploy environment `production` and the release commit;
 source maps uploaded at build and not served publicly. Reports are scrubbed in
 `src/lib/errorReportScrub.js`.
+
+## Changes on 2026-11-09 (SEC-15, SEC-25, LEG-10)
+
+| Function | DEV version | Production version | Change |
+|---|---|---|---|
+| change-pending-email | v13 (from `dev`) | v23 (from `main`) | SEC-15: an already registered new address gets the same success response as a free one; no account created, no mail sent. `verify_jwt` false (unchanged). |
+
+LEG-10 (manifest `orientation: 'any'`) is frontend only and ships with the Vercel deploy of `main` / `dev`.
+
+
+## Changes on 2026-11-09/10 (launch fixes 2)
+
+Backup first: GitHub Actions run `42701151217` (success). Each migration applied to DEV first, then
+production, as its own file content plus its ledger row in one transaction (same version).
+
+| Version | Change | Verified in production |
+|---|---|---|
+| `20261110090000_sec26_perf10_sec20_sec25_admin_cleanup` | SEC-26 legacy `관리자 …` policies dropped; PERF-10 policy calls wrapped; SEC-20 unused grants revoked; SEC-25 admins hold one device seat | Table/function privileges equal `supabase/checks/permission-check.sql`; 0 unwrapped `is_admin()`; RLS on every table. Rolled-back admin test with real `auth.sessions` rows: phone A ✓ → login on B ✓ (B current, still admin) → A reopens ✗, A not current |
+| `20261110100000_sec56_note_author_photos_server_links` | Notes view returns `profile_image_url = NULL` + `has_author_photo`; Storage policy `SEC56 …` and `can_read_note_author_avatar` dropped | Policy and function gone; ledger row present |
+| `20261110110000_perf04_reward_claim_sheet_queue` | `reward_claim_sheet_queue` (RLS on, no anon/authenticated access) | Ledger row present; table not in the anon/authenticated privilege list |
+
+Edge Functions: `note-author-photos` v1 deployed to DEV (from `dev`) and production (from `main`),
+`verify_jwt` true. The functions sharing `_shared/requireVerifiedLogin.ts` (SEC-25 admin seat) and the
+PERF-04 reward/retry changes are deployed with the *Deploy Edge Functions* workflow.
+
+## Changes on 2026-11-10 (PERF-04 check-in retry list)
+
+Backup first: GitHub Actions run `42714659584` (success). Applied to DEV first, then production, as the
+file content plus its ledger row in one transaction (same version).
+
+| Version | Change | Verified in production |
+|---|---|---|
+| `20261110120000_perf04_checkin_sheet_queue` | `checkin_sheet_queue` for check-in Sheet rows (RLS on, no anon/authenticated access) | RLS on; no anon/authenticated SELECT; ledger row present |
+
+`log-redemption` and `privacy-retention-sync` are deployed with the *Deploy Edge Functions* workflow after merge.

@@ -28,13 +28,83 @@ const DIALOG_ICONS = {
 
 let nextId = 1
 
-function Toast({ toast, onDismiss }) {
+// A swipe this far (px) toward the screen edge, or a quick flick, dismisses
+// the toast; a shorter drag springs back. Top toasts swipe up, bottom ones down.
+const SWIPE_DISMISS_PX = 36
+const SWIPE_FLICK_PX_PER_MS = 0.5
+const SWIPE_FLICK_MIN_PX = 20
+const SWIPE_TAP_SLOP_PX = 6
+
+function Toast({ toast, onDismiss, edge = 'top' }) {
   const { type = 'info', title, message, action } = toast
+  const direction = edge === 'top' ? -1 : 1
+  const [offset, setOffset] = useState(0)
+  const [leaving, setLeaving] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const drag = useRef(null)
+  // The click that follows a drag is not a tap.
+  const swallowClick = useRef(false)
+
+  const dismiss = useCallback(() => onDismiss(toast.id), [onDismiss, toast.id])
+
+  const onPointerDown = (event) => {
+    if (leaving || event.button > 0) return
+    swallowClick.current = false
+    drag.current = { startY: event.clientY, startTime: event.timeStamp, moved: false, pointerId: event.pointerId }
+  }
+
+  const onPointerMove = (event) => {
+    const current = drag.current
+    if (!current || current.pointerId !== event.pointerId) return
+    const delta = event.clientY - current.startY
+    if (!current.moved && Math.abs(delta) > SWIPE_TAP_SLOP_PX) {
+      current.moved = true
+      setDragging(true)
+      event.currentTarget.setPointerCapture?.(event.pointerId)
+    }
+    if (!current.moved) return
+    // Toward the edge it follows the finger; the other way it resists.
+    setOffset(delta * direction > 0 ? delta : delta / 4)
+  }
+
+  const onPointerEnd = (event) => {
+    const current = drag.current
+    drag.current = null
+    if (!current || current.pointerId !== event.pointerId) return
+    if (!current.moved) return
+    swallowClick.current = true
+    setDragging(false)
+    const delta = event.clientY - current.startY
+    const speed = (delta * direction) / Math.max(1, event.timeStamp - current.startTime)
+    if (delta * direction > SWIPE_DISMISS_PX || (delta * direction > SWIPE_FLICK_MIN_PX && speed > SWIPE_FLICK_PX_PER_MS)) {
+      setLeaving(true)
+      setOffset(direction * (window.innerHeight / 2))
+      window.setTimeout(dismiss, 180)
+    } else {
+      setOffset(0)
+    }
+  }
+
   return (
     <div
       role={type === 'error' || type === 'warning' ? 'alert' : 'status'}
-      className="uvain-toast pointer-events-auto flex w-full items-center gap-2.5 rounded-2xl bg-white px-3.5 py-3 text-left shadow-[0_8px_24px_rgba(0,0,0,0.14)] dark:bg-[#1f1f22] dark:shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
-      onClick={() => !action && onDismiss(toast.id)}
+      className="uvain-toast pointer-events-auto flex w-full touch-none select-none items-center gap-2.5 rounded-2xl bg-white px-3.5 py-3 text-left shadow-[0_8px_24px_rgba(0,0,0,0.14)] dark:bg-[#1f1f22] dark:shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+      style={{
+        transform: offset ? `translateY(${offset}px)` : undefined,
+        opacity: leaving ? 0 : 1,
+        transition: dragging ? 'none' : 'transform 180ms ease-out, opacity 180ms ease-out',
+      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerEnd}
+      onPointerCancel={onPointerEnd}
+      onClick={() => {
+        if (swallowClick.current) {
+          swallowClick.current = false
+          return
+        }
+        if (!action && !leaving) dismiss()
+      }}
     >
       {TOAST_ICONS[type] || TOAST_ICONS.info}
       <div className="min-w-0 flex-1">
@@ -47,7 +117,7 @@ function Toast({ toast, onDismiss }) {
           className="flex-shrink-0 whitespace-nowrap px-1 py-2 text-sm font-bold text-orange-500"
           onClick={(event) => {
             event.stopPropagation()
-            onDismiss(toast.id)
+            dismiss()
             action.onClick?.()
           }}
         >
@@ -258,14 +328,14 @@ export default function FeedbackProvider({ children }) {
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)', zIndex: LAYER }}
             aria-live="polite"
           >
-            {plainToasts.map((toast) => <Toast key={toast.id} toast={toast} onDismiss={dismissToast} />)}
+            {plainToasts.map((toast) => <Toast key={toast.id} toast={toast} onDismiss={dismissToast} edge="top" />)}
           </div>
           <div
             className="uvain-toasts-bottom pointer-events-none fixed left-0 right-0 mx-auto flex w-full max-w-[480px] flex-col gap-2 px-3"
             style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)', zIndex: LAYER }}
             aria-live="polite"
           >
-            {actionToasts.map((toast) => <Toast key={toast.id} toast={toast} onDismiss={dismissToast} />)}
+            {actionToasts.map((toast) => <Toast key={toast.id} toast={toast} onDismiss={dismissToast} edge="bottom" />)}
           </div>
           {activeDialog && (
             <Dialog

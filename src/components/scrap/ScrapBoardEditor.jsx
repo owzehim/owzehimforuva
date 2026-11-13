@@ -395,13 +395,17 @@ export default function ScrapBoardEditor({ placeName, initialBoard, imagePrefix,
     }
     const onTouchStart = (event) => {
       if (event.touches.length !== 2) return
+      // replace() hands its updater to setHistory, which React runs later,
+      // after the refs below are cleared. Read `before` now, not inside it.
       if (dragRef.current) {
-        replace(() => dragRef.current.before)
+        const { before } = dragRef.current
+        replace(() => before)
         dragRef.current = null
       }
       if (strokeRef.current) {
         // A second finger means pan/zoom, not drawing.
-        if (strokeRef.current.mode === 'erase') replace(() => strokeRef.current.before)
+        const { before, mode } = strokeRef.current
+        if (mode === 'erase') replace(() => before)
         strokeRef.current = null
         setLiveStroke(null)
       }

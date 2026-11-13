@@ -39,6 +39,11 @@ export function initErrorMonitoring() {
         ignoreErrors: [
           'ResizeObserver loop limit exceeded',
           'ResizeObserver loop completed with undelivered notifications',
+          // html5-qrcode calls video.play() without handling its promise. If a
+          // member leaves /scan before the camera starts, the browser cancels
+          // play() and this surfaces as an unhandled rejection. Harmless: the
+          // scanner is already stopped. The app itself never aborts requests.
+          'AbortError: The operation was aborted',
         ],
       })
       // Preview-only check: open a preview with ?sentry_test=1 to send one test

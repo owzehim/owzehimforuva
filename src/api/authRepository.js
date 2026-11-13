@@ -266,7 +266,7 @@ export async function sendPasswordResetReturnSignal(action, token, recoveryAcces
   return data?.completed === true
 }
 
-/** Change a password using the verified recovery session. */
+/** Change a password using only a verified PKCE recovery session. */
 export async function updatePasswordFromRecovery(password) {
   const { error } = await passwordRecoverySupabase.auth.updateUser({ password })
   if (error) throw new Error(error.message)

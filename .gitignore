@@ -24,7 +24,10 @@ dist-ssr
 *.sw?
 .env
 .env.local
+supabase/.temp/
+
+supabase/prod_schema.sql
+supabase/prod_public_schema.sql
 .vercel
 .env*
 !.env.example
-supabase/.temp/

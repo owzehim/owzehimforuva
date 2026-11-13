@@ -418,7 +418,7 @@ export default function MemberPage({ userId: sessionUserId, userEmail, isAdmin, 
               onClick={() => {
                 window.location.href = '/admin'
               }}
-              className="flex items-center rounded-lg bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700"
+              className="flex items-center rounded-lg bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700"
               style={{
                 height: '44px',
                 userSelect: 'none',

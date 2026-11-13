@@ -9,6 +9,7 @@ import ThemeToggle from '../components/ThemeToggle'
 import { getMemberAvatarSeed, getPastelColor } from '../lib/avatarColor'
 import { createProfileImageSignedUrl } from '../lib/profileImageStorage'
 import { legalDocuments } from '../content/legalDocuments'
+import { hasAdminRole } from '../lib/adminRoles'
 import AdminBadge from '../components/AdminBadge'
 import { useModalFocus } from '../hooks/useModalFocus'
 import { deleteAccountWithPassword } from '../api/authRepository'
@@ -74,7 +75,7 @@ async function getCroppedImgAsBlob(imageSrc, pixelCrop) {
 
 // ─── Page component ───────────────────────────────────────────────────────────
 
-export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
+export default function SettingsPage({ previewOnly = false } = {}) {
   const navigate = useNavigate()
   const [member, setMember] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -93,6 +94,7 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
   const [usernameDraft, setUsernameDraft] = useState('')
   const [usernameSaving, setUsernameSaving] = useState(false)
   const [usernameError, setUsernameError] = useState('')
+  const [isAdminUser, setIsAdminUser] = useState(false)
   const fileInputRef = useRef(null)
 
   const [cropImageSrc, setCropImageSrc] = useState(null)
@@ -146,21 +148,22 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
         setLoading(false)
         return
       }
-      if (!userId) { navigate('/login'); return }
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) { navigate('/login'); return }
+      const [{ data: memberData, error: memberError }, adminRole] = await Promise.all([
+        supabase.from('members').select('*').eq('user_id', user.id).maybeSingle(),
+        hasAdminRole(user.id),
+      ])
       if (memberError) console.error('load member error:', memberError)
       const memberWithSignedImage = memberData?.profile_image_url
         ? { ...memberData, profile_image_url: await createProfileImageSignedUrl(memberData.profile_image_url) }
         : memberData
       setMember(memberWithSignedImage || null)
+      setIsAdminUser(adminRole)
       setLoading(false)
     }
     load()
-  }, [navigate, previewOnly, userId])
+  }, [navigate, previewOnly])
 
   useEffect(() => {
     const edgeWidth = 30
@@ -679,7 +682,7 @@ export default function SettingsPage({ userId, isAdmin, previewOnly = false }) {
                     <span className={`text-xs font-medium text-gray-500 dark:text-gray-400 ${username ? '' : 'italic'}`}>
                       {usernameDisplay}
                     </span>
-                    {isAdmin && <AdminBadge size={14} />}
+                    {isAdminUser && <AdminBadge size={14} />}
                     <button
                       type="button"
                       onClick={previewOnly ? undefined : handleUsernameEditStart}

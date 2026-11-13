@@ -3,50 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { getSupabaseServiceKey } from '../_shared/serviceKey.ts'
 import { apiKeyOnlyFetch } from '../_shared/apiKeyOnlyFetch.js'
 import { hasVerifiedAppLogin, hasActiveDeviceSession, requireVerifiedLoginResponse } from '../_shared/requireVerifiedLogin.ts'
-import { sheetText } from '../_shared/sheetText.js'
-import { reviewCriteriaForSheet } from '../_shared/reviewCriteriaSheet.js'
 import { readJsonBody, RequestBodyTooLargeError } from '../_shared/readJsonBody.js'
-import { getAllowedAppsScriptUrl, withAppsScriptSecret } from '../_shared/appsScriptAuth.js'
-import { getPartnerAppsScriptSecret } from '../_shared/partnerAppsScriptSecret.js'
-
-async function postJsonToAppsScript(
-  url: string | null | undefined,
-  payload: Record<string, unknown>,
-  label: string,
-  secret?: string | null,
-) {
-  if (!url) return { ok: false, skipped: true, label }
-  const endpoint = getAllowedAppsScriptUrl(url)
-  if (!endpoint) {
-    console.error(`${label} Apps Script URL is invalid`)
-    return { ok: false, errorCode: 'invalid_endpoint', label }
-  }
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(withAppsScriptSecret(
-        payload,
-        label === 'master' ? Deno.env.get('MASTER_APPS_SCRIPT_SECRET') : secret,
-      )),
-    })
-    const text = await response.text().catch(() => '')
-    if (!response.ok) {
-      console.error(`${label} sheet sync failed:`, response.status)
-      return { ok: false, label }
-    }
-    try {
-      const result = text ? JSON.parse(text) : null
-      if (result && typeof result === 'object' && result.success === false) return { ok: false, label }
-    } catch {
-      // Apps Script deployments can return plain text on errors.
-    }
-    return { ok: true, label }
-  } catch {
-    console.error(`${label} sheet sync failed unexpectedly`)
-    return { ok: false, label }
-  }
-}
+import { queueAndSendReviewSheetRows } from '../_shared/reviewSheetSync.ts'
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin')
@@ -143,7 +101,7 @@ Deno.serve(async (req) => {
 
     const { data: review, error: reviewError } = await admin
       .from('reviews')
-      .select('rating, tags, comment')
+      .select('id')
       .eq('redemption_id', redemption.id)
       .eq('user_id', userId)
       .maybeSingle()
@@ -153,24 +111,6 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, message: '저장된 리뷰를 찾을 수 없습니다.' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
-    }
-
-    const { data: partnership, error: partnershipError } = await admin
-      .from('partnerships')
-      .select('name, sheet_name')
-      .eq('id', redemption.store_id)
-      .maybeSingle()
-    const { data: integrations, error: integrationsError } = await admin
-      .from('partnership_integrations')
-      .select('master_apps_script_url, partner_apps_script_url')
-      .eq('partnership_id', redemption.store_id)
-      .maybeSingle()
-    if (partnershipError || integrationsError || !partnership) {
-      console.error('Review sheet configuration lookup failed')
-      return new Response(
-        JSON.stringify({ success: false, message: '매장 연동 설정을 확인하지 못했습니다.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
@@ -188,78 +128,17 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         )
       }
-      review.comment = requestedReviewComment?.trim() || null
     }
 
-    const rating = Number(review.rating)
-    const validTags = new Set(['GREAT_FOOD', 'FRIENDLY_STAFF', 'NICE_ATMOSPHERE', 'GOOD_VALUE'])
-    const tags = Array.isArray(review.tags)
-      ? review.tags.filter((tag: unknown) => typeof tag === 'string' && validTags.has(tag)).slice(0, 4)
-      : []
-    // The place's own 멤버 평가 names (default: the restaurant criteria), so
-    // the sheets can label the 4 tag columns for this place.
-    const { data: placeRows, error: placeError } = await admin
-      .from('restaurants')
-      .select('review_criteria')
-      .eq('partnership_id', redemption.store_id)
-      .order('is_archived', { ascending: true })
-      .limit(1)
-    if (placeError) console.warn('Review criteria lookup failed; using default names')
-    const { criteria, tag_labels } = reviewCriteriaForSheet(placeRows?.[0]?.review_criteria ?? null, tags)
-    const now = new Date()
-    const reviewPayload = {
-      type: 'review',
-      partnership_id: redemption.store_id,
-      sheet_name: sheetText(partnership.sheet_name || partnership.name, 160),
-      redemption_id: String(redemption_id),
-      rating,
-      tags,
-      criteria,
-      tag_labels,
-      comment: sheetText(review.comment || '', 2000),
-      review_submitted_at_date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' }),
-      review_submitted_at_time: now.toLocaleTimeString('en-GB', {
-        timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit',
-      }),
-    }
-    const masterSync = await postJsonToAppsScript(
-      integrations?.master_apps_script_url,
-      reviewPayload,
-      'master',
-    )
-    let partnerSync: { ok: boolean; skipped?: boolean; label: string } = {
-      ok: true,
-      skipped: true,
-      label: 'partner',
-    }
-    if (integrations?.partner_apps_script_url) {
-      // Send the per-redemption rating and tags to the partner's Operations tab.
-      // Reviewer identity and comment stay in the internal Master sheet only.
-      partnerSync = await postJsonToAppsScript(
-        integrations.partner_apps_script_url,
-        {
-          type: 'review',
-          partnership_id: redemption.store_id,
-          redemption_id: String(redemption_id),
-          rating,
-          tags,
-          criteria,
-          tag_labels,
-          review_submitted_at_date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' }),
-        },
-        'partner',
-        await getPartnerAppsScriptSecret(admin, redemption.store_id),
-      )
-    }
-    if (!masterSync.ok || !partnerSync.ok) {
-      return new Response(
-        JSON.stringify({ success: false, message: '리뷰 기록을 모두 동기화하지 못했습니다.' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
-    }
-
+    // FUNC-14: queue the Master and partner rows and send them once. A row
+    // that fails stays queued and the sheet retry job sends it later, so the
+    // review is never lost; the member does not need to try again.
+    const { pending } = await queueAndSendReviewSheetRows(admin, {
+      redemptionId: redemption.id,
+      storeId: redemption.store_id,
+    })
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, sheets: pending === 0 ? 'sent' : 'queued' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
 

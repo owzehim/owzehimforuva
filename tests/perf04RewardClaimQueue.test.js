@@ -71,10 +71,20 @@ test('PERF-04 check-ins: rebuilt rows match the original Sheet format', () => {
   assert.equal(partner.sheet_name, "'=Shop", 'formula-looking text is escaped')
   assert.equal(partner.stamp_card_claimed_after_scan, 'Yes')
   assert.equal(partner.first_name, undefined, 'partner rows carry no member identifiers')
-  const master = checkin.buildCheckinMasterPayload({ ...base, userId: 'u1', member: { first_name: 'Kim', account_status: null } })
+  const member = {
+    first_name: 'Kim', last_name: 'Lee', student_number: '12345678', University: 'UvA', major: 'Law',
+    education_level: 'bachelor', year_number: 2, gender: 'female', year_of_birth: 2004,
+    country_of_origin: 'KR', account_status: null,
+  }
+  const master = checkin.buildCheckinMasterPayload({ ...base, userId: 'u1', member })
   assert.equal(master.type, 'master')
   assert.equal(master.time, '12:05')
-  assert.equal(master.first_name, 'Kim')
+  assert.equal(master.user_id, 'u1', 'rows are matched by the random account code')
+  // GDPR-14 (option A): no identity or demographics in the Master sheet.
+  for (const field of checkin.MASTER_IDENTITY_FIELDS) {
+    assert.equal(master[field], '', `${field} is sent empty`)
+  }
+  assert.ok(!JSON.stringify(master).includes('12345678'))
   assert.equal(master.account_status, 'active')
   assert.equal(master.stamp_card_progress, '10/10')
 })
@@ -89,5 +99,12 @@ test('PERF-04 check-ins: log-redemption queues its Sheet rows and the retry job 
   assert.match(sql, /REVOKE ALL ON TABLE public\.checkin_sheet_queue FROM PUBLIC, anon, authenticated/)
   assert.match(sql, /REFERENCES public\.redemptions\(id\) ON DELETE CASCADE/)
   const job = await readFile('supabase/functions/privacy-retention-sync/index.ts', 'utf8')
-  assert.match(job, /retryCheckinSheetRows\(admin, \{ limit: 20, deadline: startedAt \+ 45_000 \}\)/)
+  assert.match(job, /retryCheckinSheetRows\(admin, \{ limit: 20, deadline: startedAt \+ 35_000 \}\)/)
+})
+
+test('GDPR-14: the Master sheet never receives the free-text review comment', async () => {
+  const source = await readFile('supabase/functions/_shared/reviewSheetPayload.js', 'utf8')
+  assert.match(source, /comment: '',/)
+  assert.ok(!source.includes('review.comment'))
+  assert.ok(!(await readFile('supabase/functions/_shared/reviewSheetSync.ts', 'utf8')).includes('comment'))
 })

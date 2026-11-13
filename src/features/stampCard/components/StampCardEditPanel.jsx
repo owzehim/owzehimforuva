@@ -155,7 +155,7 @@ export default function StampCardEditPanel({ restaurantId, spotName, onClose }) 
             onClick={handleSave}
             disabled={saving}
             className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white"
-            style={{ background: saving ? '#9ca3af' : '#f97316' }}
+            style={{ background: saving ? '#6b7280' : '#f97316' }}
           >
             {saving ? '저장 중...' : '저장'}
           </button>
@@ -336,7 +336,7 @@ export default function StampCardEditPanel({ restaurantId, spotName, onClose }) 
         }
         .rich-text-box:empty:before {
           content: attr(data-placeholder);
-          color: #9ca3af;
+          color: #6b7280;
           pointer-events: none;
         }
       `}</style>
@@ -376,7 +376,7 @@ function RichTextField({ value, onChange, placeholder }) {
   }
 
   return (
-    <div className="input-focus-frame border border-gray-200 rounded-lg overflow-hidden bg-white focus-within:border-orange-600 focus-within:shadow-[0_0_0_2px_rgba(249,115,22,0.15)]">
+    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white focus-within:border-orange-600 focus-within:shadow-[0_0_0_2px_rgba(249,115,22,0.15)]">
       <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50 px-2 py-1">
         <button
           type="button"

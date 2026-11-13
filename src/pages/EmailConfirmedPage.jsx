@@ -111,7 +111,6 @@ export default function EmailConfirmedPage() {
           }
           return
         }
-
         if (session.user?.user_metadata?.registration) {
           const { data: registrationResult, error: registrationError } =
             await supabase.functions.invoke('complete-member-registration')
