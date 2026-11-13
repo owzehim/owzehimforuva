@@ -6,7 +6,9 @@
 // was published from as sourceCommit) and list it here.
 // The "Earlier versions" button on the legal page appears once this list has
 // an entry.
-export const LEGAL_ARCHIVE = []
+export const LEGAL_ARCHIVE = [
+  { version: '2026-11-07-01', available: true },
+]
 
 const loaders = import.meta.glob('./legal-archive/*.json')
 

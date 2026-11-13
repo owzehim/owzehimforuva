@@ -1,14 +1,14 @@
 import { legalDocumentsKo } from './legalDocumentsKo.js'
 
-export const LEGAL_DOCUMENT_VERSION = '2026-11-07-01';
+export const LEGAL_DOCUMENT_VERSION = '2026-11-13-01';
 
 export const legalDocuments = {
   terms: {
     title: 'Terms and Conditions',
-    effectiveDate: '7 November 2026',
+    effectiveDate: '13 November 2026',
     body: `UvA-IN Terms and Conditions
 
-Effective Date: 7 November 2026
+Effective Date: 13 November 2026
 
 This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
@@ -113,10 +113,10 @@ By creating an account, you confirm that you have read and understood these Term
   },
   privacy: {
     title: 'Privacy Policy',
-    effectiveDate: '7 November 2026',
+    effectiveDate: '13 November 2026',
     body: `UvA-IN Privacy Policy
 
-Effective Date: 7 November 2026
+Effective Date: 13 November 2026
 
 This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
@@ -127,6 +127,8 @@ UvA-IN complies with the General Data Protection Regulation and applicable Dutch
 1. Who We Are
 
 UvA-IN is the membership app of UvA-IN, an independent student association run by students of the University of Amsterdam (UvA). UvA-IN is not an official university organisation, and the university is not responsible for the App or its content. The App connects members with participating restaurants and local businesses through offers, digital rewards, and community experiences.
+
+The UvA-IN board is responsible for the processing of personal data described in this Privacy Policy.
 
 Data controller: UvA-IN
 Website: www.uva-in.nl
@@ -234,10 +236,10 @@ Privacy contact: uvaksa16@gmail.com`,
   },
   community: {
     title: 'Community Guidelines',
-    effectiveDate: '7 November 2026',
+    effectiveDate: '13 November 2026',
     body: `UvA-IN Community Guidelines
 
-Effective Date: 7 November 2026
+Effective Date: 13 November 2026
 
 This document is available in English and Korean. The English version is the original and prevails if the versions differ.
 
