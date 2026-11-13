@@ -1112,44 +1112,39 @@ export default function RegistrationPage() {
             <p style={{ ...s.emailText, fontSize: '12px', marginTop: '8px' }}>{t.existingAccountHint}</p>
           </div>
           <div className="registration-email-actions">
-            {confirmationCheckNeedsCaptcha && (
-              <div>
-                {isPreviewMode ? (
-                  <DevelopmentCaptchaPreview language={language} />
-                ) : (
-                  <CaptchaChallenge
-                    onVerify={(token) => {
-                      setConfirmationCheckCaptchaToken(token);
-                      if (token) void handleCheckConfirmation(token);
-                    }}
-                    resetKey={confirmationCheckCaptchaResetKey}
-                    language={language}
-                    reserveSpace={false}
-                  />
-                )}
-              </div>
-            )}
-            {confirmationCheckError && (
-              <p role="status" style={{ ...s.emailText, color: '#dc2626', marginTop: '10px' }}>
-                {confirmationCheckError}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => navigate('/public')}
-              className="registration-email-return-button"
-              style={s.submitBtn}
-            >
-              {language === 'ko' ? '\uACF5\uAC1C \uD398\uC774\uC9C0\uB85C \uB3CC\uC544\uAC00\uAE30' : 'Return to public page'}
-            </button>
-            <button
-              type="button"
-              onClick={handleEditEmail}
-              className="registration-email-change-button"
-              style={{ ...s.ghostBtn, width: '100%', marginTop: '6px' }}
-            >
-              {language === 'ko' ? '\uC774\uBA54\uC77C \uC8FC\uC18C \uBCC0\uACBD' : 'Change email address'}
-            </button>
+          {confirmationCheckNeedsCaptcha && (
+            <div style={{ marginTop: '10px' }}>
+              {isPreviewMode ? (
+                <DevelopmentCaptchaPreview language={language} />
+              ) : (
+                <CaptchaChallenge
+                  onVerify={(token) => {
+                    setConfirmationCheckCaptchaToken(token);
+                    if (token) void handleCheckConfirmation(token);
+                  }}
+                  resetKey={confirmationCheckCaptchaResetKey}
+                  language={language}
+                  reserveSpace={false}
+                />
+              )}
+            </div>
+          )}
+          {confirmationCheckError && (
+            <p role="status" style={{ ...s.emailText, color: '#dc2626', marginTop: '10px' }}>
+              {confirmationCheckError}
+            </p>
+          )}
+          <button type="button" onClick={() => navigate('/public')} className="registration-email-return-button" style={s.submitBtn}>
+            {language === 'ko' ? '홈 화면으로 이동' : 'Return to homepage'}
+          </button>
+          <button
+            type="button"
+            onClick={handleEditEmail}
+            className="registration-email-change-button"
+            style={{ ...s.ghostBtn, width: '100%', marginTop: '6px' }}
+          >
+            {language === 'ko' ? '\uC774\uBA54\uC77C \uC8FC\uC18C \uBCC0\uACBD' : 'Change email address'}
+          </button>
           </div>
         </div>
       </div>
@@ -1161,7 +1156,7 @@ export default function RegistrationPage() {
       <div
         className="phone-app-shell viewport-height-shell registration-page-enter registration-captcha-step"
         onDragStart={(event) => event.preventDefault()}
-        style={{ ...s.page, fontFamily: 'var(--font-app)', WebkitTapHighlightColor: 'transparent' }}
+        style={{ ...s.page, fontFamily: 'var(--font-app)', userSelect: 'none', WebkitUserSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
       >
         <style>{registrationMotionCss}</style>
         <div className="registration-top-bar" style={s.topBar}>
@@ -1221,6 +1216,8 @@ export default function RegistrationPage() {
         ...s.page,
         ...(stableChromeViewportHeight ? { height: `${stableChromeViewportHeight}px` } : {}),
         fontFamily: 'var(--font-app)',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
         WebkitTapHighlightColor: 'transparent',
       }}
     >

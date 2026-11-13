@@ -2457,7 +2457,7 @@ html:not(.dark) .text-gray-400 {
     overscroll-behavior-y: contain;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y pinch-zoom;
+    touch-action: pan-y;
   }
 
   .spot-card-expanded-content::-webkit-scrollbar {

@@ -280,7 +280,7 @@ function App() {
           element={devScreen(
             isSettingsPreview
               ? <SettingsPage previewOnly />
-              : protectWithConsent(<SettingsPage userId={userId} isAdmin={isAdmin} />),
+              : protectWithConsent(<SettingsPage />),
           )}
         />
         <Route

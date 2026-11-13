@@ -30,12 +30,33 @@ test('admins (only) see members with unusual Check-IN patterns', () => {
   assert.match(migration, /interval '10 minutes'/)
   assert.match(migration, /d\.stores >= 3/)
   assert.match(migration, /f\.days >= 15/)
-  const panel = read('src/components/admin/CheckinReviewPanel.jsx')
+  const panel = read('src/components/admin/CheckinReviewTab.jsx')
   assert.match(panel, /확인이 필요한 Check-IN/)
   assert.match(panel, /daily_limit: '하루 3곳 Check-IN'/)
-  assert.match(read('src/pages/AdminPage.jsx'), /<div className="space-y-4">\n {6}<CheckinReviewPanel \/>/)
+  // Its own admin tab, no longer inside 멤버 관리.
+  const adminPage = read('src/pages/AdminPage.jsx')
+  assert.match(adminPage, /\{ key: 'checkins', label: 'Check-IN 점검' \}/)
+  assert.match(adminPage, /activeTab === 'checkins' && <CheckinReviewTab \/>/)
+  assert.ok(!adminPage.includes('<CheckinReviewPanel'))
   const check = read('supabase/checks/permission-check.sql')
   assert.match(check, /'admin_checkin_review'/)
   // Members read partnership id and name only, never the Apps Script address columns.
   assert.match(check, /'authenticated\|partnerships\|SELECT\|id,name'/)
+})
+
+test('admins can mark a flagged member 검토 완료, and a newer flag reopens it', () => {
+  const sql = read('supabase/migrations/20261113120000_checkin_review_decisions.sql')
+  // Server-only table, written through an admin-only function.
+  assert.match(sql, /ALTER TABLE public\.checkin_review_decisions ENABLE ROW LEVEL SECURITY;/)
+  assert.match(sql, /REVOKE ALL ON TABLE public\.checkin_review_decisions FROM PUBLIC, anon, authenticated;/)
+  assert.match(sql, /REFERENCES auth\.users\(id\) ON DELETE CASCADE/)
+  assert.match(sql, /admin_set_checkin_review[\s\S]*IF NOT public\.is_admin\(\) THEN/)
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.admin_set_checkin_review\(uuid, boolean, timestamptz\) FROM PUBLIC, anon;/)
+  // Reviewed only while no newer flag exists.
+  assert.match(sql, /CASE WHEN decision\.reviewed_through >= flagged\.latest_at THEN decision\.reviewed_at END/)
+  const panel = read('src/components/admin/CheckinReviewTab.jsx')
+  assert.match(panel, /'admin_set_checkin_review'/)
+  assert.match(panel, /p_through: reviewed \? row\.latest_at : null/)
+  assert.match(panel, /label: '검토 완료'/)
+  assert.match(read('supabase/checks/permission-check.sql'), /'admin_set_checkin_review'/)
 })

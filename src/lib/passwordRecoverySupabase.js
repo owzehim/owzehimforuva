@@ -8,9 +8,9 @@ export const passwordRecoverySupabase = createClient(supabaseUrl, supabasePublis
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    // Email apps may open links in a different browser context. Recovery links
-    // carry a short-lived session in the URL fragment so that context can finish
-    // the reset without the original browser's PKCE verifier.
+    // Email apps may open links in a browser context that did not request the
+    // reset. Implicit recovery links carry a short-lived session in the URL
+    // fragment, so the callback can complete in that browser context.
     detectSessionInUrl: false,
     flowType: 'implicit',
     storageKey: 'uvain-password-recovery-auth',

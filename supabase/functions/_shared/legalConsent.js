@@ -1,5 +1,5 @@
 const DOCUMENT_KEYS = ['terms', 'privacy', 'community']
-export const CURRENT_LEGAL_DOCUMENT_VERSION = '2026-11-07-01'
+export const CURRENT_LEGAL_DOCUMENT_VERSION = '2026-11-13-01'
 const AGE_CONFIRMATION_DOCUMENT_KEY = 'age_16_plus'
 const AGE_CONFIRMATION_DOCUMENT_VERSION = 'age-16-plus-v1'
 

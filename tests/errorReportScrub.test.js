@@ -79,5 +79,5 @@ test('production reporting is only on while both policy languages name Sentry', 
   if (!approved) return
   assert.match(legalDocuments.privacy.body, /Sentry \(EU region\)/)
   assert.match(legalDocuments.privacy.ko.body, /Sentry\(EU 지역\)/)
-  assert.match(legalDocuments.privacy.body, /deleted after 30 days/)
+  assert.match(legalDocuments.privacy.body, /error reports are deleted automatically within 90 days/)
 })

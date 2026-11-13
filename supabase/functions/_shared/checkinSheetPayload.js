@@ -31,6 +31,17 @@ export function stampColumns(stampResult) {
 
 const safe = (value) => (value == null || value === '' ? '' : sheetText(value))
 
+// GDPR-14 (option A): the Master sheet sits in a Google account without a
+// data processing agreement, so it gets no names, student numbers, study
+// fields or demographics. The member is identified only by the random
+// account code (user_id), which the privacy jobs use to anonymize rows.
+// The identity columns are sent empty so a resync also clears old values.
+export const MASTER_IDENTITY_FIELDS = [
+  'first_name', 'last_name', 'first_name_korean', 'last_name_korean',
+  'university', 'student_number', 'education_level', 'year_number', 'major',
+  'gender', 'year_of_birth', 'country_of_origin',
+]
+
 export function buildCheckinMasterPayload({ storeId, partnership, redemptionId, redeemedAt, userId, member, stamp }) {
   const date = redeemedAt.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' })
   const time = redeemedAt.toLocaleTimeString('en-GB', {
@@ -39,12 +50,8 @@ export function buildCheckinMasterPayload({ storeId, partnership, redemptionId, 
   return {
     type: 'master', date, time, redemption_id: String(redemptionId),
     restaurant_id: storeId, place_name: sheetText(partnership?.name || storeId, 160), user_id: userId,
-    first_name: safe(member.first_name), last_name: safe(member.last_name),
-    first_name_korean: safe(member.first_name_korean), last_name_korean: safe(member.last_name_korean),
-    university: safe(member.University), student_number: safe(member.student_number),
-    education_level: safe(member.education_level), year_number: member.year_number ?? '',
-    major: safe(member.major), gender: safe(member.gender), year_of_birth: safe(member.year_of_birth),
-    country_of_origin: safe(member.country_of_origin), star_rating: '', great_food: '',
+    ...Object.fromEntries(MASTER_IDENTITY_FIELDS.map((field) => [field, ''])),
+    star_rating: '', great_food: '',
     friendly_staff: '', nice_atmosphere: '', good_value: '', comment: '',
     stamp_status: stamp.stamp_status, stamp_progress: stamp.stamp_progress,
     stamp_card_progress: stamp.stamp_progress,

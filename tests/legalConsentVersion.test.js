@@ -16,7 +16,7 @@ test('consent receipts preserve the version the member actually accepted', () =>
     },
   }, '2026-10-24T10:00:00.000Z')
 
-  assert.equal(CURRENT_LEGAL_DOCUMENT_VERSION, '2026-11-07-01')
+  assert.equal(CURRENT_LEGAL_DOCUMENT_VERSION, '2026-11-13-01')
   assert.equal(LEGAL_DOCUMENT_VERSION, CURRENT_LEGAL_DOCUMENT_VERSION)
   assert.deepEqual(rows.map((row) => row.document_version), [
     '2026-10-24-04',
