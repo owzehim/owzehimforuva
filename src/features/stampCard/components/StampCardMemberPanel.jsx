@@ -246,7 +246,7 @@ function MemberRow({ member, isAdmin, stampState, latestReward, totalStamps, res
               onClick={handleAddStamp}
               disabled={submitting}
               className="flex-1 py-1.5 rounded-lg text-sm font-semibold text-white"
-              style={{ background: submitting ? '#9ca3af' : '#f97316' }}
+              style={{ background: submitting ? '#6b7280' : '#f97316' }}
             >
               {submitting ? '추가 중...' : '확인'}
             </button>

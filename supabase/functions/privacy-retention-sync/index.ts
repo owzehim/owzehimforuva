@@ -8,6 +8,7 @@ import { getMasterPrivacyEndpoint } from '../_shared/masterPrivacyEndpoint.ts'
 import { retryPendingEmailCleanup } from '../_shared/finalizePendingEmail.js'
 import { retryRewardClaimSheetRows } from '../_shared/rewardClaimSheetSync.ts'
 import { retryCheckinSheetRows } from '../_shared/checkinSheetSync.ts'
+import { retryReviewSheetRows } from '../_shared/reviewSheetSync.ts'
 
 // Keep the whole run well inside the workflow's 120 s limit (FUNC-08).
 const SHEET_REQUEST_TIMEOUT_MS = 8_000
@@ -101,24 +102,28 @@ Deno.serve(async (req) => {
       global: { fetch: apiKeyOnlyFetch(serviceKey) },
     })
 
-    // PERF-04: the 15-minute job only re-sends queued check-in and reward Sheet rows.
+    // PERF-04 / FUNC-14: the 15-minute job only re-sends queued check-in,
+    // review and reward Sheet rows.
     const requestBody = await req.json().catch(() => null)
     if (requestBody?.task === 'sheet_retry') {
       // Each Sheet call can take up to 8 s; stay well inside the workflow's
-      // 120 s limit (check-ins first, then rewards). Leftovers wait 15 minutes.
+      // 120 s limit (check-ins first, since a review needs its check-in row,
+      // then reviews, then rewards). Leftovers wait 15 minutes.
       const startedAt = Date.now()
-      const checkins = await retryCheckinSheetRows(admin, { limit: 20, deadline: startedAt + 45_000 })
-      const rewards = await retryRewardClaimSheetRows(admin, { limit: 20, deadline: startedAt + 90_000 })
-      const success = checkins.stuck === 0 && rewards.stuck === 0
+      const checkins = await retryCheckinSheetRows(admin, { limit: 20, deadline: startedAt + 35_000 })
+      const reviews = await retryReviewSheetRows(admin, { limit: 20, deadline: startedAt + 65_000 })
+      const rewards = await retryRewardClaimSheetRows(admin, { limit: 20, deadline: startedAt + 95_000 })
+      const success = checkins.stuck === 0 && reviews.stuck === 0 && rewards.stuck === 0
       return new Response(
         JSON.stringify({
           success,
           task: 'sheet_retry',
-          attempted_count: checkins.attempted + rewards.attempted,
-          synced_count: checkins.synced + rewards.synced,
-          failed_count: checkins.failed + rewards.failed,
-          stuck_count: checkins.stuck + rewards.stuck,
+          attempted_count: checkins.attempted + reviews.attempted + rewards.attempted,
+          synced_count: checkins.synced + reviews.synced + rewards.synced,
+          failed_count: checkins.failed + reviews.failed + rewards.failed,
+          stuck_count: checkins.stuck + reviews.stuck + rewards.stuck,
           checkin_stuck_count: checkins.stuck,
+          review_stuck_count: reviews.stuck,
           reward_stuck_count: rewards.stuck,
         }),
         { status: success ? 200 : 207, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

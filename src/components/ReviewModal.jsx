@@ -84,7 +84,7 @@ function TagChip({ tag, selected, onToggle }) {
         name={tag.icon}
         size={16}
         weight={selected ? 'fill' : 'regular'}
-        color={selected ? '#ffffff' : '#9ca3af'}
+        color={selected ? '#ffffff' : '#6b7280'}
       />
       {tag.label}
     </button>
