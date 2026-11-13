@@ -51,6 +51,29 @@ function errorMessage(error) {
   return 'Could not save your note. Please try again.'
 }
 
+// The photo fades in only once it has fully loaded, so a half-downloaded
+// image is never shown; until then (or if it fails) the avatar circle shows
+// the person icon on its colour.
+function NoteAuthorPhoto({ src }) {
+  const [state, setState] = useState('loading')
+  if (state === 'failed') return <UserCircle size={24} weight="fill" />
+  return (
+    <>
+      {state === 'loading' && <UserCircle size={24} weight="fill" className="absolute" />}
+      <img
+        src={src}
+        alt=""
+        decoding="async"
+        className="h-full w-full object-cover transition-opacity duration-150"
+        style={{ opacity: state === 'loaded' ? 1 : 0 }}
+        draggable={false}
+        onLoad={() => setState('loaded')}
+        onError={() => setState('failed')}
+      />
+    </>
+  )
+}
+
 export function GoodToKnowNotesPanel({
   restaurantId,
   userId,
@@ -442,16 +465,11 @@ export function GoodToKnowNotesPanel({
           return (
             <article key={note.id} className="flex gap-2.5 rounded-xl bg-white px-3 py-2 shadow-sm">
               <div
-                className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-[rgba(44,42,39,0.55)] dark:text-white/70"
+                className="relative mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-[rgba(44,42,39,0.55)] dark:text-white/70"
                 style={{ backgroundColor: note.is_anonymous ? '#f3f4f6' : avatarBg }}
               >
                 {!note.is_anonymous && note.profile_image_url ? (
-                  <img
-                    src={note.profile_image_url}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    draggable={false}
-                  />
+                  <NoteAuthorPhoto key={note.profile_image_url} src={note.profile_image_url} />
                 ) : (
                   <UserCircle size={24} weight="fill" />
                 )}
