@@ -72,7 +72,7 @@
 // CHANGE THIS VALUE: the ID from the master spreadsheet's URL.
 const MASTER_SPREADSHEET_ID = 'REPLACE_WITH_MASTER_SPREADSHEET_ID';
 const SHEET_NAME = 'All Scans';
-const SCRIPT_VERSION = 'uvain-master-label-flexible-v9-place-review-items';
+const SCRIPT_VERSION = 'uvain-master-label-flexible-v10-gdpr14-no-identity';
 const COLUMN_COUNT = 47;
 const ANONYMIZED_VALUE = '---';
 
@@ -422,6 +422,22 @@ function updateStampClaim(sheet, data) {
   sheet.getRange(row, COL.stamp_card_claimed_at_date).setValue(value(data.claimed_at_date) || formatDate(now));
   sheet.getRange(row, COL.stamp_card_claimed_at_time).setValue(value(data.claimed_at_time) || formatTime(now));
   setUpdatedRange(sheet, row, now);
+}
+
+// GDPR-14 (option A): run ONCE from the Apps Script editor after the app
+// stops sending identity data. Clears names, student numbers, study fields,
+// demographics and review comments from every existing row. Keeps user_id
+// (the random account code the privacy jobs use), visits, stamps, ratings
+// and membership status. Safe to run again.
+function clearIdentityColumnsGdpr14() {
+  const sheet = getMasterSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 'No data rows.';
+  const columns = IDENTITY_COLUMNS_TO_ANONYMIZE
+    .filter(col => col !== COL.user_id)
+    .concat([COL.comment]);
+  columns.forEach(col => sheet.getRange(2, col, lastRow - 1, 1).clearContent());
+  return 'Cleared ' + columns.length + ' columns in ' + (lastRow - 1) + ' rows.';
 }
 
 function runRetentionCleanup() {

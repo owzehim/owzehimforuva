@@ -216,7 +216,9 @@ Deno.serve(async (req) => {
       tags,
       criteria,
       tag_labels,
-      comment: sheetText(review.comment || '', 2000),
+      // GDPR-14 (option A): the free-text comment stays in the App database.
+      // Sending it empty also clears a comment written by an older version.
+      comment: '',
       review_submitted_at_date: now.toLocaleDateString('en-GB', { timeZone: 'Europe/Amsterdam' }),
       review_submitted_at_time: now.toLocaleTimeString('en-GB', {
         timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit',
